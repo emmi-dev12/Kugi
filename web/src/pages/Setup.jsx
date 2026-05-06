@@ -5,7 +5,6 @@ import styles from './Setup.module.css';
 export default function Setup({ onComplete }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -15,18 +14,8 @@ export default function Setup({ onComplete }) {
       setError('URL must be a valid Convex deployment URL (e.g. https://xxx.convex.cloud)');
       return;
     }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`${trimmed}/version`);
-      if (!res.ok) throw new Error();
-      localStorage.setItem('kugiConvexUrl', trimmed);
-      onComplete(trimmed);
-    } catch {
-      setError('Could not reach that Convex URL. Make sure your deployment is running.');
-    } finally {
-      setLoading(false);
-    }
+    localStorage.setItem('kugiConvexUrl', trimmed);
+    onComplete(trimmed);
   }
 
   return (
@@ -53,7 +42,7 @@ export default function Setup({ onComplete }) {
           />
           {error && <div className={styles.error}>{error}</div>}
           <button className={`btn-primary ${styles.btn}`} type="submit" disabled={loading}>
-            {loading ? 'Connecting…' : 'Connect workspace →'}
+            Connect workspace →
           </button>
         </form>
         <div className={styles.hint}>
