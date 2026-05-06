@@ -30,14 +30,46 @@
 
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.emojiGrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin-top: 5px; }
+/* Emoji */
+.emojiWrap { position: relative; margin-top: 5px; }
 
-.emojiOpt {
-  font-size: 17px; text-align: center; padding: 5px;
-  border-radius: 7px; background: transparent; border: none;
-  cursor: pointer; transition: all 0.1s; line-height: 1.4;
+.emojiBtn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; cursor: pointer; transition: all 0.15s;
+  font-family: inherit;
 }
-.emojiOpt:hover { background: var(--surface3); transform: scale(1.1); }
-.emojiOpt.selected { background: var(--surface3); outline: 2px solid rgba(255,255,255,0.25); }
+.emojiBtn:hover { background: var(--surface3); border-color: rgba(255,255,255,0.1); }
+.emojiBtnIcon { font-size: 20px; line-height: 1; }
+.emojiBtnLabel { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+.emojiPopover {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 10;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  min-width: 200px;
+  animation: slideUp 0.15s ease;
+}
+.emojiPopoverTitle {
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.emojiInput {
+  width: 100%; padding: 10px 12px;
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 8px; font-size: 22px; color: var(--text);
+  outline: none; font-family: inherit; text-align: center;
+  box-sizing: border-box;
+}
+.emojiHint {
+  font-size: 11px; color: var(--text-dim); margin-top: 8px; text-align: center;
+}
+.emojiHint kbd {
+  font-size: 10px; background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 1px 5px; font-family: inherit;
+  color: var(--text-muted);
+}
 
 .footer { display: flex; gap: 7px; justify-content: flex-end; margin-top: 20px; }

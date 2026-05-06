@@ -1,17 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { CATEGORIES, EMOJIS } from '../../utils/categories';
+import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
 
 export default function BlockModal({ open, block, defaultDate, onSave, onClose }) {
   const titleRef = useRef(null);
+  const emojiInputRef = useRef(null);
   const [form, setForm] = useState({
     title: '', emoji: '💼', category: 'Work',
     date: toDateStr(new Date()), start_time: '', end_time: '', notes: '',
+    completed: false,
   });
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiDraft, setEmojiDraft] = useState('');
 
   useEffect(() => {
     if (!open) return;
+    setEmojiOpen(false);
     if (block) {
       setForm({
         title: block.title || '',
@@ -21,22 +26,31 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
         start_time: block.start_time || '',
         end_time: block.end_time || '',
         notes: block.notes || '',
+        completed: block.completed || false,
       });
     } else {
       setForm({
         title: '', emoji: '💼', category: 'Work',
         date: defaultDate || toDateStr(new Date()),
-        start_time: '', end_time: '', notes: '',
+        start_time: '', end_time: '', notes: '', completed: false,
       });
     }
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [open, block, defaultDate]);
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => { if (e.key === 'Escape') { if (emojiOpen) setEmojiOpen(false); else onClose(); } };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, emojiOpen]);
+
+  // When emoji popover opens, focus the input
+  useEffect(() => {
+    if (emojiOpen) {
+      setEmojiDraft('');
+      setTimeout(() => emojiInputRef.current?.focus(), 30);
+    }
+  }, [emojiOpen]);
 
   if (!open) return null;
 
@@ -44,6 +58,18 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
     if (!form.title.trim()) { titleRef.current?.focus(); return; }
     onSave(form);
     onClose();
+  }
+
+  function handleEmojiInput(e) {
+    const val = e.target.value;
+    // Extract the first grapheme cluster (emoji or char)
+    const segs = [...new Intl.Segmenter().segment(val)];
+    if (segs.length > 0) {
+      const em = segs[0].segment;
+      setForm(f => ({ ...f, emoji: em }));
+      setEmojiDraft(em);
+      setEmojiOpen(false);
+    }
   }
 
   return (
@@ -58,24 +84,42 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
             onKeyDown={e => e.key === 'Enter' && handleSave()} />
         </div>
 
-        <div className={styles.group}>
-          <label className="form-label">Emoji</label>
-          <div className={styles.emojiGrid}>
-            {EMOJIS.map(em => (
-              <button key={em} className={`${styles.emojiOpt} ${form.emoji === em ? styles.selected : ''}`}
-                onClick={() => setForm(f => ({...f, emoji: em}))}>{em}</button>
-            ))}
+        <div className={styles.row}>
+          <div className={styles.group}>
+            <label className="form-label">Emoji</label>
+            <div className={styles.emojiWrap}>
+              <button className={styles.emojiBtn} onClick={() => setEmojiOpen(v => !v)}>
+                <span className={styles.emojiBtnIcon}>{form.emoji}</span>
+                <span className={styles.emojiBtnLabel}>Change</span>
+              </button>
+              {emojiOpen && (
+                <div className={styles.emojiPopover}>
+                  <div className={styles.emojiPopoverTitle}>Type or paste any emoji</div>
+                  <input
+                    ref={emojiInputRef}
+                    className={styles.emojiInput}
+                    value={emojiDraft}
+                    onChange={handleEmojiInput}
+                    placeholder="😀"
+                    maxLength={8}
+                  />
+                  <div className={styles.emojiHint}>
+                    Mac: <kbd>⌃⌘Space</kbd> · Win: <kbd>Win+.</kbd>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className={styles.group}>
-          <label className="form-label">Category</label>
-          <select className="form-select" value={form.category}
-            onChange={e => setForm(f => ({...f, category: e.target.value}))}>
-            {Object.entries(CATEGORIES).map(([cat, info]) => (
-              <option key={cat} value={cat}>{info.emoji} {cat}</option>
-            ))}
-          </select>
+          <div className={styles.group}>
+            <label className="form-label">Category</label>
+            <select className="form-select" value={form.category}
+              onChange={e => setForm(f => ({...f, category: e.target.value}))}>
+              {Object.entries(CATEGORIES).map(([cat, info]) => (
+                <option key={cat} value={cat}>{info.emoji} {cat}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className={styles.group}>
@@ -105,7 +149,9 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
 
         <div className={styles.footer}>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave}>Save Block</button>
+          <button className="btn-primary" onClick={handleSave}>
+            {block ? 'Save Changes' : 'Create Block'}
+          </button>
         </div>
       </div>
     </div>
