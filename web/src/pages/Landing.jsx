@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import KugiLogo from '../components/UI/KugiLogo';
 import styles from './Landing.module.css';
 
@@ -12,7 +13,16 @@ const FEATURES = [
 ];
 
 export default function Landing({ onGetStarted }) {
+  const navigate = useNavigate();
   const [release, setRelease] = useState(null);
+
+  function handleOpen() {
+    if (localStorage.getItem('kugiConvexUrl')) {
+      navigate('/app');
+    } else {
+      onGetStarted();
+    }
+  }
 
   useEffect(() => {
     fetch('https://api.github.com/repos/emmi-dev12/Kugi/releases/latest')
@@ -35,7 +45,7 @@ export default function Landing({ onGetStarted }) {
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navLink}>Features</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
-            <button className="btn-primary" onClick={onGetStarted} style={{ padding: '7px 18px', fontSize: 13 }}>
+            <button className="btn-primary" onClick={handleOpen} style={{ padding: '7px 18px', fontSize: 13 }}>
               Open App
             </button>
           </div>
@@ -54,7 +64,7 @@ export default function Landing({ onGetStarted }) {
           Plan your week in beautiful blocks. Connect your AI agents. Own your data — no subscription, no central server, ever.
         </p>
         <div className={styles.heroCTA}>
-          <button className={`btn-primary ${styles.ctaMain}`} onClick={onGetStarted}>
+          <button className={`btn-primary ${styles.ctaMain}`} onClick={handleOpen}>
             Start for free →
           </button>
           {release ? (
@@ -154,7 +164,7 @@ export default function Landing({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <button className={`btn-primary ${styles.ctaMain}`} onClick={onGetStarted} style={{ marginTop: 40 }}>
+          <button className={`btn-primary ${styles.ctaMain}`} onClick={handleOpen} style={{ marginTop: 40 }}>
             Get started free →
           </button>
         </div>

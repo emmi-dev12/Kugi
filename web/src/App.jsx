@@ -1,32 +1,41 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Setup from './pages/Setup';
 import AppPage from './pages/AppPage';
 
-export default function App() {
-  const [screen, setScreen] = useState('loading');
+function RequireSetup({ children }) {
+  const url = localStorage.getItem('kugiConvexUrl');
+  if (!url) return <Navigate to="/setup" replace />;
+  return children;
+}
 
-  useEffect(() => {
-    const url = localStorage.getItem('kugiConvexUrl');
-    if (url) {
-      setScreen('app');
-    } else {
-      const visited = localStorage.getItem('kugiVisited');
-      setScreen(visited ? 'setup' : 'landing');
-    }
-  }, []);
-
+function LandingRoute() {
+  const navigate = useNavigate();
   function handleGetStarted() {
     localStorage.setItem('kugiVisited', '1');
-    setScreen('setup');
+    navigate('/setup');
   }
+  return <Landing onGetStarted={handleGetStarted} />;
+}
 
-  function handleSetupComplete() {
-    setScreen('app');
-  }
+function SetupRoute() {
+  const navigate = useNavigate();
+  return <Setup onComplete={() => navigate('/app')} />;
+}
 
-  if (screen === 'loading') return null;
-  if (screen === 'landing') return <Landing onGetStarted={handleGetStarted} />;
-  if (screen === 'setup') return <Setup onComplete={handleSetupComplete} />;
-  return <AppPage />;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingRoute />} />
+        <Route path="/setup" element={<SetupRoute />} />
+        <Route path="/app" element={
+          <RequireSetup>
+            <AppPage />
+          </RequireSetup>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
