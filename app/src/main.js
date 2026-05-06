@@ -1,10 +1,8 @@
 const { app, BrowserWindow, Menu, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
 const { ConvexClient } = require('convex/browser');
 const { makeFunctionReference } = require('convex/server');
 
-// String-based function refs (avoids ESM generated api.js)
 const api = {
   blocks: {
     list:           makeFunctionReference('blocks:list'),
@@ -18,58 +16,39 @@ const api = {
 
 nativeTheme.themeSource = 'dark';
 
-// ─── ENV ─────────────────────────────────────────────────────
-const fs = require('fs');
-function loadEnv() {
-  try {
-    const env = fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8');
-    for (const line of env.split('\n')) {
-      const m = line.match(/^([^#=]+)=(.*)$/);
-      if (m) process.env[m[1].trim()] = m[2].trim();
-    }
-  } catch {}
-}
-loadEnv();
+// ─── CONVEX URL STORAGE ──────────────────────────────────────
+const Store = require('./store');
+const store = new Store();
 
-const CONVEX_URL = process.env.CONVEX_URL || 'http://127.0.0.1:3210';
-const APP_DIR = path.join(__dirname, '..');
-
-// ─── CONVEX BACKEND PROCESS ──────────────────────────────────
-let convexProc = null;
-
-function startConvexBackend() {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  convexProc = spawn(npx, ['convex', 'dev', '--once'], {
-    cwd: APP_DIR,
-    stdio: 'ignore',
-    detached: false,
-  });
-  convexProc.on('error', () => {});
+function getConvexUrl() {
+  return store.get('convexUrl');
 }
 
-function waitForConvex(timeout = 15000) {
-  return new Promise((resolve, reject) => {
-    const http = require('http');
-    const start = Date.now();
-    function attempt() {
-      http.get(CONVEX_URL, (res) => {
-        res.resume();
-        resolve();
-      }).on('error', () => {
-        if (Date.now() - start > timeout) return reject(new Error('Convex timeout'));
-        setTimeout(attempt, 300);
-      });
-    }
-    attempt();
-  });
+function setConvexUrl(url) {
+  store.set('convexUrl', url);
 }
 
-const convex = new ConvexClient(CONVEX_URL);
-
+// ─── CONVEX CLIENT ───────────────────────────────────────────
+let convex = null;
 let mainWindow = null;
 
+function initConvex(url) {
+  if (convex) convex.close();
+  convex = new ConvexClient(url);
+  subscribeBlocks();
+}
+
 // ─── IPC HANDLERS ────────────────────────────────────────────
+ipcMain.handle('db:getConvexUrl', () => getConvexUrl());
+
+ipcMain.handle('db:setConvexUrl', (_, url) => {
+  setConvexUrl(url);
+  initConvex(url);
+  return true;
+});
+
 ipcMain.handle('db:listBlocks', async () => {
+  if (!convex) return [];
   return await convex.query(api.blocks.list, {});
 });
 
@@ -95,6 +74,7 @@ ipcMain.handle('db:bulkCreate', async (_, blocks) => {
 
 // ─── REAL-TIME SUBSCRIPTION ──────────────────────────────────
 function subscribeBlocks() {
+  if (!convex) return;
   convex.onUpdate(api.blocks.list, {}, (blocks) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('db:blocksChanged', blocks);
@@ -131,7 +111,6 @@ function createWindow() {
   });
 
   buildMenu();
-  subscribeBlocks();
   return mainWindow;
 }
 
@@ -162,36 +141,9 @@ function buildMenu() {
     {
       label: 'View',
       submenu: [
-        {
-          label: 'Week View', accelerator: 'CmdOrCtrl+1',
-          click: () => mainWindow?.webContents.executeJavaScript(`setView('week')`),
-        },
-        {
-          label: 'Day View', accelerator: 'CmdOrCtrl+2',
-          click: () => mainWindow?.webContents.executeJavaScript(`setView('day')`),
-        },
-        { type: 'separator' },
-        {
-          label: 'Go to Today', accelerator: 'CmdOrCtrl+T',
-          click: () => mainWindow?.webContents.executeJavaScript(`document.getElementById('today-btn').click()`),
-        },
-        { type: 'separator' },
         { role: 'reload' }, { role: 'toggleDevTools' },
         { type: 'separator' },
         { role: 'togglefullscreen' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
-      ],
-    },
-    {
-      label: 'Navigate',
-      submenu: [
-        {
-          label: 'Previous', accelerator: 'CmdOrCtrl+Left',
-          click: () => mainWindow?.webContents.executeJavaScript(`document.getElementById('prev-btn').click()`),
-        },
-        {
-          label: 'Next', accelerator: 'CmdOrCtrl+Right',
-          click: () => mainWindow?.webContents.executeJavaScript(`document.getElementById('next-btn').click()`),
-        },
       ],
     },
     {
@@ -209,10 +161,13 @@ function buildMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(async () => {
-  startConvexBackend();
-  try { await waitForConvex(); } catch (e) { console.error('Convex backend did not start:', e.message); }
+app.whenReady().then(() => {
+  // Init Convex if URL already saved
+  const savedUrl = getConvexUrl();
+  if (savedUrl) initConvex(savedUrl);
+
   createWindow();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -223,6 +178,5 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  convex.close();
-  if (convexProc) convexProc.kill();
+  if (convex) convex.close();
 });
