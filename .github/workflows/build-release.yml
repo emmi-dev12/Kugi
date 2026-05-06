@@ -40,7 +40,9 @@ jobs:
       - name: Create DMG (${{ matrix.arch }})
         working-directory: app
         run: |
-          APP=$(find dist/mac*${{ matrix.arch }}* -name "*.app" | head -1)
+          echo "dist contents:"; ls dist/
+          APP=$(find dist -name "*.app" | head -1)
+          echo "Found app: $APP"
           VERSION=$(node -p "require('./package.json').version")
           DMG="dist/Kugi-${VERSION}-${{ matrix.arch }}.dmg"
           hdiutil create \
