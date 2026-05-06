@@ -1,0 +1,71 @@
+{
+  "name": "kugi",
+  "version": "1.0.0",
+  "description": "Bento-box task tracker & calendar",
+  "main": "src/main.js",
+  "author": "Kugi",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:x64": "electron-builder --mac --x64",
+    "build:arm64": "electron-builder --mac --arm64",
+    "build:all": "electron-builder --mac --x64 --arm64"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.kugi.app",
+    "productName": "Kugi",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Kugi",
+      "background": "assets/dmg-bg.png",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "writeUpdateInfo": false,
+      "contents": [
+        {
+          "x": 150,
+          "y": 185,
+          "type": "file"
+        },
+        {
+          "x": 390,
+          "y": 185,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "format": "ULFO"
+    }
+  },
+  "dependencies": {
+    "convex": "^1.37.0"
+  }
+}

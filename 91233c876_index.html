@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kugi</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #222222;
+      --surface3: #2a2a2a;
+      --border: #2f2f2f;
+      --text: #f0f0f0;
+      --text-muted: #777;
+      --text-dim: #444;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      flex-shrink: 0;
+      color: var(--text);
+    }
+    .logo-icon { font-size: 20px; }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .nav-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      min-width: 200px;
+      text-align: center;
+    }
+
+    .btn-icon {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .btn-icon:hover { background: var(--surface3); }
+
+    .btn-today {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px; font-weight: 500;
+      transition: background 0.15s;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .btn-today:hover { background: var(--surface3); }
+
+    .view-toggle {
+      display: flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .view-btn {
+      padding: 6px 14px;
+      font-size: 13px; font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none; background: transparent;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .view-btn.active { background: var(--surface3); color: var(--text); }
+
+    .btn-primary {
+      background: var(--text);
+      border: none; color: var(--bg);
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      transition: opacity 0.15s;
+      flex-shrink: 0; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+
+    /* ─── APP LAYOUT ─── */
+    .app { display: flex; flex: 1; overflow: hidden; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 220px;
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 24px;
+      overflow-y: auto; flex-shrink: 0;
+    }
+
+    .mini-cal-header {
+      font-size: 13px; font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .mini-cal-grid {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      gap: 2px; margin-top: 8px;
+    }
+    .mini-cal-day-label {
+      font-size: 10px; color: var(--text-dim);
+      text-align: center; padding: 2px 0;
+      font-weight: 600; text-transform: uppercase;
+    }
+    .mini-cal-day {
+      font-size: 12px; text-align: center;
+      padding: 5px 2px; border-radius: 6px;
+      cursor: pointer; color: var(--text-muted);
+      transition: background 0.1s, color 0.1s;
+    }
+    .mini-cal-day:hover { background: var(--surface2); color: var(--text); }
+    .mini-cal-day.today { background: var(--text); color: var(--bg); font-weight: 700; }
+    .mini-cal-day.in-week { outline: 1px solid var(--border); }
+    .mini-cal-day.selected-day { background: var(--surface3); color: var(--text); font-weight: 700; }
+    .mini-cal-day.other-month { color: var(--text-dim); }
+
+    .sidebar-section-title {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
+    }
+    .category-list { display: flex; flex-direction: column; gap: 4px; }
+    .category-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-radius: 7px;
+      cursor: pointer; font-size: 13px; color: var(--text-muted);
+      transition: background 0.1s, color 0.1s;
+    }
+    .category-item:hover { background: var(--surface2); color: var(--text); }
+    .category-item.active { background: var(--surface2); color: var(--text); }
+    .category-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .category-count { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+
+    /* ─── MAIN ─── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ══════════════════════════════
+       WEEK VIEW
+    ══════════════════════════════ */
+    .week-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    .day-headers {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      gap: 8px; padding: 14px 20px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .day-header { text-align: center; cursor: pointer; }
+    .day-header-name {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .day-header-num {
+      font-size: 20px; font-weight: 700; color: var(--text-muted);
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; margin: 4px auto 0; transition: background 0.15s;
+    }
+    .day-header:hover .day-header-num { background: var(--surface2); }
+    .day-header.today .day-header-num { background: var(--text); color: var(--bg); }
+
+    .bento-grid {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      gap: 8px; padding: 12px 20px 16px;
+      flex: 1; overflow-y: auto; align-content: start;
+    }
+    .bento-col { display: flex; flex-direction: column; gap: 6px; min-height: 480px; }
+    .bento-drop-zone {
+      flex: 1; min-height: 50px;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 18px;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .bento-drop-zone:hover { border-color: var(--text-dim); background: var(--surface); }
+    .bento-drop-zone.drag-over { border-color: var(--text-muted); background: var(--surface2); }
+
+    /* ══════════════════════════════
+       DAY VIEW
+    ══════════════════════════════ */
+    .day-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    .day-view-header {
+      padding: 16px 28px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .day-view-header-left {}
+    .day-view-date { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+    .day-view-date span { color: var(--text-muted); font-weight: 400; font-size: 20px; }
+    .day-view-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Day layout toggle */
+    .day-layout-toggle {
+      display: flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .day-layout-btn {
+      padding: 7px 14px;
+      font-size: 13px; font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer; border: none; background: transparent;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .day-layout-btn.active { background: var(--surface3); color: var(--text); }
+
+    .day-view-body { flex: 1; overflow-y: auto; display: flex; }
+
+    /* ── Timeline mode ── */
+    .time-col {
+      width: 64px; flex-shrink: 0;
+      padding-top: 8px; border-right: 1px solid var(--border);
+    }
+    .time-slot-label {
+      height: 64px;
+      display: flex; align-items: flex-start; justify-content: flex-end;
+      padding: 6px 10px 0 0;
+      font-size: 11px; color: var(--text-dim); font-weight: 500;
+    }
+    .schedule-col { flex: 1; position: relative; padding: 8px 20px 40px; }
+    .time-row {
+      height: 64px; border-bottom: 1px solid var(--border);
+      position: relative; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .time-row:hover { background: rgba(255,255,255,0.02); }
+
+    .now-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: #f43f5e; z-index: 10; pointer-events: none;
+    }
+    .now-line::before {
+      content: ''; position: absolute;
+      left: -4px; top: -4px; width: 10px; height: 10px;
+      border-radius: 50%; background: #f43f5e;
+    }
+
+    .day-block-timed {
+      position: absolute; left: 0; right: 12px;
+      border-radius: 10px; padding: 8px 12px;
+      cursor: pointer; border: 1px solid transparent;
+      transition: transform 0.1s, box-shadow 0.15s;
+      z-index: 5; overflow: hidden;
+    }
+    .day-block-timed:hover { transform: translateX(2px); box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 6; }
+
+    /* ── Bento mode (day) ── */
+    .day-bento-wrap {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+
+    .day-bento-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+
+    .day-bento-block {
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform 0.15s, box-shadow 0.15s;
+      min-height: 100px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative;
+    }
+    .day-bento-block:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    .day-bento-block.completed { opacity: 0.45; }
+
+    .day-bento-emoji { font-size: 28px; margin-bottom: 8px; display: block; }
+    .day-bento-title {
+      font-size: 14px; font-weight: 700;
+      color: rgba(255,255,255,0.92); line-height: 1.3;
+    }
+    .day-bento-title.done { text-decoration: line-through; opacity: 0.6; }
+    .day-bento-time { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 6px; }
+    .day-bento-cat {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; padding: 2px 7px; border-radius: 4px;
+      background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.6);
+      margin-top: 8px; display: inline-block;
+    }
+    .day-bento-notes { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 5px; line-height: 1.4; }
+
+    .day-bento-block .block-actions {
+      position: absolute; top: 8px; right: 8px;
+      display: none; gap: 4px;
+    }
+    .day-bento-block:hover .block-actions { display: flex; }
+
+    /* Unscheduled section */
+    .unscheduled-section { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .unscheduled-title {
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px;
+    }
+    .unscheduled-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .unscheduled-block {
+      border-radius: var(--radius-sm); padding: 8px 12px;
+      cursor: pointer; border: 1px solid transparent;
+      transition: transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .unscheduled-block:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+
+    /* ─── SHARED BLOCK STYLES ─── */
+    .block-emoji { font-size: 16px; flex-shrink: 0; }
+    .block-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.3; }
+    .block-title.done { text-decoration: line-through; opacity: 0.6; }
+    .block-time-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .block-notes-preview { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .block-category-badge {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 2px 6px; border-radius: 4px;
+      background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7);
+      margin-top: 4px; display: inline-block;
+    }
+
+    .block-actions { position: absolute; top: 6px; right: 6px; display: none; gap: 4px; }
+    .bento-block:hover .block-actions,
+    .day-block-timed:hover .block-actions { display: flex; }
+
+    .block-action-btn {
+      width: 22px; height: 22px; border-radius: 5px;
+      background: rgba(0,0,0,0.3); border: none;
+      color: rgba(255,255,255,0.7); font-size: 11px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s;
+    }
+    .block-action-btn:hover { background: rgba(0,0,0,0.5); }
+
+    /* Week bento block */
+    .bento-block {
+      border-radius: var(--radius-sm); padding: 10px 12px;
+      cursor: grab; position: relative;
+      transition: transform 0.1s, opacity 0.1s, box-shadow 0.15s;
+      border: 1px solid transparent; user-select: none;
+    }
+    .bento-block:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .bento-block.dragging { opacity: 0.4; cursor: grabbing; }
+    .bento-block.completed { opacity: 0.5; }
+    .block-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .block-time { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 500; }
+
+    /* ─── STATS BAR ─── */
+    .stats-bar {
+      padding: 10px 20px; border-top: 1px solid var(--border);
+      display: flex; gap: 24px; align-items: center; flex-shrink: 0;
+    }
+    .stat-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      z-index: 100; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+      width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto;
+      transform: translateY(8px); transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 6px; display: block;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 9px 12px;
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--text-muted); }
+    .form-select option { background: var(--surface2); }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .emoji-picker { display: grid; grid-template-columns: repeat(8,1fr); gap: 4px; margin-top: 4px; }
+    .emoji-opt { font-size: 18px; text-align: center; padding: 5px; border-radius: 6px; cursor: pointer; transition: background 0.1s; }
+    .emoji-opt:hover { background: var(--surface3); }
+    .emoji-opt.selected { background: var(--surface3); outline: 2px solid var(--text-muted); }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); padding: 8px 16px; border-radius: 8px;
+      cursor: pointer; font-size: 14px; font-family: inherit;
+    }
+    .btn-cancel:hover { background: var(--surface3); }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><span class="logo-icon">🍱</span> kugi</div>
+
+  <div class="header-center">
+    <button class="btn-icon" id="prev-btn">‹</button>
+    <span class="nav-label" id="nav-label"></span>
+    <button class="btn-icon" id="next-btn">›</button>
+    <button class="btn-today" id="today-btn">Today</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="view-toggle">
+      <button class="view-btn active" id="view-week" onclick="setView('week')">Week</button>
+      <button class="view-btn" id="view-day" onclick="setView('day')">Day</button>
+    </div>
+    <button class="btn-primary" id="add-btn">+ New Block</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div>
+      <div class="mini-cal-header" id="mini-cal-month"></div>
+      <div class="mini-cal-grid" id="mini-cal-grid"></div>
+    </div>
+    <div>
+      <div class="sidebar-section-title">Categories</div>
+      <div class="category-list" id="category-list"></div>
+    </div>
+  </aside>
+  <main class="main" id="main-content"></main>
+</div>
+
+<div class="stats-bar" id="stats-bar"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">New Block</div>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input class="form-input" id="f-title" placeholder="What are you doing?" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pick an emoji</label>
+      <div class="emoji-picker" id="emoji-picker"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="f-category">
+        <option value="Work">💼 Work</option>
+        <option value="Personal">🏠 Personal</option>
+        <option value="Health">💪 Health</option>
+        <option value="Deep Work">🧠 Deep Work</option>
+        <option value="Social">🎉 Social</option>
+        <option value="Admin">📋 Admin</option>
+        <option value="Creative">🎨 Creative</option>
+        <option value="Other">✨ Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="f-date" type="date" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Start time</label>
+        <input class="form-input" id="f-start" type="time" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">End time</label>
+        <input class="form-input" id="f-end" type="time" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" id="f-notes" placeholder="Any extra context..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Save Block</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────
+const CATEGORIES = {
+  'Work':      { color: '#4f7cff', emoji: '💼' },
+  'Personal':  { color: '#f59e0b', emoji: '🏠' },
+  'Health':    { color: '#10b981', emoji: '💪' },
+  'Deep Work': { color: '#8b5cf6', emoji: '🧠' },
+  'Social':    { color: '#f43f5e', emoji: '🎉' },
+  'Admin':     { color: '#6b7280', emoji: '📋' },
+  'Creative':  { color: '#ec4899', emoji: '🎨' },
+  'Other':     { color: '#94a3b8', emoji: '✨' },
+};
+const EMOJIS = ['💼','🧠','💪','🎉','📋','🎨','✈️','📚','☕','🏃','🍎','💡','🔥','⚡','🎯','🎵','🏠','🌿','💻','📞','🤝','💰','🎓','🛒'];
+const HOURS = Array.from({length:24},(_,i)=>i);
+
+// ─── STATE ───────────────────────────────────────────────────
+let blocks = JSON.parse(localStorage.getItem('kugiBlocks') || localStorage.getItem('bentoBlocks') || '[]');
+let currentWeekStart = getWeekStart(new Date());
+let currentDay = new Date(); currentDay.setHours(0,0,0,0);
+let view = 'week';
+let dayLayout = 'timeline'; // 'timeline' | 'bento'
+let dragId = null;
+let editingId = null;
+let selectedEmoji = '💼';
+let activeCategory = null;
+
+// ─── UTILS ───────────────────────────────────────────────────
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  d.setHours(0,0,0,0);
+  return d;
+}
+function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate()+n); return d; }
+function toDateStr(date) { return date.toISOString().split('T')[0]; }
+function today() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function isToday(date) { return toDateStr(date) === toDateStr(today()); }
+function saveBlocks() { localStorage.setItem('kugiBlocks', JSON.stringify(blocks)); }
+function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+function getColor(cat) { return (CATEGORIES[cat]||CATEGORIES['Other']).color; }
+function hexRgb(hex) {
+  return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+}
+function getWeekDays() { return Array.from({length:7},(_,i)=>addDays(currentWeekStart,i)); }
+function formatShort(date) { return date.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function formatFull(date) { return date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}); }
+function timeToMins(t) { if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; }
+function minsToPx(m) { return (m/60)*64; }
+function catEmoji(cat) { return (CATEGORIES[cat]||CATEGORIES['Other']).emoji; }
+
+// ─── VIEW / LAYOUT ───────────────────────────────────────────
+function setView(v) {
+  view = v;
+  document.getElementById('view-week').classList.toggle('active', v==='week');
+  document.getElementById('view-day').classList.toggle('active', v==='day');
+  render();
+}
+function setDayLayout(l) {
+  dayLayout = l;
+  render();
+}
+
+// ─── NAV ─────────────────────────────────────────────────────
+document.getElementById('prev-btn').onclick = () => {
+  if (view==='week') currentWeekStart = addDays(currentWeekStart,-7);
+  else currentDay = addDays(currentDay,-1);
+  render();
+};
+document.getElementById('next-btn').onclick = () => {
+  if (view==='week') currentWeekStart = addDays(currentWeekStart,7);
+  else currentDay = addDays(currentDay,1);
+  render();
+};
+document.getElementById('today-btn').onclick = () => {
+  currentWeekStart = getWeekStart(new Date());
+  currentDay = today();
+  render();
+};
+document.getElementById('add-btn').onclick = () => {
+  openModal(null, view==='day' ? toDateStr(currentDay) : toDateStr(today()));
+};
+
+// ─── RENDER ──────────────────────────────────────────────────
+function render() {
+  renderSidebar();
+  renderStats();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+  if (view==='week') {
+    const days = getWeekDays();
+    document.getElementById('nav-label').textContent =
+      `${formatShort(days[0])} – ${formatShort(days[6])}, ${days[0].getFullYear()}`;
+    main.appendChild(buildWeekView());
+  } else {
+    document.getElementById('nav-label').textContent = formatFull(currentDay);
+    main.appendChild(buildDayView());
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// WEEK VIEW
+// ══════════════════════════════════════════════════════════════
+function buildWeekView() {
+  const wrap = document.createElement('div');
+  wrap.className = 'week-view';
+
+  const headers = document.createElement('div');
+  headers.className = 'day-headers';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((name,i) => {
+    const d = getWeekDays()[i];
+    const div = document.createElement('div');
+    div.className = 'day-header'+(isToday(d)?' today':'');
+    div.innerHTML = `<div class="day-header-name">${name}</div><div class="day-header-num">${d.getDate()}</div>`;
+    div.onclick = () => { currentDay = d; setView('day'); };
+    headers.appendChild(div);
+  });
+  wrap.appendChild(headers);
+
+  const grid = document.createElement('div');
+  grid.className = 'bento-grid';
+  getWeekDays().forEach(day => {
+    const dateStr = toDateStr(day);
+    const col = document.createElement('div');
+    col.className = 'bento-col';
+    blocks
+      .filter(b=>b.date===dateStr&&(!activeCategory||b.category===activeCategory))
+      .sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''))
+      .forEach(b=>col.appendChild(makeWeekBlock(b)));
+
+    const drop = document.createElement('div');
+    drop.className = 'bento-drop-zone';
+    drop.textContent = '+';
+    drop.onclick = ()=>openModal(null,dateStr);
+    drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag-over'); };
+    drop.ondragleave = ()=>drop.classList.remove('drag-over');
+    drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag-over');
+      if(dragId){ const b=blocks.find(b=>b.id===dragId); if(b){b.date=dateStr;saveBlocks();render();} }
+    };
+    col.appendChild(drop);
+    grid.appendChild(col);
+  });
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function makeWeekBlock(block) {
+  const color = getColor(block.category);
+  const div = document.createElement('div');
+  div.className = 'bento-block'+(block.completed?' completed':'');
+  div.draggable = true;
+  div.style.background = `rgba(${hexRgb(color)},0.18)`;
+  div.style.borderColor = `rgba(${hexRgb(color)},0.35)`;
+  const time = block.start_time?`${block.start_time}${block.end_time?' – '+block.end_time:''}`:'' ;
+  div.innerHTML = `
+    <span style="display:block;font-size:16px;margin-bottom:4px;">${block.emoji||catEmoji(block.category)}</span>
+    <div class="block-title${block.completed?' done':''}">${block.title}</div>
+    <div class="block-meta">
+      ${time?`<span class="block-time">${time}</span>`:''}
+      <span class="block-category-badge">${block.category}</span>
+    </div>
+    <div class="block-actions">
+      <button class="block-action-btn" data-id="${block.id}" data-action="complete">${block.completed?'↩':'✓'}</button>
+      <button class="block-action-btn" data-id="${block.id}" data-action="edit">✎</button>
+      <button class="block-action-btn" data-id="${block.id}" data-action="delete">✕</button>
+    </div>`;
+  div.ondragstart = ()=>{ dragId=block.id; div.classList.add('dragging'); };
+  div.ondragend = ()=>{ dragId=null; div.classList.remove('dragging'); };
+  attachActions(div);
+  div.onclick = ()=>openModal(block.id);
+  return div;
+}
+
+// ══════════════════════════════════════════════════════════════
+// DAY VIEW
+// ══════════════════════════════════════════════════════════════
+function buildDayView() {
+  const dateStr = toDateStr(currentDay);
+  const dayBlocks = blocks
+    .filter(b=>b.date===dateStr&&(!activeCategory||b.category===activeCategory))
+    .sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));
+  const timed = dayBlocks.filter(b=>b.start_time);
+  const untimed = dayBlocks.filter(b=>!b.start_time);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'day-view';
+
+  // Header with layout toggle
+  const dh = document.createElement('div');
+  dh.className = 'day-view-header';
+  const dayName = currentDay.toLocaleDateString('en-US',{weekday:'long'});
+  const dateLabel = currentDay.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const todayTag = isToday(currentDay)?` <span style="font-size:14px;color:var(--text-muted);font-weight:400;">— Today</span>`:'';
+
+  dh.innerHTML = `
+    <div class="day-view-header-left">
+      <div class="day-view-date">${dayName}${todayTag}<br><span>${dateLabel}</span></div>
+      <div class="day-view-subtitle">${dayBlocks.length} block${dayBlocks.length!==1?'s':''} · ${dayBlocks.filter(b=>b.completed).length} completed</div>
+    </div>
+    <div class="day-layout-toggle">
+      <button class="day-layout-btn${dayLayout==='timeline'?' active':''}" onclick="setDayLayout('timeline')">⏱ Timeline</button>
+      <button class="day-layout-btn${dayLayout==='bento'?' active':''}" onclick="setDayLayout('bento')">🍱 Bento</button>
+    </div>`;
+  wrap.appendChild(dh);
+
+  if (dayLayout === 'timeline') {
+    wrap.appendChild(buildTimelineBody(timed, untimed, dateStr));
+  } else {
+    wrap.appendChild(buildBentoBody(dayBlocks, dateStr));
+  }
+
+  return wrap;
+}
+
+// ── Timeline body ──
+function buildTimelineBody(timed, untimed, dateStr) {
+  const frag = document.createDocumentFragment();
+
+  const body = document.createElement('div');
+  body.className = 'day-view-body';
+
+  const timeCol = document.createElement('div');
+  timeCol.className = 'time-col';
+  HOURS.forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'time-slot-label';
+    el.textContent = h===0?'':` ${h}:00`;
+    timeCol.appendChild(el);
+  });
+  body.appendChild(timeCol);
+
+  const schedCol = document.createElement('div');
+  schedCol.className = 'schedule-col';
+  HOURS.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'time-row';
+    row.onclick = ()=>{
+      openModal(null,dateStr);
+      setTimeout(()=>{
+        document.getElementById('f-start').value=`${String(h).padStart(2,'0')}:00`;
+        document.getElementById('f-end').value=`${String(Math.min(h+1,23)).padStart(2,'0')}:00`;
+      },50);
+    };
+    schedCol.appendChild(row);
+  });
+
+  if (isToday(new Date(dateStr))) {
+    const now = new Date();
+    const nl = document.createElement('div');
+    nl.className = 'now-line';
+    nl.style.top = `${minsToPx(now.getHours()*60+now.getMinutes())}px`;
+    schedCol.appendChild(nl);
+  }
+
+  timed.forEach(block => {
+    const color = getColor(block.category);
+    const startM = timeToMins(block.start_time);
+    const endM = block.end_time ? timeToMins(block.end_time) : startM+60;
+    const height = Math.max(minsToPx(endM-startM), 32);
+    const el = document.createElement('div');
+    el.className = 'day-block-timed'+(block.completed?' completed':'');
+    el.style.cssText = `top:${minsToPx(startM)}px;height:${height}px;background:rgba(${hexRgb(color)},0.22);border-color:rgba(${hexRgb(color)},0.5);border-left:3px solid ${color};position:absolute;left:0;right:12px;`;
+    const dur = endM-startM;
+    const showBadge = height>48, showNotes = height>72&&block.notes;
+    el.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:7px;">
+        <span class="block-emoji">${block.emoji||catEmoji(block.category)}</span>
+        <div style="flex:1;min-width:0;">
+          <div class="block-title${block.completed?' done':''}">${block.title}</div>
+          <div class="block-time-label">${block.start_time} – ${block.end_time||'?'} · ${dur}min</div>
+          ${showNotes?`<div class="block-notes-preview">${block.notes}</div>`:''}
+          ${showBadge?`<span class="block-category-badge">${block.category}</span>`:''}
+        </div>
+      </div>
+      <div class="block-actions">
+        <button class="block-action-btn" data-id="${block.id}" data-action="complete">${block.completed?'↩':'✓'}</button>
+        <button class="block-action-btn" data-id="${block.id}" data-action="edit">✎</button>
+        <button class="block-action-btn" data-id="${block.id}" data-action="delete">✕</button>
+      </div>`;
+    attachActions(el);
+    el.onclick = e=>{ if(!e.target.classList.contains('block-action-btn')) openModal(block.id); };
+    schedCol.appendChild(el);
+  });
+
+  body.appendChild(schedCol);
+  frag.appendChild(body);
+
+  if (untimed.length > 0) {
+    const us = document.createElement('div');
+    us.className = 'unscheduled-section';
+    us.innerHTML = `<div class="unscheduled-title">📌 Unscheduled (${untimed.length})</div>`;
+    const ug = document.createElement('div');
+    ug.className = 'unscheduled-grid';
+    untimed.forEach(block => {
+      const color = getColor(block.category);
+      const el = document.createElement('div');
+      el.className = 'unscheduled-block';
+      el.style.background = `rgba(${hexRgb(color)},0.18)`;
+      el.style.borderColor = `rgba(${hexRgb(color)},0.35)`;
+      el.innerHTML = `<span class="block-emoji">${block.emoji||catEmoji(block.category)}</span><div><div class="block-title${block.completed?' done':''}">${block.title}</div><span class="block-category-badge">${block.category}</span></div>`;
+      el.onclick = ()=>openModal(block.id);
+      ug.appendChild(el);
+    });
+    us.appendChild(ug);
+    frag.appendChild(us);
+  }
+
+  return frag;
+}
+
+// ── Bento body (day) ──
+function buildBentoBody(dayBlocks, dateStr) {
+  if (dayBlocks.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-dim);gap:10px;';
+    empty.innerHTML = `<div style="font-size:48px;">🍱</div><div style="font-size:14px;">Nothing here. Add a block!</div>`;
+    return empty;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'day-bento-wrap';
+
+  const grid = document.createElement('div');
+  grid.className = 'day-bento-grid';
+
+  dayBlocks.forEach(block => {
+    const color = getColor(block.category);
+    const el = document.createElement('div');
+    el.className = 'day-bento-block'+(block.completed?' completed':'');
+    el.style.background = `rgba(${hexRgb(color)},0.2)`;
+    el.style.borderColor = `rgba(${hexRgb(color)},0.4)`;
+    el.style.borderLeft = `4px solid ${color}`;
+    const time = block.start_time ? `${block.start_time}${block.end_time?' – '+block.end_time:''}` : 'No time';
+    el.innerHTML = `
+      <div>
+        <span class="day-bento-emoji">${block.emoji||catEmoji(block.category)}</span>
+        <div class="day-bento-title${block.completed?' done':''}">${block.title}</div>
+        ${block.notes?`<div class="day-bento-notes">${block.notes}</div>`:''}
+      </div>
+      <div>
+        <div class="day-bento-time">${time}</div>
+        <span class="day-bento-cat">${block.category}</span>
+      </div>
+      <div class="block-actions">
+        <button class="block-action-btn" data-id="${block.id}" data-action="complete">${block.completed?'↩':'✓'}</button>
+        <button class="block-action-btn" data-id="${block.id}" data-action="edit">✎</button>
+        <button class="block-action-btn" data-id="${block.id}" data-action="delete">✕</button>
+      </div>`;
+    attachActions(el);
+    el.onclick = e=>{ if(!e.target.classList.contains('block-action-btn')) openModal(block.id); };
+    grid.appendChild(el);
+  });
+
+  // Add block card
+  const addCard = document.createElement('div');
+  addCard.style.cssText = `border-radius:var(--radius);border:1.5px dashed var(--border);min-height:100px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;color:var(--text-dim);transition:background 0.15s,border-color 0.15s;`;
+  addCard.textContent = '+';
+  addCard.onmouseenter = ()=>{ addCard.style.background='var(--surface)'; addCard.style.borderColor='var(--text-dim)'; };
+  addCard.onmouseleave = ()=>{ addCard.style.background=''; addCard.style.borderColor='var(--border)'; };
+  addCard.onclick = ()=>openModal(null, dateStr);
+  grid.appendChild(addCard);
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+// ─── BLOCK ACTIONS ───────────────────────────────────────────
+function attachActions(el) {
+  el.querySelectorAll('.block-action-btn').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const {id, action} = btn.dataset;
+      if (action==='delete') { blocks=blocks.filter(b=>b.id!==id); saveBlocks(); render(); }
+      else if (action==='complete') { const b=blocks.find(b=>b.id===id); if(b){b.completed=!b.completed;saveBlocks();render();} }
+      else if (action==='edit') { openModal(id); }
+    };
+  });
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────
+function renderSidebar() {
+  const ref = view==='week' ? currentWeekStart : currentDay;
+  const monthStart = new Date(ref.getFullYear(),ref.getMonth(),1);
+  const monthEnd = new Date(ref.getFullYear(),ref.getMonth()+1,0);
+  document.getElementById('mini-cal-month').textContent =
+    ref.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const grid = document.getElementById('mini-cal-grid');
+  grid.innerHTML = '';
+  ['M','T','W','T','F','S','S'].forEach(l=>{
+    const el=document.createElement('div'); el.className='mini-cal-day-label'; el.textContent=l; grid.appendChild(el);
+  });
+  let startDow = monthStart.getDay(); startDow = startDow===0?6:startDow-1;
+  for(let i=0;i<startDow;i++){
+    const el=document.createElement('div'); el.className='mini-cal-day other-month';
+    const d=new Date(monthStart); d.setDate(d.getDate()-(startDow-i)); el.textContent=d.getDate(); grid.appendChild(el);
+  }
+  const weekDates = view==='week'?getWeekDays().map(toDateStr):[];
+  for(let d=1;d<=monthEnd.getDate();d++){
+    const date=new Date(ref.getFullYear(),ref.getMonth(),d);
+    const el=document.createElement('div'); el.className='mini-cal-day';
+    if(isToday(date)) el.classList.add('today');
+    else if(view==='day'&&toDateStr(date)===toDateStr(currentDay)) el.classList.add('selected-day');
+    else if(view==='week'&&weekDates.includes(toDateStr(date))) el.classList.add('in-week');
+    el.textContent=d;
+    el.onclick=()=>{ currentDay=date; currentWeekStart=getWeekStart(date); render(); };
+    grid.appendChild(el);
+  }
+
+  const catList = document.getElementById('category-list');
+  catList.innerHTML = '';
+  const allItem = document.createElement('div');
+  allItem.className='category-item'+(!activeCategory?' active':'');
+  allItem.innerHTML=`<span class="category-dot" style="background:#888"></span>All<span class="category-count">${blocks.length}</span>`;
+  allItem.onclick=()=>{activeCategory=null;render();};
+  catList.appendChild(allItem);
+  Object.entries(CATEGORIES).forEach(([cat,info])=>{
+    const count=blocks.filter(b=>b.category===cat).length;
+    const item=document.createElement('div');
+    item.className='category-item'+(activeCategory===cat?' active':'');
+    item.innerHTML=`<span class="category-dot" style="background:${info.color}"></span>${cat}<span class="category-count">${count}</span>`;
+    item.onclick=()=>{activeCategory=activeCategory===cat?null:cat;render();};
+    catList.appendChild(item);
+  });
+}
+
+// ─── STATS ───────────────────────────────────────────────────
+function renderStats() {
+  const scopeBlocks = view==='week'
+    ? blocks.filter(b=>getWeekDays().map(toDateStr).includes(b.date))
+    : blocks.filter(b=>b.date===toDateStr(currentDay));
+  const done=scopeBlocks.filter(b=>b.completed).length, total=scopeBlocks.length;
+  document.getElementById('stats-bar').innerHTML=`
+    <div class="stat-item"><span class="stat-dot" style="background:#10b981"></span>${done} completed</div>
+    <div class="stat-item"><span class="stat-dot" style="background:#4f7cff"></span>${total-done} remaining</div>
+    <div class="stat-item"><span class="stat-dot" style="background:#8b5cf6"></span>${total} total${view==='week'?' this week':' today'}</div>`;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────
+function openModal(id=null, preDate=null) {
+  editingId = id;
+  const picker = document.getElementById('emoji-picker');
+  picker.innerHTML='';
+  EMOJIS.forEach(em=>{
+    const el=document.createElement('div');
+    el.className='emoji-opt'+(em===selectedEmoji?' selected':'');
+    el.textContent=em;
+    el.onclick=()=>{selectedEmoji=em;picker.querySelectorAll('.emoji-opt').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');};
+    picker.appendChild(el);
+  });
+  if(id){
+    const b=blocks.find(b=>b.id===id);
+    document.getElementById('modal-title').textContent='Edit Block';
+    document.getElementById('f-title').value=b.title||'';
+    document.getElementById('f-category').value=b.category||'Work';
+    document.getElementById('f-date').value=b.date||'';
+    document.getElementById('f-start').value=b.start_time||'';
+    document.getElementById('f-end').value=b.end_time||'';
+    document.getElementById('f-notes').value=b.notes||'';
+    selectedEmoji=b.emoji||'💼';
+  } else {
+    document.getElementById('modal-title').textContent='New Block';
+    document.getElementById('f-title').value='';
+    document.getElementById('f-category').value='Work';
+    document.getElementById('f-date').value=preDate||toDateStr(today());
+    document.getElementById('f-start').value='';
+    document.getElementById('f-end').value='';
+    document.getElementById('f-notes').value='';
+    selectedEmoji='💼';
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-title').focus(),80);
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); editingId=null; }
+
+function saveBlock() {
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){document.getElementById('f-title').focus();return;}
+  const data={title,emoji:selectedEmoji,category:document.getElementById('f-category').value,
+    date:document.getElementById('f-date').value,start_time:document.getElementById('f-start').value,
+    end_time:document.getElementById('f-end').value,notes:document.getElementById('f-notes').value.trim()};
+  if(editingId){const idx=blocks.findIndex(b=>b.id===editingId);if(idx>=0)blocks[idx]={...blocks[idx],...data};}
+  else blocks.push({id:uid(),completed:false,...data});
+  saveBlocks(); closeModal(); render();
+}
+
+document.getElementById('modal-cancel').onclick=closeModal;
+document.getElementById('modal-save').onclick=saveBlock;
+document.getElementById('modal-overlay').onclick=e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();};
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if(!document.getElementById('modal-overlay').classList.contains('open')){
+    if(e.key==='n')openModal(null,view==='day'?toDateStr(currentDay):toDateStr(today()));
+    if(e.key==='w')setView('week');
+    if(e.key==='d')setView('day');
+    if(e.key==='t'&&view==='day')setDayLayout('timeline');
+    if(e.key==='b'&&view==='day')setDayLayout('bento');
+  }
+});
+
+// ─── SEED ────────────────────────────────────────────────────
+function seedData() {
+  if(blocks.length>0)return;
+  const days=getWeekDays().map(toDateStr);
+  blocks=[
+    {title:'Morning standup',emoji:'☕',category:'Work',date:days[0],start_time:'09:00',end_time:'09:30'},
+    {title:'Deep work session',emoji:'🧠',category:'Deep Work',date:days[0],start_time:'10:00',end_time:'12:00'},
+    {title:'Gym',emoji:'💪',category:'Health',date:days[1],start_time:'07:00',end_time:'08:00'},
+    {title:'Design review',emoji:'🎨',category:'Creative',date:days[1],start_time:'14:00',end_time:'15:30'},
+    {title:'Lunch with Sarah',emoji:'🍜',category:'Social',date:days[2],start_time:'12:30',end_time:'13:30'},
+    {title:'Investor call',emoji:'💰',category:'Work',date:days[2],start_time:'16:00',end_time:'17:00'},
+    {title:'Read & journal',emoji:'📚',category:'Personal',date:days[3],start_time:'21:00',end_time:'22:00'},
+    {title:'Team offsite prep',emoji:'🎯',category:'Admin',date:days[4],start_time:'11:00',end_time:'12:00'},
+    {title:'Buy groceries',emoji:'🛒',category:'Personal',date:days[0]},
+    {title:'Reply to emails',emoji:'📞',category:'Admin',date:days[0]},
+  ].map(s=>({id:uid(),completed:false,...s}));
+  saveBlocks();
+}
+
+seedData();
+render();
+setInterval(()=>{if(view==='day'&&isToday(currentDay)&&dayLayout==='timeline')render();},60000);
+</script>
+</body>
+</html>

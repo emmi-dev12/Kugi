@@ -1,0 +1,43 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 22px;
+  padding: 26px;
+  width: 430px; max-width: 92vw; max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 24px 80px rgba(0,0,0,0.7);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.title { font-size: 17px; font-weight: 800; margin-bottom: 20px; letter-spacing: -0.4px; }
+
+.group { margin-bottom: 13px; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.emojiGrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin-top: 5px; }
+
+.emojiOpt {
+  font-size: 17px; text-align: center; padding: 5px;
+  border-radius: 7px; background: transparent; border: none;
+  cursor: pointer; transition: all 0.1s; line-height: 1.4;
+}
+.emojiOpt:hover { background: var(--surface3); transform: scale(1.1); }
+.emojiOpt.selected { background: var(--surface3); outline: 2px solid rgba(255,255,255,0.25); }
+
+.footer { display: flex; gap: 7px; justify-content: flex-end; margin-top: 20px; }
