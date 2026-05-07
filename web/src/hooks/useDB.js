@@ -33,14 +33,9 @@ export function useBlocks() {
   const bulkMutation     = useMutation(fn.blocks.bulkCreate);
 
   const createBlock = async (data) => {
-    const args = { completed: false, ...stripEmpty(data) };
-    console.log('[kugi] createBlock args:', args);
     try {
-      const id = await createMutation(args);
-      console.log('[kugi] createBlock success, id:', id);
-      return id;
+      return await createMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      console.error('[kugi] createBlock error:', e);
       alert('Create failed: ' + e.message);
       throw e;
     }
