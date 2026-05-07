@@ -43,10 +43,8 @@ export function useApiKey() {
   const ensure = useMutation(fn.settings.ensureApiKey);
   const rotate = useMutation(fn.settings.rotateApiKey);
 
-  // Bootstrap: if no key exists yet, create one.
-  useEffect(() => {
-    if (apiKey === null) ensure();
-  }, [apiKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Always ensure a key exists on mount — idempotent, safe to call every time.
+  useEffect(() => { ensure(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { apiKey: apiKey ?? null, rotateApiKey: rotate };
 }
