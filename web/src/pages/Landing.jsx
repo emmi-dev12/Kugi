@@ -40,6 +40,12 @@ export default function Landing({ onGetStarted }) {
   const canPrompt = !!installPrompt;
 
   useEffect(() => {
+    // Pick up prompt captured before React mounted
+    if (window.__pwaInstallPrompt) {
+      setInstallPrompt(window.__pwaInstallPrompt);
+      window.__pwaInstallPrompt = null;
+    }
+    // Also catch it if it fires later (rare but possible on re-visits)
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setInstalled(true));
