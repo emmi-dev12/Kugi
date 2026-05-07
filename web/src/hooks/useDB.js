@@ -1,21 +1,21 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { anyApi } from 'convex/server';
+import { makeFunctionReference } from 'convex/server';
 
 const fn = {
   blocks: {
-    list:           anyApi.blocks.list,
-    listByDate:     anyApi.blocks.listByDate,
-    create:         anyApi.blocks.create,
-    update:         anyApi.blocks.update,
-    remove:         anyApi.blocks.remove,
-    toggleComplete: anyApi.blocks.toggleComplete,
-    bulkCreate:     anyApi.blocks.bulkCreate,
+    list:           makeFunctionReference('blocks:list'),
+    listByDate:     makeFunctionReference('blocks:listByDate'),
+    create:         makeFunctionReference('blocks:create'),
+    update:         makeFunctionReference('blocks:update'),
+    remove:         makeFunctionReference('blocks:remove'),
+    toggleComplete: makeFunctionReference('blocks:toggleComplete'),
+    bulkCreate:     makeFunctionReference('blocks:bulkCreate'),
   },
   settings: {
-    getApiKey:    anyApi.settings.getApiKey,
-    ensureApiKey: anyApi.settings.ensureApiKey,
-    rotateApiKey: anyApi.settings.rotateApiKey,
+    getApiKey:    makeFunctionReference('settings:getApiKey'),
+    ensureApiKey: makeFunctionReference('settings:ensureApiKey'),
+    rotateApiKey: makeFunctionReference('settings:rotateApiKey'),
   },
 };
 
