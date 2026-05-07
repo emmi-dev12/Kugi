@@ -10,6 +10,9 @@
   padding: 0 20px; height: 56px; flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Notch/Dynamic Island safe area — applied here so it works in standalone PWA */
+  padding-top: env(safe-area-inset-top);
+  height: calc(56px + env(safe-area-inset-top));
 }
 
 .logo {
@@ -215,7 +218,7 @@
 }
 .bottomNavItem.navActive { color: #4f7cff; }
 .bottomNavIcon { line-height: 1; display: flex; }
-.bottomNavLabel { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.bottomNavLabel { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
 
 .bottomNavAdd {
   flex: 1; display: flex; flex-direction: column;
@@ -246,11 +249,8 @@
   .statItem { font-size: 10px; flex-shrink: 0; }
   .progressTrack { width: 48px; }
 
-  /* Space for notch/status bar on top, bottom nav + safe area on bottom */
-  .app {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
-  }
+  /* Space for bottom nav + safe area on bottom */
+  .app { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
   /* Bottom nav */
   .bottomNav {

@@ -338,7 +338,7 @@ export default function AppPage() {
           </div>
         </button>
 
-        <button className={`${styles.bottomNavItem}`} onClick={goToday}>
+        <button className={`${styles.bottomNavItem}`} onClick={() => { goToday(); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
               <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
@@ -346,6 +346,16 @@ export default function AppPage() {
             </svg>
           </span>
           <span className={styles.bottomNavLabel}>Today</span>
+        </button>
+
+        <button className={`${styles.bottomNavItem}`} onClick={() => window.location.reload()}>
+          <span className={styles.bottomNavIcon}>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M4 11a7 7 0 0 1 12.5-4.33M18 11a7 7 0 0 1-12.5 4.33" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+              <path d="M16.5 4l1 3-3 .5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+            </svg>
+          </span>
+          <span className={styles.bottomNavLabel}>Reload</span>
         </button>
 
         <button className={`${styles.bottomNavItem} ${settingsOpen ? styles.navActive : ''}`} onClick={() => setSettingsOpen(v => !v)}>

@@ -28,7 +28,9 @@ const fn = {
 };
 
 export function useBlocks() {
-  const blocks = useQuery(fn.blocks.list) ?? [];
+  // Normalize _id → id so components don't need to know Convex internals
+  const raw = useQuery(fn.blocks.list) ?? [];
+  const blocks = raw.map(b => ({ ...b, id: b._id }));
   const createMutation   = useMutation(fn.blocks.create);
   const updateMutation   = useMutation(fn.blocks.update);
   const removeMutation   = useMutation(fn.blocks.remove);
