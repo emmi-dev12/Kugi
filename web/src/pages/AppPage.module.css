@@ -240,8 +240,11 @@
   .statItem { font-size: 10px; flex-shrink: 0; }
   .progressTrack { width: 48px; }
 
-  /* Space for bottom nav + safe area */
-  .app { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  /* Space for notch/status bar on top, bottom nav + safe area on bottom */
+  .app {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
 
   /* Bottom nav */
   .bottomNav {

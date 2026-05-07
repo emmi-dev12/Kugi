@@ -32,8 +32,19 @@ export function useBlocks() {
   const toggleMutation   = useMutation(fn.blocks.toggleComplete);
   const bulkMutation     = useMutation(fn.blocks.bulkCreate);
 
-  const createBlock  = (data) => createMutation({ completed: false, ...stripEmpty(data) })
-    .catch(e => { alert('Create failed: ' + e.message); throw e; });
+  const createBlock = async (data) => {
+    const args = { completed: false, ...stripEmpty(data) };
+    console.log('[kugi] createBlock args:', args);
+    try {
+      const id = await createMutation(args);
+      console.log('[kugi] createBlock success, id:', id);
+      return id;
+    } catch (e) {
+      console.error('[kugi] createBlock error:', e);
+      alert('Create failed: ' + e.message);
+      throw e;
+    }
+  };
   const updateBlock  = (id, fields) => updateMutation({ id, ...stripEmpty(fields) });
   const deleteBlock  = (id) => removeMutation({ id });
   const toggleComplete = (id) => toggleMutation({ id });
