@@ -11,6 +11,13 @@ import {
 } from '../utils/dates';
 import styles from './AppPage.module.css';
 
+function changeConvexUrl() {
+  if (confirm('Change your Convex URL? You will be taken to the setup screen.')) {
+    localStorage.removeItem('kugiConvexUrl');
+    window.location.href = '/setup';
+  }
+}
+
 export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { apiKey, rotateApiKey } = useApiKey();
@@ -23,14 +30,13 @@ export default function AppPage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Nav label
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const navLabel = view === 'week'
     ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
     : formatFull(currentDay);
 
-  // Stats
   const scopeBlocks = view === 'week'
     ? blocks.filter(b => weekDays.map(toDateStr).includes(b.date))
     : blocks.filter(b => b.date === toDateStr(currentDay));
@@ -38,30 +44,27 @@ export default function AppPage() {
   const total = scopeBlocks.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
-      if (modal.open) return;
+      if (modal.open || settingsOpen) return;
       if (e.key === 'n') openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()));
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
       if (e.key === 't' && view === 'day') setDayLayout('timeline');
       if (e.key === 'b' && view === 'day') setDayLayout('bento');
+      if (e.key === 'Escape') setSettingsOpen(false);
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [modal.open, view, currentDay]);
+  }, [modal.open, settingsOpen, view, currentDay]);
 
   function openModal(block, defaultDate) {
     setModal({ open: true, block, defaultDate });
   }
 
   function handleSave(form) {
-    if (modal.block) {
-      updateBlock(modal.block.id, form);
-    } else {
-      createBlock(form);
-    }
+    if (modal.block) updateBlock(modal.block.id, form);
+    else createBlock(form);
   }
 
   function nav(dir) {
@@ -88,13 +91,90 @@ export default function AppPage() {
   }
   const weekDateStrs = weekDays.map(toDateStr);
 
+  const SidebarContent = () => (
+    <>
+      {/* Mini calendar */}
+      <div>
+        <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
+        <div className={styles.miniCalGrid}>
+          {['M','T','W','T','F','S','S'].map((l, i) => (
+            <div key={i} className={styles.miniCalLabel}>{l}</div>
+          ))}
+          {miniDays.map(({ date, other }, i) => {
+            const ds = toDateStr(date);
+            const today = isToday(date);
+            const inWeek = view === 'week' && weekDateStrs.includes(ds);
+            const selected = view === 'day' && ds === toDateStr(currentDay);
+            return (
+              <div key={i}
+                className={`${styles.miniCalDay} ${other ? styles.otherMonth : ''} ${today ? styles.todayDot : ''} ${inWeek ? styles.inWeek : ''} ${selected ? styles.selectedDay : ''}`}
+                onClick={() => { setCurrentDay(date); setWeekStart(getWeekStart(date)); setSettingsOpen(false); }}>
+                {date.getDate()}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div>
+        <div className={styles.sectionTitle}>Categories</div>
+        <div className={styles.catList}>
+          <div className={`${styles.catItem} ${!activeCategory ? styles.catActive : ''}`}
+            onClick={() => { setActiveCategory(null); setSettingsOpen(false); }}>
+            <span className={styles.catDot} style={{ background: '#555' }} />
+            All
+            <span className={styles.catCount}>{blocks.length}</span>
+          </div>
+          {Object.entries(CATEGORIES).map(([cat, info]) => {
+            const count = blocks.filter(b => b.category === cat).length;
+            if (!count && activeCategory !== cat) return null;
+            return (
+              <div key={cat} className={`${styles.catItem} ${activeCategory === cat ? styles.catActive : ''}`}
+                onClick={() => { setActiveCategory(activeCategory === cat ? null : cat); setSettingsOpen(false); }}>
+                <span className={styles.catDot} style={{ background: info.color }} />
+                {cat}
+                <span className={styles.catCount}>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className={styles.apiSection}>
+        <div className={styles.sectionTitle}>API Key</div>
+        <div className={styles.apiBox}>
+          <code className={styles.apiKey}>
+            {apiKey === null ? '…' : apiKeyVisible ? apiKey : '••••••••••••••••'}
+          </code>
+          <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
+            {apiKeyVisible ? '🙈' : '👁'}
+          </button>
+          <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
+            ↺
+          </button>
+        </div>
+        <p className={styles.apiHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code> on your Convex HTTP endpoint.</p>
+
+        <button className={styles.changeUrlBtn} onClick={changeConvexUrl}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6a5 5 0 0 1 9.5-2M11 6a5 5 0 0 1-9.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <path d="M9 1.5l1.5 2.5-2.5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Change Convex URL
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className={styles.app}>
       {/* HEADER */}
       <header className={styles.header}>
         <div className={styles.logo}>
           <div className={styles.logoIcon}><KugiLogo size={20} /></div>
-          <span>kugi</span>
+          <span className={styles.logoText}>kugi</span>
         </div>
         <div className={styles.headerCenter}>
           <button className="btn-icon" onClick={() => nav(-1)}>‹</button>
@@ -115,72 +195,9 @@ export default function AppPage() {
       </header>
 
       <div className={styles.body}>
-        {/* SIDEBAR */}
+        {/* SIDEBAR — desktop */}
         <aside className={styles.sidebar}>
-          {/* Mini calendar */}
-          <div>
-            <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
-            <div className={styles.miniCalGrid}>
-              {['M','T','W','T','F','S','S'].map((l, i) => (
-                <div key={i} className={styles.miniCalLabel}>{l}</div>
-              ))}
-              {miniDays.map(({ date, other }, i) => {
-                const ds = toDateStr(date);
-                const today = isToday(date);
-                const inWeek = view === 'week' && weekDateStrs.includes(ds);
-                const selected = view === 'day' && ds === toDateStr(currentDay);
-                return (
-                  <div key={i}
-                    className={`${styles.miniCalDay} ${other ? styles.otherMonth : ''} ${today ? styles.todayDot : ''} ${inWeek ? styles.inWeek : ''} ${selected ? styles.selectedDay : ''}`}
-                    onClick={() => { setCurrentDay(date); setWeekStart(getWeekStart(date)); }}>
-                    {date.getDate()}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <div className={styles.sectionTitle}>Categories</div>
-            <div className={styles.catList}>
-              <div className={`${styles.catItem} ${!activeCategory ? styles.catActive : ''}`}
-                onClick={() => setActiveCategory(null)}>
-                <span className={styles.catDot} style={{ background: '#555' }} />
-                All
-                <span className={styles.catCount}>{blocks.length}</span>
-              </div>
-              {Object.entries(CATEGORIES).map(([cat, info]) => {
-                const count = blocks.filter(b => b.category === cat).length;
-                if (!count && activeCategory !== cat) return null;
-                return (
-                  <div key={cat} className={`${styles.catItem} ${activeCategory === cat ? styles.catActive : ''}`}
-                    onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}>
-                    <span className={styles.catDot} style={{ background: info.color }} />
-                    {cat}
-                    <span className={styles.catCount}>{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* API Key */}
-          <div className={styles.apiSection}>
-            <div className={styles.sectionTitle}>API Key</div>
-            <div className={styles.apiBox}>
-              <code className={styles.apiKey}>
-                {apiKey === null ? '…' : apiKeyVisible ? apiKey : '••••••••••••••••'}
-              </code>
-              <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
-                {apiKeyVisible ? '🙈' : '👁'}
-              </button>
-              <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
-                ↺
-              </button>
-            </div>
-            <p className={styles.apiHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code> on your Convex HTTP endpoint.</p>
-          </div>
+          <SidebarContent />
         </aside>
 
         {/* MAIN */}
@@ -215,9 +232,9 @@ export default function AppPage() {
 
       {/* STATS */}
       <div className={styles.statsBar}>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#10b981' }} />{done} completed</div>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#4f7cff' }} />{total - done} remaining</div>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#8b5cf6' }} />{total} total{view === 'week' ? ' this week' : ' today'}</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#10b981' }} />{done} done</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#4f7cff' }} />{total - done} left</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#8b5cf6' }} />{total} total</div>
         {total > 0 && (
           <div className={styles.statItem} style={{ marginLeft: 'auto', gap: 8 }}>
             <div className={styles.progressTrack}>
@@ -231,26 +248,39 @@ export default function AppPage() {
       <BlockModal open={modal.open} block={modal.block} defaultDate={modal.defaultDate}
         onSave={handleSave} onClose={() => setModal({ open: false, block: null, defaultDate: null })} />
 
+      {/* SETTINGS SHEET — mobile only */}
+      {settingsOpen && (
+        <div className={styles.sheetOverlay} onClick={() => setSettingsOpen(false)}>
+          <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+            <div className={styles.sheetHandle} />
+            <div className={styles.sheetTitle}>Settings</div>
+            <div className={styles.sheetContent}>
+              <SidebarContent />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* BOTTOM NAV — mobile only */}
       <nav className={styles.bottomNav}>
-        <button className={`${styles.bottomNavItem} ${view === 'week' ? styles.navActive : ''}`} onClick={() => setView('week')}>
+        <button className={`${styles.bottomNavItem} ${view === 'week' ? styles.navActive : ''}`} onClick={() => { setView('week'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <rect x="2" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
-              <rect x="7" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
-              <rect x="12" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
-              <rect x="17" y="4" width="1" height="12" rx="0.5" fill="currentColor" opacity="0.4"/>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="2" y="5" width="3.5" height="12" rx="1.5" fill="currentColor"/>
+              <rect x="7.5" y="5" width="3.5" height="12" rx="1.5" fill="currentColor" opacity="0.6"/>
+              <rect x="13" y="5" width="3.5" height="12" rx="1.5" fill="currentColor" opacity="0.35"/>
+              <rect x="18.5" y="5" width="1.5" height="12" rx="0.75" fill="currentColor" opacity="0.2"/>
             </svg>
           </span>
           <span className={styles.bottomNavLabel}>Week</span>
         </button>
 
-        <button className={`${styles.bottomNavItem} ${view === 'day' ? styles.navActive : ''}`} onClick={() => setView('day')}>
+        <button className={`${styles.bottomNavItem} ${view === 'day' && !settingsOpen ? styles.navActive : ''}`} onClick={() => { setView('day'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <rect x="3" y="3" width="14" height="5" rx="2" fill="currentColor" opacity="0.5"/>
-              <rect x="3" y="10" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.35"/>
-              <rect x="3" y="15" width="8" height="2" rx="1" fill="currentColor" opacity="0.25"/>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="3" width="16" height="6" rx="2" fill="currentColor"/>
+              <rect x="3" y="11" width="16" height="3.5" rx="1.5" fill="currentColor" opacity="0.5"/>
+              <rect x="3" y="16.5" width="10" height="2.5" rx="1.25" fill="currentColor" opacity="0.3"/>
             </svg>
           </span>
           <span className={styles.bottomNavLabel}>Day</span>
@@ -259,28 +289,27 @@ export default function AppPage() {
         <button className={styles.bottomNavAdd}
           onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
           <div className={styles.bottomNavAddInner}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M9 3v12M3 9h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3v14M3 10h14" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
             </svg>
           </div>
-          <span className={styles.bottomNavAddLabel}>New</span>
         </button>
 
         <button className={`${styles.bottomNavItem}`} onClick={goToday}>
           <span className={styles.bottomNavIcon}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
-              <circle cx="10" cy="10" r="2.5" fill="currentColor"/>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+              <circle cx="11" cy="11" r="3" fill="currentColor"/>
             </svg>
           </span>
           <span className={styles.bottomNavLabel}>Today</span>
         </button>
 
-        <button className={`${styles.bottomNavItem}`} onClick={() => setModal({ open: false, block: null, defaultDate: null })}>
+        <button className={`${styles.bottomNavItem} ${settingsOpen ? styles.navActive : ''}`} onClick={() => setSettingsOpen(v => !v)}>
           <span className={styles.bottomNavIcon}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
-              <path d="M4 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
             </svg>
           </span>
           <span className={styles.bottomNavLabel}>Settings</span>

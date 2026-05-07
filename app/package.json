@@ -29,7 +29,13 @@
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "darkModeSupport": true,
       "hardenedRuntime": false,
@@ -38,13 +44,28 @@
     "dmg": {
       "title": "Kugi",
       "background": "assets/dmg-bg.png",
-      "window": { "width": 540, "height": 380 },
+      "window": {
+        "width": 540,
+        "height": 380
+      },
       "writeUpdateInfo": false,
       "contents": [
-        { "x": 150, "y": 185, "type": "file" },
-        { "x": 390, "y": 185, "type": "link", "path": "/Applications" }
+        {
+          "x": 150,
+          "y": 185,
+          "type": "file"
+        },
+        {
+          "x": 390,
+          "y": 185,
+          "type": "link",
+          "path": "/Applications"
+        }
       ],
       "format": "ULFO"
     }
+  },
+  "dependencies": {
+    "convex": "^1.37.0"
   }
 }
