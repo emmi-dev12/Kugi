@@ -22,15 +22,15 @@ export default function DayView({ day, blocks, activeCategory, layout, onSetLayo
       <div className={styles.header}>
         <div>
           <div className={styles.date}>
-            {day.toLocaleDateString('de-CH', { weekday: 'long', timeZone: 'Europe/Zurich' })}
-            {isToday(day) && <span className={styles.todayTag}> — Heute</span>}
+            {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Europe/Zurich' })}
+            {isToday(day) && <span className={styles.todayTag}> — Today</span>}
             <br />
             <span className={styles.dateSub}>
-              {day.toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Zurich' })}
+              {day.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Zurich' })}
             </span>
           </div>
           <div className={styles.subtitle}>
-            {dayBlocks.length} Block{dayBlocks.length !== 1 ? 's' : ''} · {dayBlocks.filter(b => b.completed).length} erledigt
+            {dayBlocks.length} block{dayBlocks.length !== 1 ? 's' : ''} · {dayBlocks.filter(b => b.completed).length} done
           </div>
         </div>
         <div className={styles.layoutToggle}>

@@ -32,7 +32,8 @@ export function useBlocks() {
   const toggleMutation   = useMutation(fn.blocks.toggleComplete);
   const bulkMutation     = useMutation(fn.blocks.bulkCreate);
 
-  const createBlock  = (data) => createMutation({ completed: false, ...stripEmpty(data) });
+  const createBlock  = (data) => createMutation({ completed: false, ...stripEmpty(data) })
+    .catch(e => { alert('Create failed: ' + e.message); throw e; });
   const updateBlock  = (id, fields) => updateMutation({ id, ...stripEmpty(fields) });
   const deleteBlock  = (id) => removeMutation({ id });
   const toggleComplete = (id) => toggleMutation({ id });
