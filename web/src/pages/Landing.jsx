@@ -171,7 +171,9 @@ export default function Landing({ onGetStarted }) {
                     <DownloadIcon /> Install as app
                   </button>
                 ) : (
-                  <span className={styles.osHint}>Open in Chrome or Edge to install as PWA</span>
+                  <a className={`btn-primary ${styles.osBtn}`} href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">
+                    Get Chrome to install
+                  </a>
                 )
               }
             />
