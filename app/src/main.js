@@ -19,7 +19,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    icon: path.join(__dirname, '..', 'assets', 'icon.icns'),
+    ...(app.isPackaged && { icon: path.join(__dirname, '..', 'assets', 'icon.icns') }),
     show: true,
   });
 
