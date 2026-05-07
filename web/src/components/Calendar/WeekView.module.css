@@ -1,7 +1,7 @@
 .wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
 .headers {
-  display: grid; grid-template-columns: repeat(7,1fr);
+  display: grid;
   gap: 8px; padding: 14px 16px 10px;
   border-bottom: 1px solid var(--border);
 }
@@ -20,7 +20,7 @@
 .today .dayNum { background: var(--text); color: #080808; font-weight: 800; }
 
 .grid {
-  display: grid; grid-template-columns: repeat(7,1fr);
+  display: grid;
   gap: 8px; padding: 12px 12px 16px;
   flex: 1; overflow-y: auto; align-content: start;
 }
@@ -38,20 +38,10 @@
 .dropZone:hover { border-color: var(--border2); background: var(--surface); color: var(--text-muted); }
 .dropZone.dragOver { border-color: rgba(255,255,255,0.2); background: var(--surface2); }
 
-/* Mobile: horizontal scroll */
+/* Mobile 3-day view: tighten up headers and grid */
 @media (max-width: 768px) {
-  .wrap { overflow-x: auto; }
-  .headers {
-    grid-template-columns: repeat(7, minmax(90px, 1fr));
-    min-width: 630px;
-    padding: 10px 12px 8px;
-  }
-  .grid {
-    grid-template-columns: repeat(7, minmax(90px, 1fr));
-    min-width: 630px;
-    padding: 8px 8px 12px;
-    gap: 6px;
-  }
+  .headers { gap: 6px; padding: 10px 10px 8px; }
+  .grid { gap: 6px; padding: 8px 8px 12px; }
   .col { min-height: 200px; }
   .dayNum { font-size: 15px; width: 30px; height: 30px; }
   .dayName { font-size: 9px; }

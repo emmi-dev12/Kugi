@@ -36,12 +36,16 @@ export default function AppPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  // On mobile (<= 768px): show 3 days centred on currentDay in the "week" view
+  const mobileDays = [-1, 0, 1].map(d => addDays(currentDay, d));
+  const viewDays = isMobile && view === 'week' ? mobileDays : weekDays;
+
   const navLabel = view === 'week'
-    ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
+    ? `${formatShort(viewDays[0])} – ${formatShort(viewDays[viewDays.length - 1])} ${viewDays[0].getFullYear()}`
     : formatFull(currentDay);
 
   const scopeBlocks = view === 'week'
-    ? blocks.filter(b => weekDays.map(toDateStr).includes(b.date))
+    ? blocks.filter(b => viewDays.map(toDateStr).includes(b.date))
     : blocks.filter(b => b.date === toDateStr(currentDay));
   const done = scopeBlocks.filter(b => b.completed).length;
   const total = scopeBlocks.length;
@@ -71,8 +75,14 @@ export default function AppPage() {
   }
 
   function nav(dir) {
-    if (view === 'week') setWeekStart(d => addDays(d, dir * 7));
-    else setCurrentDay(d => addDays(d, dir));
+    if (view === 'week' && !isMobile) {
+      setWeekStart(d => addDays(d, dir * 7));
+    } else if (view === 'week' && isMobile) {
+      // 3-day mobile view: slide centre day by 1
+      setCurrentDay(d => addDays(d, dir));
+    } else {
+      setCurrentDay(d => addDays(d, dir));
+    }
   }
 
   function goToday() {
@@ -247,7 +257,7 @@ export default function AppPage() {
         <main className={styles.main}>
           {view === 'week' ? (
             <WeekView
-              weekStart={weekStart}
+              days={viewDays}
               blocks={blocks}
               activeCategory={activeCategory}
               onEditBlock={block => openModal(block)}
