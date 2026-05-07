@@ -7,10 +7,9 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build:x64": "npm run build:web && electron-builder --mac --x64",
-    "build:arm64": "npm run build:web && electron-builder --mac --arm64",
-    "build:all": "npm run build:web && electron-builder --mac --x64 --arm64",
-    "build:web": "cd ../web && npm run build"
+    "build:x64": "electron-builder --mac --x64",
+    "build:arm64": "electron-builder --mac --arm64",
+    "build:all": "electron-builder --mac --x64 --arm64"
   },
   "devDependencies": {
     "electron": "^32.0.0",
@@ -23,9 +22,8 @@
       "output": "dist"
     },
     "files": [
-      "src/**/*",
-      "assets/**/*",
-      { "from": "../web/dist", "to": "src/web-dist" }
+      "src/main.js",
+      "assets/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
