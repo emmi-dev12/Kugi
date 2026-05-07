@@ -12,6 +12,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     completed: v.boolean(),
     localId: v.optional(v.string()),
+    notify_before: v.optional(v.number()),
   }).index("by_date", ["date"]),
 
   settings: defineTable({

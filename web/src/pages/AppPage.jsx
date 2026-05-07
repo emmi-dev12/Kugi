@@ -10,6 +10,7 @@ import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
 } from '../utils/dates';
+import { getTimezone, setTimezone, ALL_TIMEZONES } from '../utils/timezone.js';
 import styles from './AppPage.module.css';
 
 function changeConvexUrl() {
@@ -165,6 +166,18 @@ export default function AppPage() {
             Enable notifications
           </button>
         )}
+      </div>
+
+      {/* Timezone */}
+      <div className={styles.notifSection}>
+        <div className={styles.sectionTitle}>Timezone</div>
+        <select className={styles.tzSelect}
+          value={getTimezone()}
+          onChange={e => setTimezone(e.target.value)}>
+          {ALL_TIMEZONES.map(tz => (
+            <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+          ))}
+        </select>
       </div>
 
       {/* Settings */}

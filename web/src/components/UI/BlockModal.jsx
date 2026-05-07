@@ -3,16 +3,21 @@ import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
 
+const NOTIFY_OPTIONS = [5, 10, 15, 30, 60, 120];
+
 export default function BlockModal({ open, block, defaultDate, onSave, onClose }) {
   const titleRef = useRef(null);
   const emojiInputRef = useRef(null);
   const [form, setForm] = useState({
     title: '', emoji: '💼', category: 'Work',
     date: toDateStr(new Date()), start_time: '', end_time: '', notes: '',
-    completed: false,
+    completed: false, notify_before: undefined,
   });
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiDraft, setEmojiDraft] = useState('');
+  // 'global' | 'custom' | 'off'
+  const [notifyMode, setNotifyMode] = useState('global');
+  const [notifyMins, setNotifyMins] = useState(15);
 
   useEffect(() => {
     if (!open) return;
@@ -27,13 +32,19 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
         end_time: block.end_time || '',
         notes: block.notes || '',
         completed: block.completed || false,
+        notify_before: block.notify_before,
       });
+      if (block.notify_before === null) { setNotifyMode('off'); setNotifyMins(15); }
+      else if (block.notify_before !== undefined) { setNotifyMode('custom'); setNotifyMins(block.notify_before); }
+      else { setNotifyMode('global'); setNotifyMins(15); }
     } else {
       setForm({
         title: '', emoji: '💼', category: 'Work',
         date: defaultDate || toDateStr(new Date()),
-        start_time: '', end_time: '', notes: '', completed: false,
+        start_time: '', end_time: '', notes: '', completed: false, notify_before: undefined,
       });
+      setNotifyMode('global');
+      setNotifyMins(15);
     }
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [open, block, defaultDate]);
@@ -44,7 +55,6 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
     return () => document.removeEventListener('keydown', handler);
   }, [onClose, emojiOpen]);
 
-  // When emoji popover opens, focus the input
   useEffect(() => {
     if (emojiOpen) {
       setEmojiDraft('');
@@ -56,13 +66,15 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
 
   function handleSave() {
     if (!form.title.trim()) { titleRef.current?.focus(); return; }
-    onSave(form);
+    const notify_before = notifyMode === 'off' ? null
+      : notifyMode === 'custom' ? notifyMins
+      : undefined;
+    onSave({ ...form, notify_before });
     onClose();
   }
 
   function handleEmojiInput(e) {
     const val = e.target.value;
-    // Extract the first grapheme cluster (emoji or char)
     const segs = [...new Intl.Segmenter().segment(val)];
     if (segs.length > 0) {
       const em = segs[0].segment;
@@ -145,6 +157,27 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
           <label className="form-label">Notes</label>
           <textarea className="form-textarea" placeholder="Any extra context…"
             value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} />
+        </div>
+
+        <div className={styles.group}>
+          <label className="form-label">Remind me</label>
+          <div className={styles.notifyRow}>
+            {['global', 'custom', 'off'].map(mode => (
+              <button key={mode}
+                className={`${styles.notifyMode} ${notifyMode === mode ? styles.notifyModeActive : ''}`}
+                onClick={() => setNotifyMode(mode)}>
+                {mode === 'global' ? 'Default' : mode === 'custom' ? 'Custom' : 'Off'}
+              </button>
+            ))}
+            {notifyMode === 'custom' && (
+              <select className={styles.notifySelect} value={notifyMins}
+                onChange={e => setNotifyMins(Number(e.target.value))}>
+                {NOTIFY_OPTIONS.map(m => (
+                  <option key={m} value={m}>{m < 60 ? `${m} min` : `${m/60} hr`} before</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         <div className={styles.footer}>

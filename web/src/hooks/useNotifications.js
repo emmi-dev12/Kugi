@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'kugiNotifyMinutes';
 const FIRED_KEY = 'kugiNotifyFired';
-const CHECK_INTERVAL = 60_000; // check every minute
+const CHECK_INTERVAL = 60_000;
 
 export function useNotifications(blocks) {
   const [, forceUpdate] = useState(0);
@@ -16,7 +16,6 @@ export function useNotifications(blocks) {
     catch { return new Set(); }
   });
 
-  // Persist minutesBefore
   function setAndSave(mins) {
     setMinutesBefore(mins);
     localStorage.setItem(STORAGE_KEY, String(mins));
@@ -40,6 +39,11 @@ export function useNotifications(blocks) {
       blocks.forEach(block => {
         if (!block.start_time || block.completed) return;
         if (block.date < todayStr) return;
+        // null means explicitly disabled for this block
+        if (block.notify_before === null) return;
+
+        // Per-block override or global default
+        const mins = block.notify_before !== undefined ? block.notify_before : minutesBefore;
 
         const [h, m] = block.start_time.split(':').map(Number);
         const blockTime = new Date(block.date);
@@ -47,9 +51,8 @@ export function useNotifications(blocks) {
         const diffMs = blockTime - now;
         const diffMins = diffMs / 60_000;
 
-        // Fire when we're within [minutesBefore, minutesBefore+1) minutes away
-        const key = `${block._id}-${minutesBefore}`;
-        if (diffMins > 0 && diffMins <= minutesBefore + 1 && diffMins > minutesBefore - 1 && !fired.has(key)) {
+        const key = `${block._id}-${mins}`;
+        if (diffMins > 0 && diffMins <= mins + 1 && diffMins > mins - 1 && !fired.has(key)) {
           fired.add(key);
           try { localStorage.setItem(FIRED_KEY, JSON.stringify([...fired])); } catch {}
 
