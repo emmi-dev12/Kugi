@@ -5,9 +5,8 @@ const FIRED_KEY = 'kugiNotifyFired';
 const CHECK_INTERVAL = 60_000; // check every minute
 
 export function useNotifications(blocks) {
-  const [permission, setPermission] = useState(() =>
-    'Notification' in window ? Notification.permission : 'unsupported'
-  );
+  const [, forceUpdate] = useState(0);
+  const permission = 'Notification' in window ? Notification.permission : 'unsupported';
   const [minutesBefore, setMinutesBefore] = useState(() => {
     const v = localStorage.getItem(STORAGE_KEY);
     return v ? Number(v) : 15;
@@ -25,9 +24,8 @@ export function useNotifications(blocks) {
 
   async function requestPermission() {
     if (!('Notification' in window)) return;
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    return result;
+    await Notification.requestPermission();
+    forceUpdate(n => n + 1);
   }
 
   useEffect(() => {
