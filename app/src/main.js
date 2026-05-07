@@ -23,17 +23,10 @@ function createWindow() {
     show: true,
   });
 
-  if (DEV) {
-    win.loadURL('http://localhost:5173').catch(err => {
-      win.loadURL(`data:text/html,<h2 style="font:16px sans-serif;color:#f00;padding:32px">
-        Vite dev server not running.<br><br>
-        Run <code>npm run dev</code> in the <b>web/</b> folder first.
-        <br><br><small>${err.message}</small></h2>`);
-    });
-  } else {
-    // Load the bundled web dist embedded in the .app package
-    win.loadFile(path.join(__dirname, 'web-dist', 'index.html'));
-  }
+  // Always load the deployed web app — works in both dev and production.
+  // /app redirects to /setup on first launch (no Convex URL stored yet),
+  // then straight to the calendar on every subsequent launch.
+  win.loadURL('https://kugi.onrender.com/app');
 
   if (DEV) win.webContents.openDevTools({ mode: 'detach' });
 
