@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useBlocks, useApiKey } from '../hooks/useDB';
+import { useNotifications } from '../hooks/useNotifications';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
 import BlockModal from '../components/UI/BlockModal';
@@ -21,6 +22,7 @@ function changeConvexUrl() {
 export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { apiKey, rotateApiKey } = useApiKey();
+  const { permission, minutesBefore, setMinutesBefore, requestPermission } = useNotifications(blocks);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const [view, setView] = useState(isMobile ? 'day' : 'week');
@@ -139,6 +141,30 @@ export default function AppPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* Notifications */}
+      <div className={styles.notifSection}>
+        <div className={styles.sectionTitle}>Notifications</div>
+        {permission === 'unsupported' ? (
+          <p className={styles.apiHint}>Not supported in this browser.</p>
+        ) : permission === 'granted' ? (
+          <div className={styles.notifRow}>
+            <span className={styles.notifLabel}>Notify me</span>
+            <select className={styles.notifSelect} value={minutesBefore}
+              onChange={e => setMinutesBefore(Number(e.target.value))}>
+              {[5, 10, 15, 20, 30, 45, 60].map(m => (
+                <option key={m} value={m}>{m} min before</option>
+              ))}
+            </select>
+          </div>
+        ) : permission === 'denied' ? (
+          <p className={styles.apiHint}>Notifications blocked — enable in browser settings.</p>
+        ) : (
+          <button className={styles.notifEnableBtn} onClick={requestPermission}>
+            Enable notifications
+          </button>
+        )}
       </div>
 
       {/* Settings */}

@@ -15,6 +15,18 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+self.addEventListener('message', e => {
+  if (e.data?.type === 'NOTIFY') {
+    const { title, body, tag } = e.data;
+    self.registration.showNotification(title, {
+      body,
+      tag,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+    });
+  }
+});
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('convex.cloud')) return;

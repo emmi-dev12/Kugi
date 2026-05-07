@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { makeFunctionReference } from 'convex/server';
 
+// Remove empty strings so Convex v.optional() fields stay absent, not ""
+function stripEmpty(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== ''));
+}
+
 const fn = {
   blocks: {
     list:           makeFunctionReference('blocks:list'),
@@ -27,8 +32,8 @@ export function useBlocks() {
   const toggleMutation   = useMutation(fn.blocks.toggleComplete);
   const bulkMutation     = useMutation(fn.blocks.bulkCreate);
 
-  const createBlock  = (data) => createMutation({ completed: false, ...data });
-  const updateBlock  = (id, fields) => updateMutation({ id, ...fields });
+  const createBlock  = (data) => createMutation({ completed: false, ...stripEmpty(data) });
+  const updateBlock  = (id, fields) => updateMutation({ id, ...stripEmpty(fields) });
   const deleteBlock  = (id) => removeMutation({ id });
   const toggleComplete = (id) => toggleMutation({ id });
   const bulkCreate   = (blockList) => bulkMutation({ blocks: blockList });
