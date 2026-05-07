@@ -160,10 +160,63 @@
 }
 .pctLabel { font-size: 11px; font-weight: 700; color: var(--text); }
 
+/* ── BOTTOM NAV (mobile only, hidden on desktop) ── */
+.bottomNav {
+  display: none;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .sidebar { display: none; }
-  .header { padding: 0 14px; }
-  .navLabel { min-width: 140px; font-size: 13px; }
-  .statsBar { gap: 12px; padding: 6px 14px; }
+
+  .header { padding: 0 12px; height: 52px; }
+  .navLabel { min-width: 0; font-size: 13px; }
+  .headerRight { gap: 6px; }
+  .viewToggle { display: none; }
+
+  /* Slim stats on mobile */
+  .statsBar { gap: 10px; padding: 6px 12px; overflow-x: auto; flex-wrap: nowrap; }
+  .statItem { font-size: 10px; flex-shrink: 0; }
+  .progressTrack { width: 56px; }
+
+  /* Push content above bottom nav */
+  .app { padding-bottom: 64px; }
+
+  /* Bottom nav */
+  .bottomNav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+  }
+  .bottomNavItem {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    border: none; background: none; cursor: pointer;
+    color: var(--text-dim); font-family: inherit;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottomNavItem.navActive { color: #4f7cff; }
+  .bottomNavIcon { font-size: 20px; line-height: 1; }
+  .bottomNavLabel { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* FAB-style add button */
+  .bottomNavAdd {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    border: none; background: none; cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottomNavAddInner {
+    width: 44px; height: 44px; border-radius: 14px;
+    background: linear-gradient(135deg, #4f7cff 0%, #8b5cf6 100%);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(79,124,255,0.35);
+  }
+  .bottomNavAddLabel { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
 }

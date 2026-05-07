@@ -129,6 +129,16 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-  .header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px 16px 12px; }
+  .header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px 10px; }
+  .date { font-size: 18px; }
+  .dateSub { font-size: 15px; }
+  .timeCol { width: 44px; }
+  .timeLabel { font-size: 9px; padding-right: 6px; }
+  .schedCol { padding: 8px 10px 40px; }
+  .timedBlock { border-radius: 10px; padding: 7px 10px; }
+  .timedTitle { font-size: 11px; }
   .bentoGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .layoutToggle { display: none; }
+  .timeRow { height: 56px; }
+  .timedActions { display: flex; }
 }

@@ -1,5 +1,5 @@
-const CACHE = 'kugi-v1';
-const PRECACHE = ['/', '/src/main.jsx'];
+const CACHE = 'kugi-v2';
+const PRECACHE = ['/', '/app', '/setup'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE).catch(() => {})));

@@ -40,6 +40,19 @@
 
 /* Mobile: horizontal scroll */
 @media (max-width: 768px) {
-  .headers { grid-template-columns: repeat(7, minmax(80px,1fr)); overflow-x: auto; }
-  .grid { grid-template-columns: repeat(7, minmax(120px,1fr)); overflow-x: auto; }
+  .wrap { overflow-x: auto; }
+  .headers {
+    grid-template-columns: repeat(7, minmax(90px, 1fr));
+    min-width: 630px;
+    padding: 10px 12px 8px;
+  }
+  .grid {
+    grid-template-columns: repeat(7, minmax(90px, 1fr));
+    min-width: 630px;
+    padding: 8px 8px 12px;
+    gap: 6px;
+  }
+  .col { min-height: 200px; }
+  .dayNum { font-size: 15px; width: 30px; height: 30px; }
+  .dayName { font-size: 9px; }
 }

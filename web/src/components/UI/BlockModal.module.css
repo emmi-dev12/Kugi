@@ -73,3 +73,18 @@
 }
 
 .footer { display: flex; gap: 7px; justify-content: flex-end; margin-top: 20px; }
+
+@media (max-width: 768px) {
+  .overlay { align-items: flex-end; }
+  .modal {
+    width: 100%; max-width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    max-height: 92vh;
+    animation: slideUpSheet 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}

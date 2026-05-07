@@ -15,7 +15,8 @@ export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { apiKey, rotateApiKey } = useApiKey();
 
-  const [view, setView] = useState('week');
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const [view, setView] = useState(isMobile ? 'day' : 'week');
   const [dayLayout, setDayLayout] = useState('timeline');
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [currentDay, setCurrentDay] = useState(() => todayZurich());
@@ -229,6 +230,62 @@ export default function AppPage() {
 
       <BlockModal open={modal.open} block={modal.block} defaultDate={modal.defaultDate}
         onSave={handleSave} onClose={() => setModal({ open: false, block: null, defaultDate: null })} />
+
+      {/* BOTTOM NAV — mobile only */}
+      <nav className={styles.bottomNav}>
+        <button className={`${styles.bottomNavItem} ${view === 'week' ? styles.navActive : ''}`} onClick={() => setView('week')}>
+          <span className={styles.bottomNavIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
+              <rect x="7" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
+              <rect x="12" y="4" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.4"/>
+              <rect x="17" y="4" width="1" height="12" rx="0.5" fill="currentColor" opacity="0.4"/>
+            </svg>
+          </span>
+          <span className={styles.bottomNavLabel}>Week</span>
+        </button>
+
+        <button className={`${styles.bottomNavItem} ${view === 'day' ? styles.navActive : ''}`} onClick={() => setView('day')}>
+          <span className={styles.bottomNavIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="3" width="14" height="5" rx="2" fill="currentColor" opacity="0.5"/>
+              <rect x="3" y="10" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.35"/>
+              <rect x="3" y="15" width="8" height="2" rx="1" fill="currentColor" opacity="0.25"/>
+            </svg>
+          </span>
+          <span className={styles.bottomNavLabel}>Day</span>
+        </button>
+
+        <button className={styles.bottomNavAdd}
+          onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
+          <div className={styles.bottomNavAddInner}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M9 3v12M3 9h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span className={styles.bottomNavAddLabel}>New</span>
+        </button>
+
+        <button className={`${styles.bottomNavItem}`} onClick={goToday}>
+          <span className={styles.bottomNavIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+              <circle cx="10" cy="10" r="2.5" fill="currentColor"/>
+            </svg>
+          </span>
+          <span className={styles.bottomNavLabel}>Today</span>
+        </button>
+
+        <button className={`${styles.bottomNavItem}`} onClick={() => setModal({ open: false, block: null, defaultDate: null })}>
+          <span className={styles.bottomNavIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+              <path d="M4 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+            </svg>
+          </span>
+          <span className={styles.bottomNavLabel}>Settings</span>
+        </button>
+      </nav>
     </div>
   );
 }
