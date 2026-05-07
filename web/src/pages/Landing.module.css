@@ -6,6 +6,7 @@
   border-bottom: 1px solid var(--border);
   background: rgba(8,8,8,0.85);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 .navInner {
   max-width: 1100px; margin: 0 auto;
@@ -32,13 +33,13 @@
 /* HERO */
 .hero {
   max-width: 820px; margin: 0 auto;
-  padding: 100px 24px 80px;
+  padding: 110px 24px 80px;
   text-align: center; position: relative;
 }
 .heroGlow {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 600px; height: 400px;
-  background: radial-gradient(ellipse at top, rgba(79,124,255,0.15) 0%, transparent 70%);
+  width: 700px; height: 500px;
+  background: radial-gradient(ellipse at top, rgba(79,124,255,0.18) 0%, rgba(139,92,246,0.08) 40%, transparent 70%);
   pointer-events: none;
 }
 .heroBadge {
@@ -65,29 +66,31 @@
 .heroCTA { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
 .ctaMain { padding: 14px 28px; font-size: 15px; border-radius: 14px; }
 
-.downloads { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.dlBtn {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 13px; font-weight: 600; color: var(--text-muted);
+.installBtn {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--text-muted);
   background: var(--surface); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 9px 16px; text-decoration: none;
+  border-radius: 12px; padding: 11px 20px; text-decoration: none;
   transition: all 0.15s; cursor: pointer; font-family: inherit;
 }
-.dlBtn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); background: var(--surface2); }
-.dlVersion {
-  font-size: 11px; color: var(--text-dim); font-weight: 600;
-  padding: 3px 8px; background: var(--surface2); border-radius: 6px;
+.installBtn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); background: var(--surface2); }
+
+.installedBadge {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; color: #10b981;
+  background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 10px; padding: 8px 14px;
 }
 
 /* PREVIEW */
 .preview {
-  max-width: 1100px; margin: 0 auto; padding: 0 24px 80px;
+  max-width: 1100px; margin: 0 auto; padding: 0 24px 100px;
 }
 .previewWindow {
   border-radius: 20px; overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: 0 60px 120px rgba(0,0,0,0.6);
+  box-shadow: 0 60px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
 }
 .previewBar {
   display: flex; align-items: center; gap: 6px;
@@ -108,13 +111,100 @@
 .mockBlock {
   border-radius: 8px; padding: 6px 8px;
   display: flex; align-items: flex-start; gap: 5px;
-  border: 1px solid transparent;
 }
 .mockTitle { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.8); }
 .mockTime { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 1px; }
 
+/* INSTALL SECTION */
+.installSection {
+  padding: 80px 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(ellipse at 30% 50%, rgba(79,124,255,0.06) 0%, transparent 60%);
+}
+.installInner {
+  max-width: 1000px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 80px; align-items: center;
+}
+.installTitle {
+  font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -1px;
+  color: var(--text); margin: 0 0 16px;
+}
+.installSub {
+  font-size: 15px; color: var(--text-muted); line-height: 1.7;
+  max-width: 460px; margin: 0 0 28px;
+}
+.platforms {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.platform {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px; text-align: center;
+  min-width: 80px;
+  transition: border-color 0.15s;
+}
+.platform:hover { border-color: var(--border2); }
+.platformIcon { font-size: 22px; display: block; margin-bottom: 6px; }
+.platformLabel { font-size: 12px; font-weight: 700; color: var(--text); }
+.platformSub { font-size: 10px; color: var(--text-dim); margin-top: 2px; font-weight: 500; }
+
+.installHint {
+  font-size: 13px; color: var(--text-dim); line-height: 1.6;
+  margin: 20px 0 0; max-width: 400px;
+}
+.installHint strong { color: var(--text-muted); }
+
+.installedMsg {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: #10b981;
+  margin-top: 20px;
+}
+
+/* Phone mockup */
+.phoneFrame {
+  width: 200px; height: 390px;
+  background: var(--surface);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  position: relative;
+  flex-shrink: 0;
+}
+.phoneNotch {
+  width: 80px; height: 22px;
+  background: #080808;
+  border-radius: 0 0 16px 16px;
+  margin: 0 auto;
+  position: relative; z-index: 2;
+}
+.phoneScreen { padding: 0 12px 12px; display: flex; flex-direction: column; height: calc(100% - 22px); }
+.phoneHeader {
+  padding: 10px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.phoneHeaderTitle { font-size: 12px; font-weight: 800; color: var(--text); }
+.phoneBlocks { display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.phoneBlock {
+  border-radius: 8px; padding: 7px 9px;
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.phoneBlockTitle { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.85); }
+.phoneBlockTime { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+.phoneNav {
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 10px 0; border-top: 1px solid var(--border); margin-top: auto;
+}
+.phoneNavDot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+.phoneNavFab {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: linear-gradient(135deg, #4f7cff, #8b5cf6);
+}
+
 /* FEATURES */
-.features { padding: 80px 24px; }
+.features { padding: 100px 24px; }
 .featuresInner { max-width: 1100px; margin: 0 auto; }
 .how { padding: 40px 24px 100px; }
 .howInner { max-width: 620px; margin: 0 auto; text-align: center; }
@@ -130,10 +220,10 @@
 .featCard {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 20px; padding: 28px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, transform 0.2s;
 }
-.featCard:hover { border-color: var(--border2); }
-.featEmoji { font-size: 28px; margin-bottom: 14px; }
+.featCard:hover { border-color: var(--border2); transform: translateY(-2px); }
+.featIcon { font-size: 26px; margin-bottom: 14px; line-height: 1; }
 .featCardTitle { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 .featCardDesc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
 
@@ -165,8 +255,15 @@
 @media (max-width: 768px) {
   .hero { padding: 60px 20px 48px; }
   .heroTitle { letter-spacing: -1.5px; }
+  .heroSub { font-size: 16px; }
+
   .previewGrid { grid-template-columns: repeat(3, 1fr); }
   .previewCol:nth-child(n+4) { display: none; }
+
+  .installInner { grid-template-columns: 1fr; gap: 40px; }
+  .installRight { display: flex; justify-content: center; }
+  .phoneFrame { width: 180px; height: 350px; }
+
   .featGrid { grid-template-columns: 1fr; }
   .footerMeta { display: none; }
   .navLinks a { display: none; }
