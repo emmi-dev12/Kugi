@@ -1,6 +1,26 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Component } from 'react';
 import { HashRouter, BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+
+class ErrorBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div style={{ padding: 40, color: '#fff', fontFamily: 'system-ui', background: '#080808', minHeight: '100dvh' }}>
+        <h2 style={{ color: '#f43f5e', marginBottom: 12 }}>Something went wrong</h2>
+        <pre style={{ fontSize: 12, color: '#888', whiteSpace: 'pre-wrap', marginBottom: 24 }}>
+          {this.state.error?.message}
+        </pre>
+        <button onClick={() => { localStorage.removeItem('kugiConvexUrl'); window.location.href = '/setup'; }}
+          style={{ padding: '10px 20px', background: '#4f7cff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
+          Reset & go to setup
+        </button>
+      </div>
+    );
+  }
+}
 import Landing from './pages/Landing';
 import Setup from './pages/Setup';
 import AppPage from './pages/AppPage';
@@ -55,10 +75,12 @@ export default function App() {
   }
 
   return (
-    <ConvexProvider client={convexClient}>
-      <Router>
-        <MainApp />
-      </Router>
-    </ConvexProvider>
+    <ErrorBoundary>
+      <ConvexProvider client={convexClient}>
+        <Router>
+          <MainApp />
+        </Router>
+      </ConvexProvider>
+    </ErrorBoundary>
   );
 }
