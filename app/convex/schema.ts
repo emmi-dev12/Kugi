@@ -13,4 +13,9 @@ export default defineSchema({
     completed: v.boolean(),
     localId: v.optional(v.string()),
   }).index("by_date", ["date"]),
+
+  settings: defineTable({
+    key: v.string(),
+    value: v.string(),
+  }).index("by_key", ["key"]),
 });
