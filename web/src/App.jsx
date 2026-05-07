@@ -23,7 +23,8 @@ function PreSetupApp() {
       <Route path="/setup" element={
         <Setup onComplete={() => { window.location.href = window.location.protocol === 'file:' ? '#/app' : '/app'; }} />
       } />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Unknown paths (e.g. Electron loading /app before setup) → setup, not landing */}
+      <Route path="*" element={<Navigate to="/setup" replace />} />
     </Routes>
   );
 }
