@@ -7,23 +7,52 @@ const FEATURES = [
   { icon: '⬡', title: 'Bento blocks', desc: 'Drag blocks between days. Timeline and bento layouts for every mood.' },
   { icon: '🤖', title: 'AI agent API', desc: 'Personal bearer-auth API. Let your agents read and write your schedule.' },
   { icon: '🔒', title: 'Your data, your server', desc: 'Bring your own Convex backend. Zero central servers, zero subscriptions.' },
-  { icon: '📲', title: 'Install on anything', desc: 'PWA installs on Mac, iOS, Android, Windows — no App Store, no DMG.' },
+  { icon: '📲', title: 'Install on anything', desc: 'PWA installs on Mac, iOS, Android, Windows — no App Store, no DMG required.' },
   { icon: '⚡', title: 'Real-time sync', desc: 'Convex keeps every device in sync instantly. Open two tabs, watch them move.' },
   { icon: '🗂️', title: 'Smart categories', desc: 'Color-coded categories with per-category filtering across all views.' },
 ];
+
+function detectOS() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  if (/Win/.test(ua)) return 'windows';
+  if (/Mac/.test(ua)) return 'mac';
+  return 'other';
+}
+
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return 'edge';
+  if (/Chrome\//.test(ua)) return 'chrome';
+  if (/Safari\//.test(ua)) return 'safari';
+  if (/Firefox\//.test(ua)) return 'firefox';
+  return 'other';
+}
 
 export default function Landing({ onGetStarted }) {
   const navigate = useNavigate();
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
+  const [release, setRelease] = useState(null);
+  const [showIOSHint, setShowIOSHint] = useState(false);
+  const os = detectOS();
+  const browser = detectBrowser();
+  const canPrompt = !!installPrompt;
 
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setInstalled(true));
-    // Already running as PWA
     if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    fetch('https://api.github.com/repos/emmi-dev12/Kugi/releases/latest')
+      .then(r => r.json())
+      .then(data => { if (data.tag_name) setRelease(data); })
+      .catch(() => {});
   }, []);
 
   function handleOpen() {
@@ -31,13 +60,24 @@ export default function Landing({ onGetStarted }) {
     else onGetStarted();
   }
 
-  async function handleInstall() {
-    if (!installPrompt) return;
+  async function triggerInstall() {
+    if (!installPrompt) return false;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') setInstalled(true);
     setInstallPrompt(null);
+    return outcome === 'accepted';
   }
+
+  function triggerDownload(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    a.click();
+  }
+
+  const arm = release?.assets?.find(a => a.name.endsWith('-arm64.dmg'));
+  const intel = release?.assets?.find(a => a.name.endsWith('-x64.dmg'));
 
   return (
     <div className={styles.page}>
@@ -73,21 +113,17 @@ export default function Landing({ onGetStarted }) {
           <button className={`btn-primary ${styles.ctaMain}`} onClick={handleOpen}>
             Start for free →
           </button>
-          {!installed && installPrompt && (
-            <button className={styles.installBtn} onClick={handleInstall}>
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 1v9M3.5 7.5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M1 14h13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-              </svg>
-              Install app
-            </button>
-          )}
-          {installed && (
+          {installed ? (
             <span className={styles.installedBadge}>
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Installed
+              App installed
             </span>
-          )}
+          ) : canPrompt ? (
+            <button className={styles.installBtn} onClick={triggerInstall}>
+              <DownloadIcon />
+              Install app
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -127,55 +163,119 @@ export default function Landing({ onGetStarted }) {
       {/* INSTALL SECTION */}
       <section className={styles.installSection} id="install">
         <div className={styles.installInner}>
-          <div className={styles.installLeft}>
-            <h2 className={styles.installTitle}>Install on any device</h2>
-            <p className={styles.installSub}>No App Store. No DMG. No waiting. One click and kugi lives in your dock or home screen — looking and feeling exactly like a native app.</p>
-            <div className={styles.platforms}>
-              <Platform icon="🍎" label="Mac" sub="Chrome or Edge" />
-              <Platform icon="📱" label="iPhone" sub="Safari → Share" />
-              <Platform icon="🤖" label="Android" sub="Chrome → Install" />
-              <Platform icon="🪟" label="Windows" sub="Edge or Chrome" />
-            </div>
-            {!installed && installPrompt && (
-              <button className={`btn-primary ${styles.ctaMain}`} onClick={handleInstall} style={{ marginTop: 28 }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1v9M3 7l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                </svg>
-                Install now — it's free
-              </button>
-            )}
-            {installed && (
-              <div className={styles.installedMsg}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                App installed — check your dock
-              </div>
-            )}
-            {!installPrompt && !installed && (
-              <p className={styles.installHint}>
-                Open in <strong>Chrome or Edge</strong> on Mac to install. On iPhone, tap the Share button in Safari → "Add to Home Screen".
-              </p>
-            )}
-          </div>
-          <div className={styles.installRight}>
-            <div className={styles.phoneFrame}>
-              <div className={styles.phoneNotch} />
-              <div className={styles.phoneScreen}>
-                <div className={styles.phoneHeader}>
-                  <span className={styles.phoneHeaderTitle}>Today · Thu 8</span>
-                </div>
-                <div className={styles.phoneBlocks}>
-                  <PhoneBlock color="#4f7cff" title="Deep Work" time="09:00–11:00" emoji="💻" />
-                  <PhoneBlock color="#10b981" title="Gym" time="12:00–13:00" emoji="🏋️" />
-                  <PhoneBlock color="#8b5cf6" title="Planning" time="15:00–16:00" emoji="🗂️" />
-                </div>
-                <div className={styles.phoneNav}>
-                  <span className={styles.phoneNavDot} style={{ background: '#4f7cff' }} />
-                  <div className={styles.phoneNavFab} />
-                  <span className={styles.phoneNavDot} />
-                </div>
-              </div>
-            </div>
+          <h2 className={styles.installTitle}>Install on any device</h2>
+          <p className={styles.installSub}>
+            No App Store. No waiting. Kugi installs as a native-feeling app on every platform.
+            {os !== 'other' && <strong> Your device is highlighted below.</strong>}
+          </p>
+
+          <div className={styles.osGrid}>
+            <OSCard
+              icon="🍎"
+              label="Mac"
+              current={os === 'mac'}
+              installed={installed}
+              steps={browser === 'safari'
+                ? ['Open in Chrome or Edge for one-click install', 'Or: Safari → File → Add to Dock (Safari 17+)']
+                : ['Click Install — browser prompt appears', 'Kugi opens in its own window like a native app']}
+              actions={
+                installed ? (
+                  <span className={styles.installedBadge}>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Installed
+                  </span>
+                ) : (
+                  <div className={styles.osActions}>
+                    {canPrompt && (
+                      <button className={`btn-primary ${styles.osBtn}`} onClick={async () => {
+                        await triggerInstall();
+                        if (arm) triggerDownload(arm.browser_download_url);
+                        else if (intel) triggerDownload(intel.browser_download_url);
+                      }}>
+                        <DownloadIcon /> Install as app
+                      </button>
+                    )}
+                    {arm && (
+                      <a className={styles.osBtnSecondary} href={arm.browser_download_url}>
+                        <DownloadIcon /> Apple Silicon .dmg
+                      </a>
+                    )}
+                    {intel && (
+                      <a className={styles.osBtnSecondary} href={intel.browser_download_url}>
+                        <DownloadIcon /> Intel .dmg
+                      </a>
+                    )}
+                    {!canPrompt && !arm && !intel && (
+                      <span className={styles.osHint}>Open in Chrome or Edge to install</span>
+                    )}
+                  </div>
+                )
+              }
+            />
+
+            <OSCard
+              icon="📱"
+              label="iPhone / iPad"
+              current={os === 'ios'}
+              installed={installed && os === 'ios'}
+              steps={['Open kugi.onrender.com in Safari', 'Tap Share → "Add to Home Screen"', 'Kugi appears on your home screen']}
+              actions={
+                showIOSHint ? (
+                  <div className={styles.iosSteps}>
+                    <div className={styles.iosStep}><span className={styles.iosNum}>1</span> Open in <strong>Safari</strong></div>
+                    <div className={styles.iosStep}><span className={styles.iosNum}>2</span> Tap <strong>Share</strong> <ShareIcon /> then "Add to Home Screen"</div>
+                  </div>
+                ) : (
+                  <button className={`btn-primary ${styles.osBtn}`} onClick={() => setShowIOSHint(true)}>
+                    How to install
+                  </button>
+                )
+              }
+            />
+
+            <OSCard
+              icon="🤖"
+              label="Android"
+              current={os === 'android'}
+              installed={installed && os === 'android'}
+              steps={['Open in Chrome', 'Tap Install in the address bar or menu', 'Kugi lands on your home screen']}
+              actions={
+                installed && os === 'android' ? (
+                  <span className={styles.installedBadge}>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Installed
+                  </span>
+                ) : canPrompt && os === 'android' ? (
+                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
+                    <DownloadIcon /> Install
+                  </button>
+                ) : (
+                  <span className={styles.osHint}>Open in Chrome to install</span>
+                )
+              }
+            />
+
+            <OSCard
+              icon="🪟"
+              label="Windows"
+              current={os === 'windows'}
+              installed={installed && os === 'windows'}
+              steps={['Open in Chrome or Edge', 'Click Install in the address bar', 'Kugi opens as a standalone window']}
+              actions={
+                installed && os === 'windows' ? (
+                  <span className={styles.installedBadge}>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Installed
+                  </span>
+                ) : canPrompt && os === 'windows' ? (
+                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
+                    <DownloadIcon /> Install
+                  </button>
+                ) : (
+                  <span className={styles.osHint}>Open in Chrome or Edge to install</span>
+                )
+              }
+            />
           </div>
         </div>
       </section>
@@ -239,6 +339,24 @@ export default function Landing({ onGetStarted }) {
   );
 }
 
+function OSCard({ icon, label, current, installed, steps, actions }) {
+  return (
+    <div className={`${styles.osCard} ${current ? styles.osCurrent : ''} ${installed ? styles.osInstalled : ''}`}>
+      <div className={styles.osCardHeader}>
+        <span className={styles.osIcon}>{icon}</span>
+        <div>
+          <div className={styles.osLabel}>{label}</div>
+          {current && <div className={styles.osCurrentBadge}>Your device</div>}
+        </div>
+      </div>
+      <ul className={styles.osStepList}>
+        {steps.map((s, i) => <li key={i}>{s}</li>)}
+      </ul>
+      <div className={styles.osActionWrap}>{actions}</div>
+    </div>
+  );
+}
+
 function MockBlock({ color, title, time, emoji }) {
   return (
     <div className={styles.mockBlock} style={{ borderLeft: `3px solid ${color}`, background: `${color}22` }}>
@@ -251,24 +369,20 @@ function MockBlock({ color, title, time, emoji }) {
   );
 }
 
-function Platform({ icon, label, sub }) {
+function DownloadIcon() {
   return (
-    <div className={styles.platform}>
-      <span className={styles.platformIcon}>{icon}</span>
-      <div className={styles.platformLabel}>{label}</div>
-      <div className={styles.platformSub}>{sub}</div>
-    </div>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M1 12h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
   );
 }
 
-function PhoneBlock({ color, title, time, emoji }) {
+function ShareIcon() {
   return (
-    <div className={styles.phoneBlock} style={{ borderLeft: `2px solid ${color}`, background: `${color}20` }}>
-      <span style={{ fontSize: 13 }}>{emoji}</span>
-      <div>
-        <div className={styles.phoneBlockTitle}>{title}</div>
-        <div className={styles.phoneBlockTime}>{time}</div>
-      </div>
-    </div>
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }}>
+      <path d="M6 1v7M3 4l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2 9h8v2H2z" fill="currentColor" opacity="0.3"/>
+    </svg>
   );
 }

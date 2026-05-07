@@ -117,90 +117,88 @@
 
 /* INSTALL SECTION */
 .installSection {
-  padding: 80px 24px;
+  padding: 100px 24px;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: radial-gradient(ellipse at 30% 50%, rgba(79,124,255,0.06) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(79,124,255,0.07) 0%, transparent 60%);
 }
 .installInner {
-  max-width: 1000px; margin: 0 auto;
-  display: grid; grid-template-columns: 1fr auto;
-  gap: 80px; align-items: center;
+  max-width: 1100px; margin: 0 auto;
 }
 .installTitle {
   font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -1px;
-  color: var(--text); margin: 0 0 16px;
+  color: var(--text); margin: 0 0 12px; text-align: center;
 }
 .installSub {
   font-size: 15px; color: var(--text-muted); line-height: 1.7;
-  max-width: 460px; margin: 0 0 28px;
+  max-width: 540px; margin: 0 auto 48px; text-align: center;
 }
-.platforms {
-  display: flex; gap: 12px; flex-wrap: wrap;
-}
-.platform {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px 16px; text-align: center;
-  min-width: 80px;
-  transition: border-color 0.15s;
-}
-.platform:hover { border-color: var(--border2); }
-.platformIcon { font-size: 22px; display: block; margin-bottom: 6px; }
-.platformLabel { font-size: 12px; font-weight: 700; color: var(--text); }
-.platformSub { font-size: 10px; color: var(--text-dim); margin-top: 2px; font-weight: 500; }
+.installSub strong { color: var(--text); }
 
-.installHint {
-  font-size: 13px; color: var(--text-dim); line-height: 1.6;
-  margin: 20px 0 0; max-width: 400px;
+/* OS cards */
+.osGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
-.installHint strong { color: var(--text-muted); }
-
-.installedMsg {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 600; color: #10b981;
-  margin-top: 20px;
-}
-
-/* Phone mockup */
-.phoneFrame {
-  width: 200px; height: 390px;
+.osCard {
   background: var(--surface);
-  border: 1.5px solid rgba(255,255,255,0.12);
-  border-radius: 36px;
-  overflow: hidden;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
-  position: relative;
-  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  transition: border-color 0.2s;
 }
-.phoneNotch {
-  width: 80px; height: 22px;
-  background: #080808;
-  border-radius: 0 0 16px 16px;
-  margin: 0 auto;
-  position: relative; z-index: 2;
+.osCard:hover { border-color: var(--border2); }
+.osCurrent {
+  border-color: rgba(79,124,255,0.4);
+  background: rgba(79,124,255,0.04);
+  box-shadow: 0 0 0 1px rgba(79,124,255,0.15);
 }
-.phoneScreen { padding: 0 12px 12px; display: flex; flex-direction: column; height: calc(100% - 22px); }
-.phoneHeader {
-  padding: 10px 0 10px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 10px;
+.osInstalled {
+  border-color: rgba(16,185,129,0.35);
+  background: rgba(16,185,129,0.04);
 }
-.phoneHeaderTitle { font-size: 12px; font-weight: 800; color: var(--text); }
-.phoneBlocks { display: flex; flex-direction: column; gap: 7px; flex: 1; }
-.phoneBlock {
-  border-radius: 8px; padding: 7px 9px;
-  display: flex; align-items: flex-start; gap: 6px;
+
+.osCardHeader { display: flex; align-items: center; gap: 12px; }
+.osIcon { font-size: 28px; line-height: 1; }
+.osLabel { font-size: 15px; font-weight: 700; color: var(--text); }
+.osCurrentBadge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: #4f7cff;
+  background: rgba(79,124,255,0.12); border-radius: 6px;
+  padding: 2px 8px; margin-top: 3px; display: inline-block;
 }
-.phoneBlockTitle { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.85); }
-.phoneBlockTime { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 1px; }
-.phoneNav {
-  display: flex; align-items: center; justify-content: space-around;
-  padding: 10px 0; border-top: 1px solid var(--border); margin-top: auto;
+
+.osStepList {
+  margin: 0; padding: 0 0 0 16px;
+  display: flex; flex-direction: column; gap: 6px; flex: 1;
 }
-.phoneNavDot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
-.phoneNavFab {
-  width: 32px; height: 32px; border-radius: 10px;
-  background: linear-gradient(135deg, #4f7cff, #8b5cf6);
+.osStepList li {
+  font-size: 12px; color: var(--text-muted); line-height: 1.5;
+}
+
+.osActionWrap { margin-top: auto; }
+.osActions { display: flex; flex-direction: column; gap: 8px; }
+.osBtn { padding: 9px 16px; font-size: 13px; display: flex; align-items: center; gap: 7px; width: 100%; justify-content: center; }
+.osBtnSecondary {
+  display: flex; align-items: center; gap: 7px; justify-content: center;
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 8px 14px; text-decoration: none;
+  transition: all 0.15s; cursor: pointer; font-family: inherit;
+}
+.osBtnSecondary:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+.osHint { font-size: 12px; color: var(--text-dim); line-height: 1.5; display: block; }
+
+/* iOS steps */
+.iosSteps { display: flex; flex-direction: column; gap: 8px; }
+.iosStep { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+.iosNum {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(79,124,255,0.2); color: #7a9fff;
+  font-size: 11px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
 }
 
 /* FEATURES */
@@ -260,9 +258,7 @@
   .previewGrid { grid-template-columns: repeat(3, 1fr); }
   .previewCol:nth-child(n+4) { display: none; }
 
-  .installInner { grid-template-columns: 1fr; gap: 40px; }
-  .installRight { display: flex; justify-content: center; }
-  .phoneFrame { width: 180px; height: 350px; }
+  .osGrid { grid-template-columns: 1fr 1fr; }
 
   .featGrid { grid-template-columns: 1fr; }
   .footerMeta { display: none; }
