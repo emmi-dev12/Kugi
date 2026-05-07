@@ -1,41 +1,63 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { HashRouter, BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import Landing from './pages/Landing';
 import Setup from './pages/Setup';
 import AppPage from './pages/AppPage';
 
-function RequireSetup({ children }) {
-  const url = localStorage.getItem('kugiConvexUrl');
-  if (!url) return <Navigate to="/setup" replace />;
-  return children;
+// Use HashRouter when loaded as a local file (Electron production),
+// BrowserRouter otherwise (web, Electron dev via localhost).
+const Router = window.location.protocol === 'file:' ? HashRouter : BrowserRouter;
+
+function getStoredUrl() {
+  return localStorage.getItem('kugiConvexUrl') ?? null;
 }
 
-function LandingRoute() {
+function PreSetupApp() {
   const navigate = useNavigate();
-  function handleGetStarted() {
-    localStorage.setItem('kugiVisited', '1');
-    navigate('/setup');
-  }
-  return <Landing onGetStarted={handleGetStarted} />;
+  return (
+    <Routes>
+      <Route path="/" element={
+        <Landing onGetStarted={() => { localStorage.setItem('kugiVisited', '1'); navigate('/setup'); }} />
+      } />
+      <Route path="/setup" element={
+        <Setup onComplete={() => { window.location.href = window.location.protocol === 'file:' ? '#/app' : '/app'; }} />
+      } />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-function SetupRoute() {
-  const navigate = useNavigate();
-  return <Setup onComplete={() => navigate('/app')} />;
+function MainApp() {
+  return (
+    <Routes>
+      <Route path="/app" element={<AppPage />} />
+      <Route path="*" element={<Navigate to="/app" replace />} />
+    </Routes>
+  );
 }
 
 export default function App() {
+  const [convexUrl] = useState(getStoredUrl);
+
+  const convexClient = useMemo(
+    () => (convexUrl ? new ConvexReactClient(convexUrl) : null),
+    [convexUrl],
+  );
+
+  if (!convexClient) {
+    return (
+      <Router>
+        <PreSetupApp />
+      </Router>
+    );
+  }
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingRoute />} />
-        <Route path="/setup" element={<SetupRoute />} />
-        <Route path="/app" element={
-          <RequireSetup>
-            <AppPage />
-          </RequireSetup>
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ConvexProvider client={convexClient}>
+      <Router>
+        <MainApp />
+      </Router>
+    </ConvexProvider>
   );
 }

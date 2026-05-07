@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useBlocks } from '../hooks/useDB';
+import { useBlocks, useApiKey } from '../hooks/useDB';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
 import BlockModal from '../components/UI/BlockModal';
@@ -13,6 +13,7 @@ import styles from './AppPage.module.css';
 
 export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
+  const { apiKey, rotateApiKey } = useApiKey();
 
   const [view, setView] = useState('week');
   const [dayLayout, setDayLayout] = useState('timeline');
@@ -21,11 +22,6 @@ export default function AppPage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
-  const [apiKey] = useState(() => {
-    let k = localStorage.getItem('kugiApiKey');
-    if (!k) { k = 'kugi_' + Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b=>b.toString(16).padStart(2,'0')).join(''); localStorage.setItem('kugiApiKey', k); }
-    return k;
-  });
 
   // Nav label
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -170,16 +166,19 @@ export default function AppPage() {
 
           {/* API Key */}
           <div className={styles.apiSection}>
-            <div className={styles.sectionTitle}>Your API Key</div>
+            <div className={styles.sectionTitle}>API Key</div>
             <div className={styles.apiBox}>
               <code className={styles.apiKey}>
-                {apiKeyVisible ? apiKey : '••••••••••••••••'}
+                {apiKey === null ? '…' : apiKeyVisible ? apiKey : '••••••••••••••••'}
               </code>
-              <button className={styles.apiToggle} onClick={() => setApiKeyVisible(v => !v)}>
+              <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
                 {apiKeyVisible ? '🙈' : '👁'}
               </button>
+              <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
+                ↺
+              </button>
             </div>
-            <p className={styles.apiHint}>Use this key to connect your AI agent via the Kugi API.</p>
+            <p className={styles.apiHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code> on your Convex HTTP endpoint.</p>
           </div>
         </aside>
 

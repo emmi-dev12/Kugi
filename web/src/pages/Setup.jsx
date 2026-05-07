@@ -5,6 +5,7 @@ import styles from './Setup.module.css';
 export default function Setup({ onComplete }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -14,6 +15,8 @@ export default function Setup({ onComplete }) {
       setError('URL must be a valid Convex deployment URL (e.g. https://xxx.convex.cloud)');
       return;
     }
+    setLoading(true);
+    setError('');
     localStorage.setItem('kugiConvexUrl', trimmed);
     onComplete(trimmed);
   }

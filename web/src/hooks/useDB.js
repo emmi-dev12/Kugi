@@ -1,51 +1,52 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { makeFunctionReference } from 'convex/server';
 
-// In-memory DB backed by localStorage. Replaces Convex for the "bring your own" model.
-// When a Convex URL is configured, the app connects to that instead.
-
-function uid() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-function load() {
-  try { return JSON.parse(localStorage.getItem('kugiBlocks') || '[]'); }
-  catch { return []; }
-}
-
-function save(blocks) {
-  localStorage.setItem('kugiBlocks', JSON.stringify(blocks));
-}
+// Reference Convex functions by path — no generated-type import needed.
+// These must match the function names exported in app/convex/*.ts
+const fn = {
+  blocks: {
+    list:           makeFunctionReference('blocks:list'),
+    listByDate:     makeFunctionReference('blocks:listByDate'),
+    create:         makeFunctionReference('blocks:create'),
+    update:         makeFunctionReference('blocks:update'),
+    remove:         makeFunctionReference('blocks:remove'),
+    toggleComplete: makeFunctionReference('blocks:toggleComplete'),
+    bulkCreate:     makeFunctionReference('blocks:bulkCreate'),
+  },
+  settings: {
+    getApiKey:    makeFunctionReference('settings:getApiKey'),
+    ensureApiKey: makeFunctionReference('settings:ensureApiKey'),
+    rotateApiKey: makeFunctionReference('settings:rotateApiKey'),
+  },
+};
 
 export function useBlocks() {
-  const [blocks, setBlocks] = useState(load);
+  const blocks = useQuery(fn.blocks.list) ?? [];
+  const createMutation   = useMutation(fn.blocks.create);
+  const updateMutation   = useMutation(fn.blocks.update);
+  const removeMutation   = useMutation(fn.blocks.remove);
+  const toggleMutation   = useMutation(fn.blocks.toggleComplete);
+  const bulkMutation     = useMutation(fn.blocks.bulkCreate);
 
-  const refresh = useCallback(() => setBlocks(load()), []);
+  const createBlock  = (data) => createMutation({ completed: false, ...data });
+  const updateBlock  = (id, fields) => updateMutation({ id, ...fields });
+  const deleteBlock  = (id) => removeMutation({ id });
+  const toggleComplete = (id) => toggleMutation({ id });
+  const bulkCreate   = (blockList) => bulkMutation({ blocks: blockList });
 
-  const createBlock = useCallback((data) => {
-    const b = { id: uid(), completed: false, ...data };
-    const next = [...load(), b];
-    save(next);
-    setBlocks(next);
-    return b.id;
-  }, []);
+  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate };
+}
 
-  const updateBlock = useCallback((id, fields) => {
-    const next = load().map(b => b.id === id ? { ...b, ...fields } : b);
-    save(next);
-    setBlocks(next);
-  }, []);
+export function useApiKey() {
+  const apiKey = useQuery(fn.settings.getApiKey);
+  const ensure = useMutation(fn.settings.ensureApiKey);
+  const rotate = useMutation(fn.settings.rotateApiKey);
 
-  const deleteBlock = useCallback((id) => {
-    const next = load().filter(b => b.id !== id);
-    save(next);
-    setBlocks(next);
-  }, []);
+  // Bootstrap: if no key exists yet, create one.
+  useEffect(() => {
+    if (apiKey === null) ensure();
+  }, [apiKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleComplete = useCallback((id) => {
-    const next = load().map(b => b.id === id ? { ...b, completed: !b.completed } : b);
-    save(next);
-    setBlocks(next);
-  }, []);
-
-  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, refresh };
+  return { apiKey: apiKey ?? null, rotateApiKey: rotate };
 }
