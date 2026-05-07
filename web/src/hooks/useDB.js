@@ -46,5 +46,6 @@ export function useApiKey() {
   // Always ensure a key exists on mount — idempotent, safe to call every time.
   useEffect(() => { ensure(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { apiKey: apiKey ?? null, rotateApiKey: rotate };
+  // undefined = loading, null = no key yet, string = ready
+  return { apiKey, rotateApiKey: rotate };
 }

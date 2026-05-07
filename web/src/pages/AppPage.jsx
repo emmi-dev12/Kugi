@@ -146,14 +146,18 @@ export default function AppPage() {
         <div className={styles.sectionTitle}>API Key</div>
         <div className={styles.apiBox}>
           <code className={styles.apiKey}>
-            {apiKey === null ? '…' : apiKeyVisible ? apiKey : '••••••••••••••••'}
+            {apiKey === undefined ? 'loading…'
+              : apiKey === null ? 'generating…'
+              : apiKeyVisible ? apiKey : '••••••••••••••••'}
           </code>
-          <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
-            {apiKeyVisible ? '🙈' : '👁'}
-          </button>
-          <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
-            ↺
-          </button>
+          {apiKey && <>
+            <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
+              {apiKeyVisible ? '🙈' : '👁'}
+            </button>
+            <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
+              ↺
+            </button>
+          </>}
         </div>
         <p className={styles.apiHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code> on your Convex HTTP endpoint.</p>
 
