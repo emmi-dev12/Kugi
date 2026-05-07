@@ -44,11 +44,11 @@ export function formatShort(date) {
 }
 
 export function formatFull(date) {
-  return date.toLocaleDateString('de-CH', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function formatMonthYear(date) {
-  return date.toLocaleDateString('de-CH', { timeZone: TZ, month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { timeZone: TZ, month: 'long', year: 'numeric' });
 }
 
 export function isToday(date) {
