@@ -34,7 +34,6 @@ export default function Landing({ onGetStarted }) {
   const navigate = useNavigate();
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
-  const [release, setRelease] = useState(null);
   const [showIOSHint, setShowIOSHint] = useState(false);
   const os = detectOS();
   const browser = detectBrowser();
@@ -46,13 +45,6 @@ export default function Landing({ onGetStarted }) {
     window.addEventListener('appinstalled', () => setInstalled(true));
     if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  useEffect(() => {
-    fetch('https://api.github.com/repos/emmi-dev12/Kugi/releases/latest')
-      .then(r => r.json())
-      .then(data => { if (data.tag_name) setRelease(data); })
-      .catch(() => {});
   }, []);
 
   function handleOpen() {
@@ -68,16 +60,6 @@ export default function Landing({ onGetStarted }) {
     setInstallPrompt(null);
     return outcome === 'accepted';
   }
-
-  function triggerDownload(url) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    a.click();
-  }
-
-  const arm = release?.assets?.find(a => a.name.endsWith('-arm64.dmg'));
-  const intel = release?.assets?.find(a => a.name.endsWith('-x64.dmg'));
 
   return (
     <div className={styles.page}>
@@ -175,40 +157,21 @@ export default function Landing({ onGetStarted }) {
               label="Mac"
               current={os === 'mac'}
               installed={installed}
-              steps={browser === 'safari'
-                ? ['Open in Chrome or Edge for one-click install', 'Or: Safari → File → Add to Dock (Safari 17+)']
-                : ['Click Install — browser prompt appears', 'Kugi opens in its own window like a native app']}
+              steps={canPrompt
+                ? ['Click Install — browser prompt appears', 'Kugi opens in its own window, no browser chrome']
+                : ['Open this page in Chrome or Edge', 'Click Install in the address bar or use the button below']}
               actions={
                 installed ? (
                   <span className={styles.installedBadge}>
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     Installed
                   </span>
+                ) : canPrompt ? (
+                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
+                    <DownloadIcon /> Install as app
+                  </button>
                 ) : (
-                  <div className={styles.osActions}>
-                    {canPrompt && (
-                      <button className={`btn-primary ${styles.osBtn}`} onClick={async () => {
-                        await triggerInstall();
-                        if (arm) triggerDownload(arm.browser_download_url);
-                        else if (intel) triggerDownload(intel.browser_download_url);
-                      }}>
-                        <DownloadIcon /> Install as app
-                      </button>
-                    )}
-                    {arm && (
-                      <a className={styles.osBtnSecondary} href={arm.browser_download_url}>
-                        <DownloadIcon /> Apple Silicon .dmg
-                      </a>
-                    )}
-                    {intel && (
-                      <a className={styles.osBtnSecondary} href={intel.browser_download_url}>
-                        <DownloadIcon /> Intel .dmg
-                      </a>
-                    )}
-                    {!canPrompt && !arm && !intel && (
-                      <span className={styles.osHint}>Open in Chrome or Edge to install</span>
-                    )}
-                  </div>
+                  <span className={styles.osHint}>Open in Chrome or Edge to install as PWA</span>
                 )
               }
             />
