@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
+import BlockDetailsSheet from '../UI/BlockDetailsSheet';
 import styles from './BlockCard.module.css';
 
 export default function BlockCard({ block, variant = 'week', onEdit, onDelete, onToggle, draggable, onDragStart, onDragEnd }) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const color = getColor(block.category);
   const rgb = hexRgb(color);
   const time = block.start_time
@@ -49,6 +51,7 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
 
         {/* Desktop hover actions */}
         <div className={styles.actions} onClick={e => e.stopPropagation()}>
+          <button className={styles.actionBtn} onClick={() => setDetailsOpen(true)} title="Details">ℹ</button>
           <button className={styles.actionBtn} onClick={() => onToggle(block.id)}
             title={block.completed ? 'Undo' : 'Complete'}>
             {block.completed ? '↩' : '✓'}
@@ -66,6 +69,9 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
               <span>{block.emoji || getCatEmoji(block.category)}</span>
               {block.title}
             </div>
+            <button className={styles.sheetItem} onClick={() => { setSheetOpen(false); setDetailsOpen(true); }}>
+              <span className={styles.sheetIcon}>ℹ</span> View details
+            </button>
             <button className={styles.sheetItem} onClick={() => { onEdit(block); setSheetOpen(false); }}>
               <span className={styles.sheetIcon}>✎</span> Edit block
             </button>
@@ -83,6 +89,16 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
           </div>
         </div>,
         document.body
+      )}
+
+      {detailsOpen && (
+        <BlockDetailsSheet
+          block={block}
+          onClose={() => setDetailsOpen(false)}
+          onEdit={(b) => { setDetailsOpen(false); onEdit(b); }}
+          onToggle={(id) => { onToggle(id); setDetailsOpen(false); }}
+          onDelete={(id) => { onDelete(id); setDetailsOpen(false); }}
+        />
       )}
     </>
   );

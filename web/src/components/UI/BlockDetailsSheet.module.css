@@ -1,0 +1,97 @@
+.overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+
+.sheet {
+  width: 100%; max-width: 520px;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  animation: slideUp 0.22s cubic-bezier(0.32,0.72,0,1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: var(--border);
+  margin: 10px auto 0;
+}
+
+.hero {
+  display: flex; align-items: center; gap: 12px;
+  margin: 14px 16px 0;
+  padding: 14px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.heroEmoji { font-size: 28px; flex-shrink: 0; }
+
+.heroText { flex: 1; min-width: 0; }
+
+.heroTitle {
+  font-size: 16px; font-weight: 700;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.heroBadge {
+  display: inline-block; margin-top: 4px;
+  padding: 2px 8px; border-radius: 20px; border: 1px solid transparent;
+  font-size: 11px; font-weight: 600;
+}
+
+.doneChip {
+  flex-shrink: 0;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  background: rgba(16,185,129,0.15); color: #10b981;
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.rows {
+  display: flex; flex-direction: column; gap: 0;
+  margin: 10px 16px 0;
+}
+
+.row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.row:last-child { border-bottom: none; }
+
+.rowLabel {
+  width: 52px; flex-shrink: 0;
+  font-size: 11px; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+.rowValue {
+  flex: 1; font-size: 13px; font-weight: 500; color: var(--text-muted);
+}
+
+.actions {
+  display: flex; gap: 8px;
+  margin: 14px 16px 16px;
+}
+
+.actionBtn {
+  flex: 1; padding: 11px 8px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  border-radius: 12px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text-muted);
+  cursor: pointer; transition: all 0.12s;
+}
+.actionBtn:hover { background: var(--surface3); color: var(--text); }
+
+.danger { color: #f43f5e !important; }
+.danger:hover { background: rgba(244,63,94,0.12) !important; border-color: rgba(244,63,94,0.3) !important; }
