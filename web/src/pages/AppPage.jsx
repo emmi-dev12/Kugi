@@ -28,6 +28,7 @@ export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
+  const [timezone, setTimezone] = useState(() => getTZ());
   const { permission, pushActive, reminders, addReminder, updateReminder, removeReminder, requestPermission, disablePush } = useNotifications(blocks, timezone);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
@@ -39,7 +40,6 @@ export default function AppPage() {
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [timezone, setTimezone] = useState(() => getTZ());
   const [theme, setTheme] = useState(() => localStorage.getItem('kugiTheme') || 'dark');
   const [sidebarWidth, setSidebarWidth] = useState(() => parseInt(localStorage.getItem('kugiSidebarWidth') || '220', 10));
   const isResizing = useRef(false);
