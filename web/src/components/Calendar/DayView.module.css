@@ -138,7 +138,8 @@
   .timedBlock { border-radius: 10px; padding: 7px 10px; }
   .timedTitle { font-size: 11px; }
   .bentoGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  .layoutToggle { display: none; }
+  .layoutToggle { width: 100%; }
+  .layoutBtn { flex: 1; justify-content: center; padding: 8px 10px; font-size: 13px; }
   .timeRow { height: 56px; }
   .timedActions { display: flex; }
 }

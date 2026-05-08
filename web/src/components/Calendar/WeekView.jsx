@@ -12,6 +12,8 @@ export default function WeekView({ weekStart, blocks, activeCategory, onEditBloc
 
   return (
     <div className={styles.wrap}>
+      {/* scrollInner keeps headers + grid in one horizontal scroll unit on mobile */}
+      <div className={styles.scrollInner}>
       <div className={styles.headers}>
         {days.map((day, i) => (
           <div key={i} className={`${styles.dayHeader} ${isToday(day) ? styles.today : ''}`}
@@ -52,6 +54,7 @@ export default function WeekView({ weekStart, blocks, activeCategory, onEditBloc
           );
         })}
       </div>
+      </div>{/* end scrollInner */}
     </div>
   );
 }

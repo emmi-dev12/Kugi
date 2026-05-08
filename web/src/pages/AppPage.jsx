@@ -27,7 +27,7 @@ export default function AppPage() {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const [view, setView] = useState(isMobile ? 'day' : 'week');
-  const [dayLayout, setDayLayout] = useState('timeline');
+  const [dayLayout, setDayLayout] = useState('bento');
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [currentDay, setCurrentDay] = useState(() => todayZurich());
   const [activeCategory, setActiveCategory] = useState(null);
