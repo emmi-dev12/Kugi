@@ -1,7 +1,7 @@
 .wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
 .headers {
-  display: grid;
+  display: grid; grid-template-columns: repeat(7,1fr);
   gap: 8px; padding: 14px 16px 10px;
   border-bottom: 1px solid var(--border);
 }
@@ -20,7 +20,7 @@
 .today .dayNum { background: var(--text); color: #080808; font-weight: 800; }
 
 .grid {
-  display: grid;
+  display: grid; grid-template-columns: repeat(7,1fr);
   gap: 8px; padding: 12px 12px 16px;
   flex: 1; overflow-y: auto; align-content: start;
 }
