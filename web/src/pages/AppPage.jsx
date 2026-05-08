@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBlocks, useApiKey } from '../hooks/useDB';
 import { useNotifications } from '../hooks/useNotifications';
 import { useCategories } from '../hooks/useCategories';
@@ -9,6 +9,7 @@ import CalendarView from '../components/Calendar/CalendarView';
 import BlockModal from '../components/UI/BlockModal';
 import KugiLogo from '../components/UI/KugiLogo';
 import CategoryManager from '../components/UI/CategoryManager';
+import SearchModal from '../components/UI/SearchModal';
 import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
@@ -39,6 +40,80 @@ export default function AppPage() {
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timezone, setTimezone] = useState(() => getTZ());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+  const historyRef = useRef([]);
+  const futureRef = useRef([]);
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2000);
+  }
+
+  function recordAction(undoFn, redoFn) {
+    historyRef.current.push({ undo: undoFn, redo: redoFn });
+    futureRef.current = [];
+    if (historyRef.current.length > 50) historyRef.current.shift();
+  }
+
+  async function handleCreate(data) {
+    const id = await createBlock(data);
+    recordAction(
+      () => deleteBlock(id),
+      () => createBlock(data)
+    );
+    return id;
+  }
+
+  function handleUpdate(id, fields) {
+    const prev = blocks.find(b => b.id === id);
+    updateBlock(id, fields);
+    if (prev) {
+      const prevFields = Object.fromEntries(
+        Object.keys(fields).map(k => [k, prev[k] ?? ''])
+      );
+      recordAction(
+        () => updateBlock(id, prevFields),
+        () => updateBlock(id, fields)
+      );
+    }
+  }
+
+  function handleDelete(id) {
+    const block = blocks.find(b => b.id === id);
+    deleteBlock(id);
+    if (block) {
+      const { id: _id, _id: __id, _creationTime, ...data } = block;
+      recordAction(
+        () => createBlock(data),
+        () => {}
+      );
+    }
+  }
+
+  function handleToggle(id) {
+    toggleComplete(id);
+    recordAction(
+      () => toggleComplete(id),
+      () => toggleComplete(id)
+    );
+  }
+
+  function undo() {
+    const action = historyRef.current.pop();
+    if (!action) return;
+    action.undo();
+    futureRef.current.push(action);
+    showToast('Undone');
+  }
+
+  function redo() {
+    const action = futureRef.current.pop();
+    if (!action) return;
+    action.redo();
+    historyRef.current.push(action);
+    showToast('Redone');
+  }
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -59,7 +134,15 @@ export default function AppPage() {
 
   useEffect(() => {
     const handler = (e) => {
-      if (modal.open || settingsOpen) return;
+      const meta = e.metaKey || e.ctrlKey;
+      if ((meta && e.key === 'k') || (!modal.open && !settingsOpen && !searchOpen && e.key === '/')) {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if (meta && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if (meta && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); return; }
+      if (modal.open || settingsOpen || searchOpen) return;
       if (e.key === 'n') openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()));
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
@@ -70,15 +153,15 @@ export default function AppPage() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [modal.open, settingsOpen, view, currentDay]);
+  }, [modal.open, settingsOpen, searchOpen, view, currentDay]);
 
   function openModal(block, defaultDate) {
     setModal({ open: true, block, defaultDate });
   }
 
   function handleSave(form) {
-    if (modal.block) updateBlock(modal.block.id, form);
-    else createBlock(form);
+    if (modal.block) handleUpdate(modal.block.id, form);
+    else handleCreate(form);
   }
 
   function nav(dir) {
@@ -268,6 +351,14 @@ export default function AppPage() {
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
             <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
+          <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title="Search blocks (/)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M10.5 10.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <span className={styles.searchBtnText}>Search</span>
+            <kbd className={styles.searchKbd}>⌘K</kbd>
+          </button>
           <button className="btn-primary" onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
             New Block
@@ -296,9 +387,9 @@ export default function AppPage() {
               blocks={blocks}
               activeCategory={activeCategory}
               onEditBlock={block => openModal(block)}
-              onDeleteBlock={deleteBlock}
-              onToggleBlock={toggleComplete}
-              onUpdateBlock={updateBlock}
+              onDeleteBlock={handleDelete}
+              onToggleBlock={handleToggle}
+              onUpdateBlock={handleUpdate}
               onAddBlock={dateStr => openModal(null, dateStr)}
               onDayClick={day => { setCurrentDay(day); setView('day'); }}
             />
@@ -311,15 +402,15 @@ export default function AppPage() {
               layout={dayLayout}
               onSetLayout={setDayLayout}
               onEditBlock={block => openModal(block)}
-              onDeleteBlock={deleteBlock}
-              onToggleBlock={toggleComplete}
+              onDeleteBlock={handleDelete}
+              onToggleBlock={handleToggle}
               onAddBlock={dateStr => openModal(null, dateStr)}
             />
           )}
           {view === 'completed' && (
             <CompletedView
               blocks={blocks}
-              onToggle={toggleComplete}
+              onToggle={handleToggle}
               onEdit={block => openModal(block)}
             />
           )}
@@ -350,6 +441,19 @@ export default function AppPage() {
       <BlockModal open={modal.open} block={modal.block} defaultDate={modal.defaultDate}
         onSave={handleSave} onClose={() => setModal({ open: false, block: null, defaultDate: null })}
         categories={categories} />
+
+      {searchOpen && (
+        <SearchModal
+          blocks={blocks}
+          onClose={() => setSearchOpen(false)}
+          onGoToBlock={block => {
+            setCurrentDay(new Date(block.date + 'T12:00:00'));
+            setView('day');
+          }}
+        />
+      )}
+
+      {toast && <div className={styles.toast}>{toast}</div>}
 
       {/* SETTINGS SHEET — mobile only */}
       {settingsOpen && (

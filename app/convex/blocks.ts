@@ -18,6 +18,13 @@ export const listByDate = query({
   },
 });
 
+export const getById = query({
+  args: { id: v.id("blocks") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
+  },
+});
+
 export const create = mutation({
   args: {
     title: v.string(),
