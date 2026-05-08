@@ -496,3 +496,34 @@
   text-align: center;
 }
 .addReminderBtn:hover { background: var(--surface2); color: var(--text); }
+
+/* Push server status */
+.pushActive, .pushInactive {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500;
+  padding: 5px 8px; border-radius: 7px;
+  margin-bottom: 8px;
+}
+.pushActive {
+  color: #10b981;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.2);
+}
+.pushInactive {
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+}
+.pushLink {
+  background: none; border: none; padding: 0;
+  color: #4f7cff; font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  text-decoration: underline;
+}
+.pushDisableBtn {
+  margin-left: auto;
+  background: none; border: none;
+  color: rgba(16,185,129,0.5); font-size: 10px;
+  cursor: pointer; padding: 0;
+}
+.pushDisableBtn:hover { color: #f43f5e; }

@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 function generateKey(): string {
@@ -74,5 +74,58 @@ export const rotateApiKey = mutation({
       await ctx.db.insert("settings", { key: "apiKey", value: key });
     }
     return key;
+  },
+});
+
+// ── Internal helpers used by push.ts ──────────────────────────
+
+export const upsertSetting = internalMutation({
+  args: { key: v.string(), value: v.string() },
+  handler: async (ctx, { key, value }) => {
+    const existing = await ctx.db
+      .query("settings").withIndex("by_key", q => q.eq("key", key)).first();
+    if (existing) await ctx.db.patch(existing._id, { value });
+    else await ctx.db.insert("settings", { key, value });
+  },
+});
+
+export const getSettingValue = internalQuery({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => {
+    const row = await ctx.db
+      .query("settings").withIndex("by_key", q => q.eq("key", key)).first();
+    return row?.value ?? null;
+  },
+});
+
+// ── Reminders + timezone (synced from client) ──────────────────
+
+export const getReminders = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings").withIndex("by_key", q => q.eq("key", "reminders")).first();
+    if (!row) return null;
+    try { return JSON.parse(row.value); } catch { return null; }
+  },
+});
+
+export const setReminders = mutation({
+  args: { value: v.string() },
+  handler: async (ctx, { value }) => {
+    const existing = await ctx.db
+      .query("settings").withIndex("by_key", q => q.eq("key", "reminders")).first();
+    if (existing) await ctx.db.patch(existing._id, { value });
+    else await ctx.db.insert("settings", { key: "reminders", value });
+  },
+});
+
+export const setTimezone = mutation({
+  args: { value: v.string() },
+  handler: async (ctx, { value }) => {
+    const existing = await ctx.db
+      .query("settings").withIndex("by_key", q => q.eq("key", "timezone")).first();
+    if (existing) await ctx.db.patch(existing._id, { value });
+    else await ctx.db.insert("settings", { key: "timezone", value });
   },
 });

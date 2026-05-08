@@ -28,7 +28,7 @@ export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
-  const { permission, reminders, addReminder, updateReminder, removeReminder, requestPermission } = useNotifications(blocks);
+  const { permission, pushActive, reminders, addReminder, updateReminder, removeReminder, requestPermission, disablePush } = useNotifications(blocks, timezone);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const [view, setView] = useState(isMobile ? 'day' : 'week');
@@ -297,6 +297,13 @@ export default function AppPage() {
             Enable notifications
           </button>
         ) : (
+          <>
+          <div className={pushActive ? styles.pushActive : styles.pushInactive}>
+            {pushActive
+              ? <><span>🔔</span> Push server active</>
+              : <><span>🔕</span> Push server inactive — <button className={styles.pushLink} onClick={requestPermission}>re-enable</button></>}
+            {pushActive && <button className={styles.pushDisableBtn} onClick={disablePush} title="Disable push">✕</button>}
+          </div>
           <div className={styles.reminderList}>
             {reminders.map(r => {
               const isDayScale = r.offsetMinutes >= 1440;
@@ -355,6 +362,7 @@ export default function AppPage() {
               </button>
             )}
           </div>
+          </>
         )}
       </div>
 

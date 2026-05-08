@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { makeFunctionReference } from 'convex/server';
+
+const fn = {
+  getVapidPublicKey:  makeFunctionReference('push:getVapidPublicKey'),
+  initVapidKeys:      makeFunctionReference('push:initVapidKeys'),
+  saveSubscription:   makeFunctionReference('push:saveSubscription'),
+  deleteMySubscription: makeFunctionReference('push:deleteMySubscription'),
+  hasSubscription:    makeFunctionReference('push:hasSubscription'),
+  setReminders:       makeFunctionReference('settings:setReminders'),
+  setTimezone:        makeFunctionReference('settings:setTimezone'),
+};
 
 const REMINDERS_KEY = 'kugiReminders';
-const FIRED_KEY = 'kugiNotifyFired';
 const CHECK_INTERVAL = 60_000;
 
 function loadReminders() {
@@ -9,18 +20,17 @@ function loadReminders() {
     const v = JSON.parse(localStorage.getItem(REMINDERS_KEY));
     if (Array.isArray(v) && v.length) return v;
   } catch {}
-  // Migrate from old single-value setting
   const old = localStorage.getItem('kugiNotifyMinutes');
   return [{ id: 'default', offsetMinutes: old ? Number(old) : 15, atTime: '09:00', message: '' }];
 }
 
 function loadFired() {
-  try { return new Set(JSON.parse(localStorage.getItem(FIRED_KEY) || '[]')); }
+  try { return new Set(JSON.parse(localStorage.getItem('kugiNotifyFired') || '[]')); }
   catch { return new Set(); }
 }
 
 function saveFired(set) {
-  try { localStorage.setItem(FIRED_KEY, JSON.stringify([...set])); } catch {}
+  try { localStorage.setItem('kugiNotifyFired', JSON.stringify([...set])); } catch {}
 }
 
 function fireNotification(title, body, tag) {
@@ -31,11 +41,92 @@ function fireNotification(title, body, tag) {
   }
 }
 
-export function useNotifications(blocks) {
+export function useNotifications(blocks, timezone) {
   const [, forceUpdate] = useState(0);
   const permission = 'Notification' in window ? Notification.permission : 'unsupported';
   const [reminders, setReminders] = useState(loadReminders);
+  const [pushActive, setPushActive] = useState(false);
   const firedRef = useRef(loadFired());
+  const currentEndpointRef = useRef(null);
+
+  const vapidPublicKey = useQuery(fn.getVapidPublicKey);
+  const initVapidKeys = useMutation(fn.initVapidKeys);
+  const saveSubscription = useMutation(fn.saveSubscription);
+  const deleteMySubscription = useMutation(fn.deleteMySubscription);
+  const setRemindersOnServer = useMutation(fn.setReminders);
+  const setTimezoneOnServer = useMutation(fn.setTimezone);
+
+  // Check existing endpoint against Convex
+  const existingEndpoint = currentEndpointRef.current;
+  const isSubscribed = useQuery(
+    fn.hasSubscription,
+    existingEndpoint ? { endpoint: existingEndpoint } : 'skip'
+  );
+
+  useEffect(() => {
+    if (isSubscribed !== undefined) setPushActive(!!isSubscribed);
+  }, [isSubscribed]);
+
+  // Sync reminders to Convex whenever they change
+  useEffect(() => {
+    setRemindersOnServer({ value: JSON.stringify(reminders) }).catch(() => {});
+  }, [reminders]);
+
+  // Sync timezone to Convex whenever it changes
+  useEffect(() => {
+    if (timezone) setTimezoneOnServer({ value: timezone }).catch(() => {});
+  }, [timezone]);
+
+  // Ensure VAPID keys exist when first permission granted
+  useEffect(() => {
+    if (permission === 'granted' && vapidPublicKey === null) {
+      initVapidKeys().catch(() => {});
+    }
+  }, [permission, vapidPublicKey]);
+
+  // Register push subscription once we have the VAPID key
+  useEffect(() => {
+    if (permission !== 'granted' || !vapidPublicKey || !('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.ready.then(async reg => {
+      try {
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+        }
+        currentEndpointRef.current = sub.endpoint;
+        await saveSubscription({
+          subscription: JSON.stringify(sub),
+          userAgent: navigator.userAgent,
+        });
+        setPushActive(true);
+      } catch (e) {
+        console.warn('Push subscription failed:', e);
+      }
+    });
+  }, [permission, vapidPublicKey]);
+
+  async function requestPermission() {
+    if (!('Notification' in window)) return;
+    const result = await Notification.requestPermission();
+    forceUpdate(n => n + 1);
+    return result;
+  }
+
+  async function disablePush() {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await sub.unsubscribe();
+      await deleteMySubscription({ endpoint: sub.endpoint });
+      currentEndpointRef.current = null;
+    }
+    setPushActive(false);
+  }
 
   function saveReminders(rs) {
     setReminders(rs);
@@ -55,12 +146,7 @@ export function useNotifications(blocks) {
     saveReminders(reminders.filter(r => r.id !== id));
   }
 
-  async function requestPermission() {
-    if (!('Notification' in window)) return;
-    await Notification.requestPermission();
-    forceUpdate(n => n + 1);
-  }
-
+  // Client-side fallback: still fire in-browser notifications when app is open
   useEffect(() => {
     if (permission !== 'granted') return;
     if (!blocks?.length) return;
@@ -85,7 +171,6 @@ export function useNotifications(blocks) {
           if (isDayScale) {
             const daysBack = Math.floor(reminder.offsetMinutes / 1440);
             const atTime = reminder.atTime || '09:00';
-            // Parse block date safely (avoid timezone shift)
             const [bY, bM, bD] = block.date.split('-').map(Number);
             const target = new Date(bY, bM - 1, bD);
             target.setDate(target.getDate() - daysBack);
@@ -123,5 +208,22 @@ export function useNotifications(blocks) {
     return () => clearInterval(id);
   }, [blocks, permission, reminders]);
 
-  return { permission, reminders, addReminder, updateReminder, removeReminder, requestPermission };
+  return {
+    permission,
+    pushActive,
+    reminders,
+    addReminder,
+    updateReminder,
+    removeReminder,
+    requestPermission,
+    disablePush,
+  };
+}
+
+// Convert VAPID base64url public key to Uint8Array for the browser API
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
 }

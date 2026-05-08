@@ -20,4 +20,9 @@ export default defineSchema({
     key: v.string(),
     value: v.string(),
   }).index("by_key", ["key"]),
+
+  pushSubscriptions: defineTable({
+    subscription: v.string(), // JSON of PushSubscription
+    userAgent: v.optional(v.string()),
+  }),
 });

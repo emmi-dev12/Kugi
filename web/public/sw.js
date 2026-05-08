@@ -1,4 +1,4 @@
-const CACHE = 'kugi-v5';
+const CACHE = 'kugi-v6';
 const PRECACHE = ['/', '/app', '/setup'];
 
 self.addEventListener('install', e => {
@@ -15,6 +15,32 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Push from server (works when app is closed)
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data?.json() ?? {}; } catch {}
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Kugi reminder', {
+      body: data.body || '',
+      tag: data.tag || 'kugi',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+    })
+  );
+});
+
+// Notification click — focus or open the app
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      if (clients.length) return clients[0].focus();
+      return self.clients.openWindow('/app');
+    })
+  );
+});
+
+// In-app notification via postMessage (client-side fallback)
 self.addEventListener('message', e => {
   if (e.data?.type === 'NOTIFY') {
     const { title, body, tag } = e.data;
