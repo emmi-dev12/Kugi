@@ -36,6 +36,9 @@
   display: flex; align-items: center; gap: 10px;
 }
 
+/* Settings gear — mobile only */
+.mobileSettingsBtn { display: none; }
+
 .viewToggle {
   display: flex;
   background: var(--surface2); border: 1px solid var(--border2);
@@ -244,6 +247,14 @@
   .navLabel { min-width: 0; font-size: 13px; }
   /* New Block button lives in the bottom nav + button — hide it in the header */
   .headerRight { display: none; }
+
+  .mobileSettingsBtn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   .statsBar { gap: 8px; padding: 5px 10px; overflow-x: auto; flex-wrap: nowrap; }
   .statItem { font-size: 10px; flex-shrink: 0; }

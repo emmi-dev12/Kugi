@@ -3,6 +3,8 @@ import { useBlocks, useApiKey } from '../hooks/useDB';
 import { useNotifications } from '../hooks/useNotifications';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
+import CompletedView from '../components/Calendar/CompletedView';
+import CalendarView from '../components/Calendar/CalendarView';
 import BlockModal from '../components/UI/BlockModal';
 import KugiLogo from '../components/UI/KugiLogo';
 import { CATEGORIES } from '../utils/categories';
@@ -39,11 +41,14 @@ export default function AppPage() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const navLabel = view === 'week'
     ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
-    : formatFull(currentDay);
+    : view === 'day' ? formatFull(currentDay)
+    : view === 'completed' ? 'Completed'
+    : 'Calendar';
 
   const scopeBlocks = view === 'week'
     ? blocks.filter(b => weekDays.map(toDateStr).includes(b.date))
-    : blocks.filter(b => b.date === toDateStr(currentDay));
+    : view === 'day' ? blocks.filter(b => b.date === toDateStr(currentDay))
+    : [];
   const done = scopeBlocks.filter(b => b.completed).length;
   const total = scopeBlocks.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -73,7 +78,7 @@ export default function AppPage() {
 
   function nav(dir) {
     if (view === 'week') setWeekStart(d => addDays(d, dir * 7));
-    else setCurrentDay(d => addDays(d, dir));
+    else if (view === 'day') setCurrentDay(d => addDays(d, dir));
   }
 
   function goToday() {
@@ -96,10 +101,10 @@ export default function AppPage() {
   }
   const weekDateStrs = weekDays.map(toDateStr);
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ showMiniCal = true }) => (
     <>
-      {/* Mini calendar */}
-      <div>
+      {/* Mini calendar — desktop sidebar only */}
+      {showMiniCal && <div>
         <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
         <div className={styles.miniCalGrid}>
           {['M','T','W','T','F','S','S'].map((l, i) => (
@@ -119,7 +124,7 @@ export default function AppPage() {
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* Categories */}
       <div>
@@ -236,12 +241,20 @@ export default function AppPage() {
           <div className={styles.viewToggle}>
             <button className={`${styles.viewBtn} ${view === 'week' ? styles.active : ''}`} onClick={() => setView('week')}>Week</button>
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
+            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Done</button>
           </div>
           <button className="btn-primary" onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
             New Block
           </button>
         </div>
+        {/* Settings gear — mobile only */}
+        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
       </header>
 
       <div className={styles.body}>
@@ -252,7 +265,7 @@ export default function AppPage() {
 
         {/* MAIN */}
         <main className={styles.main}>
-          {view === 'week' ? (
+          {view === 'week' && (
             <WeekView
               weekStart={weekStart}
               blocks={blocks}
@@ -264,7 +277,8 @@ export default function AppPage() {
               onAddBlock={dateStr => openModal(null, dateStr)}
               onDayClick={day => { setCurrentDay(day); setView('day'); }}
             />
-          ) : (
+          )}
+          {view === 'day' && (
             <DayView
               day={currentDay}
               blocks={blocks}
@@ -275,6 +289,19 @@ export default function AppPage() {
               onDeleteBlock={deleteBlock}
               onToggleBlock={toggleComplete}
               onAddBlock={dateStr => openModal(null, dateStr)}
+            />
+          )}
+          {view === 'completed' && (
+            <CompletedView
+              blocks={blocks}
+              onToggle={toggleComplete}
+              onEdit={block => openModal(block)}
+            />
+          )}
+          {view === 'calendar' && (
+            <CalendarView
+              blocks={blocks}
+              onDaySelect={day => { setCurrentDay(day); setView('day'); }}
             />
           )}
         </main>
@@ -305,7 +332,7 @@ export default function AppPage() {
             <div className={styles.sheetHandle} />
             <div className={styles.sheetTitle}>Settings</div>
             <div className={styles.sheetContent}>
-              <SidebarContent />
+              <SidebarContent showMiniCal={false} />
             </div>
           </div>
         </div>
@@ -345,24 +372,26 @@ export default function AppPage() {
           </div>
         </button>
 
-        <button className={`${styles.bottomNavItem}`} onClick={goToday}>
+        <button className={`${styles.bottomNavItem} ${view === 'completed' && !settingsOpen ? styles.navActive : ''}`}
+          onClick={() => { setView('completed'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
-              <circle cx="11" cy="11" r="3" fill="currentColor"/>
+              <circle cx="11" cy="11" r="8.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+              <path d="M7 11l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Today</span>
+          <span className={styles.bottomNavLabel}>Done</span>
         </button>
 
-        <button className={`${styles.bottomNavItem} ${settingsOpen ? styles.navActive : ''}`} onClick={() => setSettingsOpen(v => !v)}>
+        <button className={`${styles.bottomNavItem} ${view === 'calendar' && !settingsOpen ? styles.navActive : ''}`}
+          onClick={() => { setView('calendar'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
-              <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+              <rect x="3" y="5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M7 3v4M15 3v4M3 10h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Settings</span>
+          <span className={styles.bottomNavLabel}>Cal</span>
         </button>
       </nav>
     </div>
