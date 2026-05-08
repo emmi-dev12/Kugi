@@ -3,6 +3,8 @@ import { useBlocks, useApiKey } from '../hooks/useDB';
 import { useNotifications } from '../hooks/useNotifications';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
+import CompletedView from '../components/Calendar/CompletedView';
+import CalendarView from '../components/Calendar/CalendarView';
 import BlockModal from '../components/UI/BlockModal';
 import KugiLogo from '../components/UI/KugiLogo';
 import { CATEGORIES } from '../utils/categories';
@@ -10,7 +12,7 @@ import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
 } from '../utils/dates';
-import { getTimezone, setTimezone, ALL_TIMEZONES } from '../utils/timezone.js';
+import { getTZ, setTZ, allTimezones } from '../utils/timezone';
 import styles from './AppPage.module.css';
 
 function changeConvexUrl() {
@@ -27,13 +29,14 @@ export default function AppPage() {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const [view, setView] = useState(isMobile ? 'day' : 'week');
-  const [dayLayout, setDayLayout] = useState('timeline');
+  const [dayLayout, setDayLayout] = useState('bento');
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [currentDay, setCurrentDay] = useState(() => todayZurich());
   const [activeCategory, setActiveCategory] = useState(null);
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timezone, setTimezone] = useState(() => getTZ());
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   // On mobile (<= 768px): show 3 days centred on currentDay in the "week" view
@@ -41,12 +44,15 @@ export default function AppPage() {
   const viewDays = isMobile && view === 'week' ? mobileDays : weekDays;
 
   const navLabel = view === 'week'
-    ? `${formatShort(viewDays[0])} – ${formatShort(viewDays[viewDays.length - 1])} ${viewDays[0].getFullYear()}`
-    : formatFull(currentDay);
+    ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
+    : view === 'day' ? formatFull(currentDay)
+    : view === 'completed' ? 'Completed'
+    : 'Calendar';
 
   const scopeBlocks = view === 'week'
-    ? blocks.filter(b => viewDays.map(toDateStr).includes(b.date))
-    : blocks.filter(b => b.date === toDateStr(currentDay));
+    ? blocks.filter(b => weekDays.map(toDateStr).includes(b.date))
+    : view === 'day' ? blocks.filter(b => b.date === toDateStr(currentDay))
+    : [];
   const done = scopeBlocks.filter(b => b.completed).length;
   const total = scopeBlocks.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -57,6 +63,7 @@ export default function AppPage() {
       if (e.key === 'n') openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()));
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
+      if (e.key === 'f') setView('completed');
       if (e.key === 't' && view === 'day') setDayLayout('timeline');
       if (e.key === 'b' && view === 'day') setDayLayout('bento');
       if (e.key === 'Escape') setSettingsOpen(false);
@@ -75,19 +82,14 @@ export default function AppPage() {
   }
 
   function nav(dir) {
-    if (view === 'week' && !isMobile) {
-      setWeekStart(d => addDays(d, dir * 7));
-    } else if (view === 'week' && isMobile) {
-      // 3-day mobile view: slide centre day by 1
-      setCurrentDay(d => addDays(d, dir));
-    } else {
-      setCurrentDay(d => addDays(d, dir));
-    }
+    if (view === 'week') setWeekStart(d => addDays(d, dir * 7));
+    else if (view === 'day') setCurrentDay(d => addDays(d, dir));
   }
 
   function goToday() {
     setWeekStart(getWeekStart(new Date()));
     setCurrentDay(todayZurich());
+    setView('day');
   }
 
   // Mini calendar
@@ -104,10 +106,10 @@ export default function AppPage() {
   }
   const weekDateStrs = weekDays.map(toDateStr);
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ showMiniCal = true }) => (
     <>
-      {/* Mini calendar */}
-      <div>
+      {/* Mini calendar — desktop sidebar only */}
+      {showMiniCal && <div>
         <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
         <div className={styles.miniCalGrid}>
           {['M','T','W','T','F','S','S'].map((l, i) => (
@@ -127,7 +129,7 @@ export default function AppPage() {
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* Categories */}
       <div>
@@ -181,11 +183,16 @@ export default function AppPage() {
       {/* Timezone */}
       <div className={styles.notifSection}>
         <div className={styles.sectionTitle}>Timezone</div>
-        <select className={styles.tzSelect}
-          value={getTimezone()}
-          onChange={e => setTimezone(e.target.value)}>
-          {ALL_TIMEZONES.map(tz => (
-            <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+        <select
+          className={styles.notifSelect}
+          value={timezone}
+          onChange={e => {
+            setTZ(e.target.value);
+            setTimezone(e.target.value);
+          }}
+        >
+          {allTimezones().map(tz => (
+            <option key={tz} value={tz}>{tz}</option>
           ))}
         </select>
       </div>
@@ -202,6 +209,14 @@ export default function AppPage() {
           {apiKey && <>
             <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
               {apiKeyVisible ? '🙈' : '👁'}
+            </button>
+            <button className={styles.apiToggle} title="Copy key" onClick={() => navigator.clipboard.writeText(apiKey).then(() => {
+              const btn = document.activeElement;
+              const prev = btn.textContent;
+              btn.textContent = '✓';
+              setTimeout(() => { btn.textContent = prev; }, 1200);
+            })}>
+              ⎘
             </button>
             <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
               ↺
@@ -239,12 +254,20 @@ export default function AppPage() {
           <div className={styles.viewToggle}>
             <button className={`${styles.viewBtn} ${view === 'week' ? styles.active : ''}`} onClick={() => setView('week')}>Week</button>
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
+            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
           <button className="btn-primary" onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
             New Block
           </button>
         </div>
+        {/* Settings gear — mobile only */}
+        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
       </header>
 
       <div className={styles.body}>
@@ -255,7 +278,7 @@ export default function AppPage() {
 
         {/* MAIN */}
         <main className={styles.main}>
-          {view === 'week' ? (
+          {view === 'week' && (
             <WeekView
               days={viewDays}
               blocks={blocks}
@@ -267,7 +290,8 @@ export default function AppPage() {
               onAddBlock={dateStr => openModal(null, dateStr)}
               onDayClick={day => { setCurrentDay(day); setView('day'); }}
             />
-          ) : (
+          )}
+          {view === 'day' && (
             <DayView
               day={currentDay}
               blocks={blocks}
@@ -278,6 +302,19 @@ export default function AppPage() {
               onDeleteBlock={deleteBlock}
               onToggleBlock={toggleComplete}
               onAddBlock={dateStr => openModal(null, dateStr)}
+            />
+          )}
+          {view === 'completed' && (
+            <CompletedView
+              blocks={blocks}
+              onToggle={toggleComplete}
+              onEdit={block => openModal(block)}
+            />
+          )}
+          {view === 'calendar' && (
+            <CalendarView
+              blocks={blocks}
+              onDaySelect={day => { setCurrentDay(day); setView('day'); }}
             />
           )}
         </main>
@@ -308,7 +345,7 @@ export default function AppPage() {
             <div className={styles.sheetHandle} />
             <div className={styles.sheetTitle}>Settings</div>
             <div className={styles.sheetContent}>
-              <SidebarContent />
+              <SidebarContent showMiniCal={false} />
             </div>
           </div>
         </div>
@@ -348,34 +385,26 @@ export default function AppPage() {
           </div>
         </button>
 
-        <button className={`${styles.bottomNavItem}`} onClick={() => { goToday(); setSettingsOpen(false); }}>
+        <button className={`${styles.bottomNavItem} ${view === 'completed' && !settingsOpen ? styles.navActive : ''}`}
+          onClick={() => { setView('completed'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
-              <circle cx="11" cy="11" r="3" fill="currentColor"/>
+              <circle cx="11" cy="11" r="8.5" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+              <path d="M7 11l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Today</span>
+          <span className={styles.bottomNavLabel}>Finished</span>
         </button>
 
-        <button className={`${styles.bottomNavItem}`} onClick={() => window.location.reload()}>
+        <button className={`${styles.bottomNavItem} ${view === 'calendar' && !settingsOpen ? styles.navActive : ''}`}
+          onClick={() => { setView('calendar'); setSettingsOpen(false); }}>
           <span className={styles.bottomNavIcon}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M4 11a7 7 0 0 1 12.5-4.33M18 11a7 7 0 0 1-12.5 4.33" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
-              <path d="M16.5 4l1 3-3 .5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+              <rect x="3" y="5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
+              <path d="M7 3v4M15 3v4M3 10h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Reload</span>
-        </button>
-
-        <button className={`${styles.bottomNavItem} ${settingsOpen ? styles.navActive : ''}`} onClick={() => setSettingsOpen(v => !v)}>
-          <span className={styles.bottomNavIcon}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
-              <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
-            </svg>
-          </span>
-          <span className={styles.bottomNavLabel}>Settings</span>
+          <span className={styles.bottomNavLabel}>Cal</span>
         </button>
       </nav>
     </div>

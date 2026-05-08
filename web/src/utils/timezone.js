@@ -1,25 +1,24 @@
-const KEY = 'kugiTimezone';
+const TZ_KEY = 'kugiTimezone';
 
-export function getTimezone() {
-  return localStorage.getItem(KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+export function getTZ() {
+  return localStorage.getItem(TZ_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-export function setTimezone(tz) {
-  localStorage.setItem(KEY, tz);
-  window.location.reload();
+export function setTZ(tz) {
+  localStorage.setItem(TZ_KEY, tz);
 }
 
-// Intl.supportedValuesOf not available in Safari < 15.4 — fallback to common list
-const FALLBACK_TZ = [
-  'Pacific/Honolulu','America/Anchorage','America/Los_Angeles','America/Denver',
-  'America/Chicago','America/New_York','America/Sao_Paulo','Atlantic/Azores',
-  'Europe/London','Europe/Paris','Europe/Berlin','Europe/Zurich','Europe/Rome',
-  'Europe/Helsinki','Europe/Moscow','Asia/Dubai','Asia/Karachi','Asia/Kolkata',
-  'Asia/Dhaka','Asia/Bangkok','Asia/Singapore','Asia/Tokyo','Asia/Seoul',
-  'Australia/Sydney','Pacific/Auckland',
-];
-
-export const ALL_TIMEZONES = (() => {
-  try { return Intl.supportedValuesOf('timeZone'); }
-  catch { return FALLBACK_TZ; }
-})();
+export function allTimezones() {
+  try {
+    return Intl.supportedValuesOf('timeZone');
+  } catch {
+    return [
+      'UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Zurich',
+      'Europe/Madrid', 'Europe/Rome', 'Europe/Amsterdam', 'Europe/Stockholm',
+      'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+      'America/Toronto', 'America/Vancouver', 'America/Sao_Paulo',
+      'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Singapore', 'Asia/Dubai',
+      'Asia/Kolkata', 'Asia/Seoul', 'Australia/Sydney', 'Pacific/Auckland',
+    ];
+  }
+}

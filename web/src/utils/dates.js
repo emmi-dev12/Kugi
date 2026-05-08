@@ -1,13 +1,11 @@
-import { getTimezone } from './timezone.js';
-
-const TZ = () => getTimezone();
+import { getTZ } from './timezone';
 
 export function now() {
   return new Date();
 }
 
 export function toZurich(date) {
-  return new Date(date.toLocaleString('en-US', { timeZone: TZ() }));
+  return new Date(date.toLocaleString('en-US', { timeZone: getTZ() }));
 }
 
 export function todayZurich() {
@@ -40,11 +38,11 @@ export function formatShort(date) {
 }
 
 export function formatFull(date) {
-  return date.toLocaleDateString('en-US', { timeZone: TZ(), weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { timeZone: getTZ(), weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function formatMonthYear(date) {
-  return date.toLocaleDateString('en-US', { timeZone: TZ(), month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { timeZone: getTZ(), month: 'long', year: 'numeric' });
 }
 
 export function isToday(date) {

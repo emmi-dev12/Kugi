@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toDateStr, isToday, formatFull, minsToPx, timeToMins } from '../../utils/dates';
+import { getTZ } from '../../utils/timezone';
 import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
 import BlockCard from './BlockCard';
 import styles from './DayView.module.css';
@@ -22,11 +23,11 @@ export default function DayView({ day, blocks, activeCategory, layout, onSetLayo
       <div className={styles.header}>
         <div>
           <div className={styles.date}>
-            {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Europe/Zurich' })}
+            {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: getTZ() })}
             {isToday(day) && <span className={styles.todayTag}> — Today</span>}
             <br />
             <span className={styles.dateSub}>
-              {day.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Zurich' })}
+              {day.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: getTZ() })}
             </span>
           </div>
           <div className={styles.subtitle}>
@@ -151,7 +152,7 @@ function BentoBody({ dayBlocks, dateStr, onEditBlock, onDeleteBlock, onToggleBlo
           <rect x="3" y="26" width="19" height="19" rx="5" fill="rgba(16,185,129,0.25)"/>
           <rect x="26" y="26" width="19" height="19" rx="5" fill="rgba(244,63,94,0.25)"/>
         </svg>
-        <span>Kein Block heute. Füge einen hinzu!</span>
+        <span>No blocks today. Tap + to add one.</span>
       </div>
     );
   }

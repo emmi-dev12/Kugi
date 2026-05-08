@@ -28,8 +28,8 @@ const fn = {
 };
 
 export function useBlocks() {
-  // Normalize _id → id so components don't need to know Convex internals
   const raw = useQuery(fn.blocks.list) ?? [];
+  // Convex documents use _id; normalise to .id so the rest of the UI is consistent
   const blocks = raw.map(b => ({ ...b, id: b._id }));
   const createMutation   = useMutation(fn.blocks.create);
   const updateMutation   = useMutation(fn.blocks.update);

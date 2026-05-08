@@ -10,8 +10,10 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   return (
-    <div className={styles.wrap} data-cols={days.length}>
-      <div className={styles.headers} style={{ gridTemplateColumns: `repeat(${days.length},1fr)` }}>
+    <div className={styles.wrap}>
+      {/* scrollInner keeps headers + grid in one horizontal scroll unit on mobile */}
+      <div className={styles.scrollInner}>
+      <div className={styles.headers}>
         {days.map((day, i) => (
           <div key={i} className={`${styles.dayHeader} ${isToday(day) ? styles.today : ''}`}
             onClick={() => onDayClick(day)}>
@@ -51,6 +53,7 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
           );
         })}
       </div>
+      </div>{/* end scrollInner */}
     </div>
   );
 }
