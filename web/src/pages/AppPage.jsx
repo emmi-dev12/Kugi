@@ -40,10 +40,20 @@ export default function AppPage() {
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timezone, setTimezone] = useState(() => getTZ());
+  const [theme, setTheme] = useState(() => localStorage.getItem('kugiTheme') || 'dark');
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const historyRef = useRef([]);
   const futureRef = useRef([]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('kugiTheme', theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  }
 
   function showToast(msg) {
     setToast(msg);
@@ -290,6 +300,16 @@ export default function AppPage() {
             <option key={tz} value={tz}>{tz}</option>
           ))}
         </select>
+      </div>
+
+      {/* Theme */}
+      <div className={styles.notifSection}>
+        <div className={styles.sectionTitle}>Appearance</div>
+        <button className={styles.themeToggle} onClick={toggleTheme}>
+          {theme === 'dark'
+            ? <><span>☀️</span> Switch to Light</>
+            : <><span>🌙</span> Switch to Dark</>}
+        </button>
       </div>
 
       {/* Settings */}

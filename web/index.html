@@ -20,6 +20,12 @@
   </head>
   <body>
     <script>
+      (function() {
+        var t = localStorage.getItem('kugiTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+    <script>
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         window.__pwaInstallPrompt = e;

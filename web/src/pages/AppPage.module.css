@@ -381,3 +381,24 @@
 @media (max-width: 768px) {
   .searchBtn { display: none; }
 }
+
+/* Theme toggle */
+.themeToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+}
+.themeToggle:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
