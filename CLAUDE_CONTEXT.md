@@ -31,7 +31,7 @@ Kugi is a **personal block calendar PWA** (Progressive Web App). Users schedule 
 - `web/src/utils/dates.js` — all date helpers; imports `getTZ()` dynamically (no hardcoded timezone).
 - `web/src/utils/timezone.js` — reads/writes `kugiTimezone` from localStorage, falls back to browser TZ.
 - `web/src/hooks/useDB.js` — Convex queries/mutations, `_id` → `id` normalization.
-- `web/src/hooks/useCategories.js` — merges default CATEGORIES + localStorage `kugiCustomCategories`.
+- `web/src/hooks/useCategories.js` — merges default CATEGORIES + Convex-synced custom categories. Uses local `useState` for instant UI updates; syncs to/from Convex `settings:customCategories`; localStorage as load-time fallback.
 - `web/src/hooks/useNotifications.js` — push notification scheduling.
 
 ---
@@ -79,7 +79,8 @@ AppPage.jsx           — root: state, nav, sidebar, bottom nav, keyboard shortc
 9. **PWA icon** — purple gradient with 4 white rounded squares; generated in pure Node.js PNG encoder with 8× SSAA
 10. **Copy button** — next to API key in sidebar (⎘ icon, flashes ✓)
 11. **Block details sheet** — read-only portal showing all block fields; accessible from mobile action sheet and desktop ℹ button
-12. **Custom categories** — add/remove categories beyond the 8 defaults; name + emoji + color picker; persisted in `localStorage`; appear in BlockModal dropdown and sidebar filter
+12. **Custom categories** — add/edit/remove categories beyond the 8 defaults; name + emoji + color picker; synced to Convex (`settings` table, key `customCategories`); appear in BlockModal dropdown and sidebar filter
+13. **Multi-day blocks** — optional `end_date` field; block appears on every day it spans in WeekView and DayView; BlockModal shows side-by-side Start date / End date fields; details sheet shows date range
 
 ---
 
@@ -107,5 +108,9 @@ AppPage.jsx           — root: state, nav, sidebar, bottom nav, keyboard shortc
 - SW cache: after any JS change, bump `CACHE_NAME` in `web/public/sw.js` or users get stale app
 - `npm run build` needs `node_modules` installed in `web/` — run `npm install` there first if missing
 - The worktree for Claude sessions is at `.claude/worktrees/<name>`; changes must be committed to `main` for deployment
+- **Convex has two deployments**: dev (`artful-gnat-488`) and prod (`elated-frog-591`). The live app connects to dev. Deploy new functions with `npx convex dev --once` (not `npx convex deploy` which targets prod). The `.env.local` needed for deployment lives in `.claude/worktrees/stupefied-curran-04bc85/app/.env.local` — copy it to `app/.env.local` before deploying.
+- **Convex functions not found after deploy**: if you deploy with `npx convex deploy` it goes to prod; app connects to dev — run `npx convex dev --once` instead.
+- **`useQuery` returns `undefined` while loading** — never derive state purely from `useQuery` result without a `useState` fallback, or mutations won't reflect instantly. Pattern: `useState` for immediate UI, `useEffect` to sync when Convex data arrives.
+- **Controlled emoji input bug**: if `value={emoji}` on a controlled input, typing appends to the current emoji and the Intl.Segmenter picks the first segment (the old emoji) — nothing changes. Fix: use a separate `draft` state for the input value, use current emoji as `placeholder` only.
 - **GitHub web merge editor silently drops CSS property values** — when resolving conflicts via GitHub's web UI, `grid-template-columns` and similar shorthand values were stripped from `.headers` and `.grid` in WeekView.module.css, causing blocks to stack vertically instead of a 7-column grid. Always verify CSS-heavy files after a web-UI merge. Fix: restore `grid-template-columns: repeat(7,1fr)` to both rules.
 - **WeekView always renders 7 days** — never use a "3-day mobile view" with conditional inline `gridTemplateColumns`. Instead, wrap `.headers` + `.grid` in `.scrollInner` and use `min-width: 630px` + `overflow-x: auto` at the `.scrollInner` level so both scroll together horizontally on narrow screens.
