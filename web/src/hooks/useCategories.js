@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { makeFunctionReference } from 'convex/server';
 import { CATEGORIES } from '../utils/categories';
@@ -15,23 +15,36 @@ function loadLocal() {
 export function useCategories() {
   const remote = useQuery(getCustomCategories);
   const setRemote = useMutation(setCustomCategories);
+  const [custom, setCustom] = useState(loadLocal);
 
-  // While Convex is loading, fall back to localStorage so UI is instant
-  const custom = remote ?? loadLocal();
+  // When Convex data arrives, take it as the source of truth
+  useEffect(() => {
+    if (remote !== undefined) {
+      setCustom(remote);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+    }
+  }, [remote]);
+
   const categories = { ...CATEGORIES, ...custom };
 
   const addCategory = useCallback((name, color, emoji) => {
     if (!name.trim()) return;
-    const next = { ...loadLocal(), [name.trim()]: { color, emoji } };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setRemote({ value: JSON.stringify(next) });
+    setCustom(prev => {
+      const next = { ...prev, [name.trim()]: { color, emoji } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setRemote({ value: JSON.stringify(next) });
+      return next;
+    });
   }, [setRemote]);
 
   const removeCategory = useCallback((name) => {
-    const next = { ...loadLocal() };
-    delete next[name];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setRemote({ value: JSON.stringify(next) });
+    setCustom(prev => {
+      const next = { ...prev };
+      delete next[name];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setRemote({ value: JSON.stringify(next) });
+      return next;
+    });
   }, [setRemote]);
 
   return { categories, customCategories: custom, addCategory, removeCategory };
