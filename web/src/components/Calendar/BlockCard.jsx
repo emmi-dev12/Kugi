@@ -9,6 +9,7 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
   const [detailsOpen, setDetailsOpen] = useState(false);
   const color = getColor(block.category);
   const rgb = hexRgb(color);
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const time = block.start_time
     ? `${block.start_time}${block.end_time ? ' – ' + block.end_time : ''}`
     : null;
@@ -28,9 +29,9 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
       <div
         className={`${styles.card} ${styles[variant]} ${block.completed ? styles.completed : ''}`}
         style={{
-          background: `rgba(${rgb},${variant === 'bento' ? '0.15' : '0.14'})`,
-          borderColor: `rgba(${rgb},${variant === 'bento' ? '0.32' : '0.28'})`,
-          borderLeft: `3px solid rgba(${rgb},0.7)`,
+          background: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.22 : 0.15) : (isLight ? 0.18 : 0.14)})`,
+          borderColor: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.55 : 0.32) : (isLight ? 0.45 : 0.28)})`,
+          borderLeft: `3px solid rgba(${rgb},${isLight ? 0.9 : 0.7})`,
         }}
         draggable={draggable}
         onDragStart={onDragStart}

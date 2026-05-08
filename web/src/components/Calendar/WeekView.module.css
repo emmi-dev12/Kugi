@@ -17,7 +17,7 @@
   font-size: 18px; font-weight: 700; color: var(--text-muted);
   width: 36px; height: 36px; border-radius: 50%; margin: 4px auto 0;
 }
-.today .dayNum { background: var(--text); color: #080808; font-weight: 800; }
+.today .dayNum { background: var(--today-bg); color: var(--today-text); font-weight: 800; }
 
 .grid {
   display: grid; grid-template-columns: repeat(7,1fr);
@@ -36,7 +36,7 @@
   cursor: pointer; transition: all 0.15s;
 }
 .dropZone:hover { border-color: var(--border2); background: var(--surface); color: var(--text-muted); }
-.dropZone.dragOver { border-color: rgba(255,255,255,0.2); background: var(--surface2); }
+.dropZone.dragOver { border-color: var(--card-drag-over); background: var(--surface2); }
 
 /* Mobile: single horizontal scroll unit — headers and grid scroll together */
 @media (max-width: 768px) {
