@@ -371,6 +371,9 @@ export default function AppPage() {
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
             <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
+          <button className="btn-icon" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={{ fontSize: 15 }}>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title="Search blocks (/)">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
