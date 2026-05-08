@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
 function generateKey(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -29,6 +30,33 @@ export const ensureApiKey = mutation({
     const key = generateKey();
     await ctx.db.insert("settings", { key: "apiKey", value: key });
     return key;
+  },
+});
+
+export const getCustomCategories = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "customCategories"))
+      .first();
+    if (!row) return {};
+    try { return JSON.parse(row.value); } catch { return {}; }
+  },
+});
+
+export const setCustomCategories = mutation({
+  args: { value: v.string() },
+  handler: async (ctx, { value }) => {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "customCategories"))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value });
+    } else {
+      await ctx.db.insert("settings", { key: "customCategories", value });
+    }
   },
 });
 
