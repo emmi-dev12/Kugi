@@ -1,24 +1,58 @@
 import { useEffect, useRef, useState } from 'react';
 
-const STORAGE_KEY = 'kugiNotifyMinutes';
+const REMINDERS_KEY = 'kugiReminders';
 const FIRED_KEY = 'kugiNotifyFired';
 const CHECK_INTERVAL = 60_000;
+
+function loadReminders() {
+  try {
+    const v = JSON.parse(localStorage.getItem(REMINDERS_KEY));
+    if (Array.isArray(v) && v.length) return v;
+  } catch {}
+  // Migrate from old single-value setting
+  const old = localStorage.getItem('kugiNotifyMinutes');
+  return [{ id: 'default', offsetMinutes: old ? Number(old) : 15, atTime: '09:00', message: '' }];
+}
+
+function loadFired() {
+  try { return new Set(JSON.parse(localStorage.getItem(FIRED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+
+function saveFired(set) {
+  try { localStorage.setItem(FIRED_KEY, JSON.stringify([...set])); } catch {}
+}
+
+function fireNotification(title, body, tag) {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'NOTIFY', title, body, tag });
+  } else {
+    new Notification(title, { body, tag, icon: '/icons/icon-192.png' });
+  }
+}
 
 export function useNotifications(blocks) {
   const [, forceUpdate] = useState(0);
   const permission = 'Notification' in window ? Notification.permission : 'unsupported';
-  const [minutesBefore, setMinutesBefore] = useState(() => {
-    const v = localStorage.getItem(STORAGE_KEY);
-    return v ? Number(v) : 15;
-  });
-  const firedRef = useRef(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(FIRED_KEY) || '[]')); }
-    catch { return new Set(); }
-  });
+  const [reminders, setReminders] = useState(loadReminders);
+  const firedRef = useRef(loadFired());
 
-  function setAndSave(mins) {
-    setMinutesBefore(mins);
-    localStorage.setItem(STORAGE_KEY, String(mins));
+  function saveReminders(rs) {
+    setReminders(rs);
+    localStorage.setItem(REMINDERS_KEY, JSON.stringify(rs));
+  }
+
+  function addReminder() {
+    if (reminders.length >= 3) return;
+    saveReminders([...reminders, { id: Date.now().toString(), offsetMinutes: 30, atTime: '09:00', message: '' }]);
+  }
+
+  function updateReminder(id, patch) {
+    saveReminders(reminders.map(r => r.id === id ? { ...r, ...patch } : r));
+  }
+
+  function removeReminder(id) {
+    saveReminders(reminders.filter(r => r.id !== id));
   }
 
   async function requestPermission() {
@@ -33,54 +67,61 @@ export function useNotifications(blocks) {
 
     function check() {
       const now = new Date();
-      const fired = firedRef.current();
       const todayStr = now.toISOString().slice(0, 10);
+      const fired = firedRef.current;
 
       blocks.forEach(block => {
-        if (!block.start_time || block.completed) return;
+        if (block.completed) return;
         if (block.date < todayStr) return;
-        // null means explicitly disabled for this block
-        if (block.notify_before === null) return;
 
-        // Per-block override or global default
-        const mins = block.notify_before !== undefined ? block.notify_before : minutesBefore;
+        reminders.forEach(reminder => {
+          const key = `${block._id}-${reminder.id}`;
+          if (fired.has(key)) return;
 
-        const [h, m] = block.start_time.split(':').map(Number);
-        const blockTime = new Date(block.date);
-        blockTime.setHours(h, m, 0, 0);
-        const diffMs = blockTime - now;
-        const diffMins = diffMs / 60_000;
+          const isDayScale = reminder.offsetMinutes >= 1440;
+          let shouldFire = false;
+          let autoLabel = '';
 
-        const key = `${block._id}-${mins}`;
-        if (diffMins > 0 && diffMins <= mins + 1 && diffMins > mins - 1 && !fired.has(key)) {
-          fired.add(key);
-          try { localStorage.setItem(FIRED_KEY, JSON.stringify([...fired])); } catch {}
-
-          const minsLeft = Math.round(diffMins);
-          const label = minsLeft <= 1 ? 'starting now' : `in ${minsLeft} min`;
-
-          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-              type: 'NOTIFY',
-              title: `${block.emoji || '📅'} ${block.title}`,
-              body: `${label} · ${block.start_time}${block.end_time ? '–' + block.end_time : ''}`,
-              tag: key,
-            });
-          } else {
-            new Notification(`${block.emoji || '📅'} ${block.title}`, {
-              body: `${label} · ${block.start_time}${block.end_time ? '–' + block.end_time : ''}`,
-              tag: key,
-              icon: '/icons/icon-192.png',
-            });
+          if (isDayScale) {
+            const daysBack = Math.floor(reminder.offsetMinutes / 1440);
+            const atTime = reminder.atTime || '09:00';
+            // Parse block date safely (avoid timezone shift)
+            const [bY, bM, bD] = block.date.split('-').map(Number);
+            const target = new Date(bY, bM - 1, bD);
+            target.setDate(target.getDate() - daysBack);
+            const [th, tm] = atTime.split(':').map(Number);
+            target.setHours(th, tm, 0, 0);
+            const diffMins = (target - now) / 60_000;
+            shouldFire = diffMins >= -1 && diffMins < 1;
+            autoLabel = daysBack === 1 ? 'Tomorrow' : `In ${daysBack} days`;
+          } else if (block.start_time) {
+            const [bY, bM, bD] = block.date.split('-').map(Number);
+            const [h, m] = block.start_time.split(':').map(Number);
+            const blockTime = new Date(bY, bM - 1, bD, h, m, 0, 0);
+            const diffMins = (blockTime - now) / 60_000;
+            const off = reminder.offsetMinutes;
+            shouldFire = diffMins > 0 && diffMins <= off + 1 && diffMins > off - 1;
+            const left = Math.round(diffMins);
+            autoLabel = left <= 1 ? 'Starting now' : `In ${left} min`;
           }
-        }
+
+          if (shouldFire) {
+            fired.add(key);
+            saveFired(fired);
+            const timeStr = block.start_time
+              ? ` · ${block.start_time}${block.end_time ? '–' + block.end_time : ''}`
+              : '';
+            const body = reminder.message || `${autoLabel}${timeStr}`;
+            fireNotification(`${block.emoji || '📅'} ${block.title}`, body, key);
+          }
+        });
       });
     }
 
     check();
     const id = setInterval(check, CHECK_INTERVAL);
     return () => clearInterval(id);
-  }, [blocks, permission, minutesBefore]);
+  }, [blocks, permission, reminders]);
 
-  return { permission, minutesBefore, setMinutesBefore: setAndSave, requestPermission };
+  return { permission, reminders, addReminder, updateReminder, removeReminder, requestPermission };
 }

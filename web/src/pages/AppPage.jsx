@@ -28,7 +28,7 @@ export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
-  const { permission, minutesBefore, setMinutesBefore, requestPermission } = useNotifications(blocks);
+  const { permission, reminders, addReminder, updateReminder, removeReminder, requestPermission } = useNotifications(blocks);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const [view, setView] = useState(isMobile ? 'day' : 'week');
@@ -290,22 +290,71 @@ export default function AppPage() {
         <div className={styles.sectionTitle}>Notifications</div>
         {permission === 'unsupported' ? (
           <p className={styles.apiHint}>Not supported in this browser.</p>
-        ) : permission === 'granted' ? (
-          <div className={styles.notifRow}>
-            <span className={styles.notifLabel}>Notify me</span>
-            <select className={styles.notifSelect} value={minutesBefore}
-              onChange={e => setMinutesBefore(Number(e.target.value))}>
-              {[5, 10, 15, 20, 30, 45, 60].map(m => (
-                <option key={m} value={m}>{m} min before</option>
-              ))}
-            </select>
-          </div>
         ) : permission === 'denied' ? (
           <p className={styles.apiHint}>Notifications blocked — enable in browser settings.</p>
-        ) : (
+        ) : permission !== 'granted' ? (
           <button className={styles.notifEnableBtn} onClick={requestPermission}>
             Enable notifications
           </button>
+        ) : (
+          <div className={styles.reminderList}>
+            {reminders.map(r => {
+              const isDayScale = r.offsetMinutes >= 1440;
+              return (
+                <div key={r.id} className={styles.reminderCard}>
+                  <div className={styles.reminderRow}>
+                    <select
+                      className={styles.reminderSelect}
+                      value={r.offsetMinutes}
+                      onChange={e => updateReminder(r.id, { offsetMinutes: Number(e.target.value) })}
+                    >
+                      {[
+                        [5,   '5 min before'],
+                        [10,  '10 min before'],
+                        [15,  '15 min before'],
+                        [20,  '20 min before'],
+                        [30,  '30 min before'],
+                        [45,  '45 min before'],
+                        [60,  '1 hour before'],
+                        [120, '2 hours before'],
+                        [180, '3 hours before'],
+                        [360, '6 hours before'],
+                        [720, '12 hours before'],
+                        [1440,'1 day before'],
+                        [2880,'2 days before'],
+                        [4320,'3 days before'],
+                      ].map(([v, label]) => (
+                        <option key={v} value={v}>{label}</option>
+                      ))}
+                    </select>
+                    <button className={styles.reminderDelete} onClick={() => removeReminder(r.id)} title="Remove">✕</button>
+                  </div>
+                  {isDayScale && (
+                    <div className={styles.reminderRow}>
+                      <span className={styles.reminderAtLabel}>at</span>
+                      <input
+                        type="time"
+                        className={styles.reminderTime}
+                        value={r.atTime || '09:00'}
+                        onChange={e => updateReminder(r.id, { atTime: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  <input
+                    className={styles.reminderMsg}
+                    placeholder="Custom message (optional)"
+                    value={r.message || ''}
+                    onChange={e => updateReminder(r.id, { message: e.target.value })}
+                  />
+                </div>
+              );
+            })}
+            {reminders.length < 3 && (
+              <button className={styles.addReminderBtn} onClick={addReminder}>
+                + Add reminder
+              </button>
+            )}
+          </div>
         )}
       </div>
 
