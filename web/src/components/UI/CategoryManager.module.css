@@ -10,6 +10,15 @@
 .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .itemEmoji { font-size: 13px; flex-shrink: 0; }
 .itemName { flex: 1; }
+.editBtn {
+  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.editBtn:hover { background: rgba(79,124,255,0.12); color: #7a9fff; }
+
 .removeBtn {
   width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
   background: none; border: none; cursor: pointer;

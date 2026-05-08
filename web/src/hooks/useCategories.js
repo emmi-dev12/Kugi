@@ -47,5 +47,18 @@ export function useCategories() {
     });
   }, [setRemote]);
 
-  return { categories, customCategories: custom, addCategory, removeCategory };
+  const editCategory = useCallback((oldName, newName, color, emoji) => {
+    if (!newName.trim()) return;
+    setCustom(prev => {
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) {
+        next[k === oldName ? newName.trim() : k] = k === oldName ? { color, emoji } : v;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setRemote({ value: JSON.stringify(next) });
+      return next;
+    });
+  }, [setRemote]);
+
+  return { categories, customCategories: custom, addCategory, removeCategory, editCategory };
 }

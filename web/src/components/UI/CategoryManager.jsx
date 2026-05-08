@@ -1,20 +1,55 @@
 import { useState } from 'react';
-import { CATEGORIES, EMOJIS } from '../../utils/categories';
+import { CATEGORIES } from '../../utils/categories';
 import styles from './CategoryManager.module.css';
 
 const DEFAULT_COLORS = ['#4f7cff','#8b5cf6','#10b981','#f59e0b','#f43f5e','#ec4899','#6b7280','#94a3b8','#0ea5e9','#84cc16'];
 
-export default function CategoryManager({ categories, customCategories, onAdd, onRemove }) {
+function EmojiInput({ emoji, onEmoji }) {
+  const [draft, setDraft] = useState('');
+  return (
+    <input
+      className={styles.emojiInput}
+      value={draft}
+      onChange={e => {
+        const segs = [...new Intl.Segmenter().segment(e.target.value)];
+        if (segs.length) { onEmoji(segs[0].segment); setDraft(segs[0].segment); }
+        else setDraft(e.target.value);
+      }}
+      maxLength={8}
+      placeholder={emoji}
+    />
+  );
+}
+
+export default function CategoryManager({ categories, customCategories, onAdd, onRemove, onEdit }) {
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(DEFAULT_COLORS[0]);
-  const [emoji, setEmoji] = useState('🏷');
-  const [emojiDraft, setEmojiDraft] = useState('');
+  const [addName, setAddName] = useState('');
+  const [addColor, setAddColor] = useState(DEFAULT_COLORS[0]);
+  const [addEmoji, setAddEmoji] = useState('🏷');
+
+  const [editingCat, setEditingCat] = useState(null); // cat name being edited
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState('');
+  const [editEmoji, setEditEmoji] = useState('');
+
+  function startEdit(cat, info) {
+    setEditingCat(cat);
+    setEditName(cat);
+    setEditColor(info.color);
+    setEditEmoji(info.emoji);
+    setAdding(false);
+  }
+
+  function handleEditSave() {
+    if (!editName.trim()) return;
+    onEdit(editingCat, editName, editColor, editEmoji);
+    setEditingCat(null);
+  }
 
   function handleAdd() {
-    if (!name.trim()) return;
-    onAdd(name, color, emoji);
-    setName(''); setColor(DEFAULT_COLORS[0]); setEmoji('🏷'); setEmojiDraft('');
+    if (!addName.trim()) return;
+    onAdd(addName, addColor, addEmoji);
+    setAddName(''); setAddColor(DEFAULT_COLORS[0]); setAddEmoji('🏷');
     setAdding(false);
   }
 
@@ -23,13 +58,42 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
       <div className={styles.list}>
         {Object.entries(categories).map(([cat, info]) => {
           const isDefault = !!CATEGORIES[cat];
+
+          if (editingCat === cat) return (
+            <div key={cat} className={styles.form}>
+              <div className={styles.formRow}>
+                <EmojiInput emoji={editEmoji} onEmoji={setEditEmoji} />
+                <input
+                  className={styles.nameInput}
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') setEditingCat(null); }}
+                  autoFocus
+                />
+              </div>
+              <div className={styles.colorRow}>
+                {DEFAULT_COLORS.map(c => (
+                  <button key={c} className={`${styles.colorSwatch} ${editColor === c ? styles.colorActive : ''}`}
+                    style={{ background: c }} onClick={() => setEditColor(c)} />
+                ))}
+              </div>
+              <div className={styles.formBtns}>
+                <button className={styles.cancelBtn} onClick={() => setEditingCat(null)}>Cancel</button>
+                <button className={styles.addConfirmBtn} onClick={handleEditSave}>Save</button>
+              </div>
+            </div>
+          );
+
           return (
             <div key={cat} className={styles.item}>
               <span className={styles.dot} style={{ background: info.color }} />
               <span className={styles.itemEmoji}>{info.emoji}</span>
               <span className={styles.itemName}>{cat}</span>
               {!isDefault && (
-                <button className={styles.removeBtn} onClick={() => onRemove(cat)} title="Remove">✕</button>
+                <>
+                  <button className={styles.editBtn} onClick={() => startEdit(cat, info)} title="Edit">✎</button>
+                  <button className={styles.removeBtn} onClick={() => onRemove(cat)} title="Remove">✕</button>
+                </>
               )}
             </div>
           );
@@ -39,30 +103,20 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
       {adding ? (
         <div className={styles.form}>
           <div className={styles.formRow}>
-            <input
-              className={styles.emojiInput}
-              value={emojiDraft}
-              onChange={e => {
-                const segs = [...new Intl.Segmenter().segment(e.target.value)];
-                if (segs.length) { setEmoji(segs[0].segment); setEmojiDraft(segs[0].segment); }
-                else setEmojiDraft(e.target.value);
-              }}
-              maxLength={8}
-              placeholder={emoji}
-            />
+            <EmojiInput emoji={addEmoji} onEmoji={setAddEmoji} />
             <input
               className={styles.nameInput}
               placeholder="Category name"
-              value={name}
-              onChange={e => setName(e.target.value)}
+              value={addName}
+              onChange={e => setAddName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
               autoFocus
             />
           </div>
           <div className={styles.colorRow}>
             {DEFAULT_COLORS.map(c => (
-              <button key={c} className={`${styles.colorSwatch} ${color === c ? styles.colorActive : ''}`}
-                style={{ background: c }} onClick={() => setColor(c)} />
+              <button key={c} className={`${styles.colorSwatch} ${addColor === c ? styles.colorActive : ''}`}
+                style={{ background: c }} onClick={() => setAddColor(c)} />
             ))}
           </div>
           <div className={styles.formBtns}>
@@ -71,7 +125,7 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
           </div>
         </div>
       ) : (
-        <button className={styles.addBtn} onClick={() => setAdding(true)}>+ Add category</button>
+        <button className={styles.addBtn} onClick={() => { setAdding(true); setEditingCat(null); }}>+ Add category</button>
       )}
     </div>
   );

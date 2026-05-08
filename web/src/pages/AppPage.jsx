@@ -25,7 +25,7 @@ function changeConvexUrl() {
 
 export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
-  const { categories, customCategories, addCategory, removeCategory } = useCategories();
+  const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
   const { permission, minutesBefore, setMinutesBefore, requestPermission } = useNotifications(blocks);
 
@@ -164,6 +164,7 @@ export default function AppPage() {
           customCategories={customCategories}
           onAdd={addCategory}
           onRemove={removeCategory}
+          onEdit={editCategory}
         />
       </div>
 
