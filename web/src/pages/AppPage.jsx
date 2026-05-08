@@ -10,6 +10,7 @@ import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
 } from '../utils/dates';
+import { getTZ, setTZ, allTimezones } from '../utils/timezone';
 import styles from './AppPage.module.css';
 
 function changeConvexUrl() {
@@ -33,6 +34,7 @@ export default function AppPage() {
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timezone, setTimezone] = useState(() => getTZ());
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const navLabel = view === 'week'
@@ -165,6 +167,23 @@ export default function AppPage() {
             Enable notifications
           </button>
         )}
+      </div>
+
+      {/* Timezone */}
+      <div className={styles.notifSection}>
+        <div className={styles.sectionTitle}>Timezone</div>
+        <select
+          className={styles.notifSelect}
+          value={timezone}
+          onChange={e => {
+            setTZ(e.target.value);
+            setTimezone(e.target.value);
+          }}
+        >
+          {allTimezones().map(tz => (
+            <option key={tz} value={tz}>{tz}</option>
+          ))}
+        </select>
       </div>
 
       {/* Settings */}
