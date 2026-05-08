@@ -29,6 +29,7 @@ export const create = mutation({
     notes: v.optional(v.string()),
     completed: v.boolean(),
     localId: v.optional(v.string()),
+    notify_before: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("blocks", args);
@@ -46,6 +47,7 @@ export const update = mutation({
     end_time: v.optional(v.string()),
     notes: v.optional(v.string()),
     completed: v.optional(v.boolean()),
+    notify_before: v.optional(v.number()),
   },
   handler: async (ctx, { id, ...fields }) => {
     await ctx.db.patch(id, fields);
@@ -81,6 +83,7 @@ export const bulkCreate = mutation({
         notes: v.optional(v.string()),
         completed: v.boolean(),
         localId: v.optional(v.string()),
+        notify_before: v.optional(v.number()),
       })
     ),
   },

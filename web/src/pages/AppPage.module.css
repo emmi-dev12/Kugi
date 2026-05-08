@@ -10,6 +10,9 @@
   padding: 0 20px; height: 56px; flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Notch/Dynamic Island safe area — applied here so it works in standalone PWA */
+  padding-top: env(safe-area-inset-top);
+  height: calc(56px + env(safe-area-inset-top));
 }
 
 .logo {
@@ -124,6 +127,12 @@
   background: var(--surface2); border: 1px solid var(--border2);
   border-radius: 8px; padding: 5px 8px; font-family: inherit; cursor: pointer;
 }
+.tzSelect {
+  width: 100%; font-size: 12px; font-weight: 500; color: var(--text);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 6px 8px; font-family: inherit; cursor: pointer;
+}
+
 .notifEnableBtn {
   width: 100%; padding: 8px 12px; font-size: 12px; font-weight: 600;
   color: #4f7cff; background: rgba(79,124,255,0.1); border: 1px solid rgba(79,124,255,0.25);
@@ -212,7 +221,7 @@
 }
 .bottomNavItem.navActive { color: #4f7cff; }
 .bottomNavIcon { line-height: 1; display: flex; }
-.bottomNavLabel { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.bottomNavLabel { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
 
 .bottomNavAdd {
   flex: 1; display: flex; flex-direction: column;
@@ -260,7 +269,7 @@
   .statItem { font-size: 10px; flex-shrink: 0; }
   .progressTrack { width: 48px; }
 
-  /* Space for bottom nav + safe area */
+  /* Space for bottom nav + safe area on bottom */
   .app { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
   /* Bottom nav */

@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { getWeekDays, toDateStr, isToday, formatShort } from '../../utils/dates';
+import { toDateStr, isToday, formatShort } from '../../utils/dates';
 import BlockCard from './BlockCard';
 import styles from './WeekView.module.css';
 
-export default function WeekView({ weekStart, blocks, activeCategory, onEditBlock, onDeleteBlock, onToggleBlock, onUpdateBlock, onAddBlock, onDayClick }) {
-  const days = getWeekDays(weekStart);
+export default function WeekView({ days, blocks, activeCategory, onEditBlock, onDeleteBlock, onToggleBlock, onUpdateBlock, onAddBlock, onDayClick }) {
   const [dragId, setDragId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
-  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   return (
     <div className={styles.wrap}>
@@ -18,13 +17,13 @@ export default function WeekView({ weekStart, blocks, activeCategory, onEditBloc
         {days.map((day, i) => (
           <div key={i} className={`${styles.dayHeader} ${isToday(day) ? styles.today : ''}`}
             onClick={() => onDayClick(day)}>
-            <span className={styles.dayName}>{dayNames[i]}</span>
+            <span className={styles.dayName}>{dayNames[day.getDay()]}</span>
             <span className={styles.dayNum}>{day.getDate()}</span>
           </div>
         ))}
       </div>
 
-      <div className={styles.grid}>
+      <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${days.length},1fr)` }}>
         {days.map((day, i) => {
           const dateStr = toDateStr(day);
           const dayBlocks = blocks

@@ -1,4 +1,4 @@
-.page { min-height: 100dvh; background: var(--bg); overflow-x: hidden; }
+.page { min-height: 100dvh; background: var(--bg); overflow-x: hidden; padding-top: env(safe-area-inset-top); }
 
 /* NAV */
 .nav {
