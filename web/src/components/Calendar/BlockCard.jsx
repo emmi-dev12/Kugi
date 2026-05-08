@@ -29,9 +29,9 @@ export default function BlockCard({ block, variant = 'week', onEdit, onDelete, o
       <div
         className={`${styles.card} ${styles[variant]} ${block.completed ? styles.completed : ''}`}
         style={{
-          background: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.22 : 0.15) : (isLight ? 0.18 : 0.14)})`,
-          borderColor: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.55 : 0.32) : (isLight ? 0.45 : 0.28)})`,
-          borderLeft: `3px solid rgba(${rgb},${isLight ? 0.9 : 0.7})`,
+          background: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.32 : 0.15) : (isLight ? 0.26 : 0.14)})`,
+          borderColor: `rgba(${rgb},${variant === 'bento' ? (isLight ? 0.7 : 0.32) : (isLight ? 0.6 : 0.28)})`,
+          borderLeft: `3px solid rgba(${rgb},${isLight ? 1.0 : 0.7})`,
         }}
         draggable={draggable}
         onDragStart={onDragStart}

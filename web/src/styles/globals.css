@@ -37,32 +37,32 @@
 
 /* ── LIGHT THEME ── */
 [data-theme="light"] {
-  --bg: #ebebed;
-  /* Block card text (light mode overrides) */
-  --card-text: rgba(0,0,0,0.82);
-  --card-text-sub: rgba(0,0,0,0.45);
-  --card-text-time: rgba(0,0,0,0.5);
-  --card-badge-bg: rgba(0,0,0,0.07);
-  --card-badge-text: rgba(0,0,0,0.55);
-  --card-action-bg: rgba(0,0,0,0.08);
-  --card-action-border: rgba(0,0,0,0.1);
-  --card-action-text: rgba(0,0,0,0.6);
-  --card-action-hover-bg: rgba(0,0,0,0.16);
-  --card-action-hover-text: rgba(0,0,0,0.9);
-  --card-drag-over: rgba(0,0,0,0.08);
+  --bg: #dddde0;
+  --surface: #f5f5f7;
+  --surface2: #e8e8eb;
+  --surface3: #d8d8dc;
+  --surface4: #c8c8cd;
+  --border: #c8c8cd;
+  --border2: #b8b8be;
+  --text: #0a0a0a;
+  --text-muted: #4a4a5a;
+  --text-dim: #9090a0;
+  --glow: 0 0 0 1px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.12);
+  --glow-hover: 0 0 0 1px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.2);
   --today-bg: #4f7cff;
   --today-text: #fff;
-  --surface: #ffffff;
-  --surface2: #f0f0f1;
-  --surface3: #e4e4e7;
-  --surface4: #d8d8dc;
-  --border: #e4e4e7;
-  --border2: #d1d1d6;
-  --text: #111111;
-  --text-muted: #6b6b7b;
-  --text-dim: #b0b0bc;
-  --glow: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.08);
-  --glow-hover: 0 0 0 1px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.14);
+  /* Block card text */
+  --card-text: rgba(0,0,0,0.88);
+  --card-text-sub: rgba(0,0,0,0.55);
+  --card-text-time: rgba(0,0,0,0.58);
+  --card-badge-bg: rgba(0,0,0,0.1);
+  --card-badge-text: rgba(0,0,0,0.65);
+  --card-action-bg: rgba(0,0,0,0.1);
+  --card-action-border: rgba(0,0,0,0.14);
+  --card-action-text: rgba(0,0,0,0.65);
+  --card-action-hover-bg: rgba(0,0,0,0.22);
+  --card-action-hover-text: rgba(0,0,0,0.95);
+  --card-drag-over: rgba(0,0,0,0.12);
   color-scheme: light;
 }
 
