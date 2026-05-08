@@ -326,16 +326,6 @@ export default function AppPage() {
         </select>
       </div>
 
-      {/* Theme */}
-      <div className={styles.notifSection}>
-        <div className={styles.sectionTitle}>Appearance</div>
-        <button className={styles.themeToggle} onClick={toggleTheme}>
-          {theme === 'dark'
-            ? <><span>☀️</span> Switch to Light</>
-            : <><span>🌙</span> Switch to Dark</>}
-        </button>
-      </div>
-
       {/* Settings */}
       <div className={styles.apiSection}>
         <div className={styles.sectionTitle}>API Key</div>
