@@ -10,6 +10,9 @@ export default function BlockDetailsSheet({ block, onClose, onEdit, onToggle, on
   const time = block.start_time
     ? `${block.start_time}${block.end_time ? ' – ' + block.end_time : ''}`
     : null;
+  const dateLabel = block.end_date && block.end_date !== block.date
+    ? `${block.date} – ${block.end_date}`
+    : block.date;
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
@@ -31,7 +34,7 @@ export default function BlockDetailsSheet({ block, onClose, onEdit, onToggle, on
           {block.date && (
             <div className={styles.row}>
               <span className={styles.rowLabel}>Date</span>
-              <span className={styles.rowValue}>{block.date}</span>
+              <span className={styles.rowValue}>{dateLabel}</span>
             </div>
           )}
           {time && (

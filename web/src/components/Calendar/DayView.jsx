@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { toDateStr, isToday, formatFull, minsToPx, timeToMins } from '../../utils/dates';
+
+function blockCoversDate(b, dateStr) {
+  if (!b.end_date) return b.date === dateStr;
+  return b.date <= dateStr && dateStr <= b.end_date;
+}
 import { getTZ } from '../../utils/timezone';
 import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
 import BlockCard from './BlockCard';
@@ -10,7 +15,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export default function DayView({ day, blocks, activeCategory, layout, onSetLayout, onEditBlock, onDeleteBlock, onToggleBlock, onAddBlock }) {
   const dateStr = toDateStr(day);
   const dayBlocks = blocks
-    .filter(b => b.date === dateStr && (!activeCategory || b.category === activeCategory))
+    .filter(b => blockCoversDate(b, dateStr) && (!activeCategory || b.category === activeCategory))
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
   const timed = dayBlocks.filter(b => b.start_time);
   const untimed = dayBlocks.filter(b => !b.start_time);

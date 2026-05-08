@@ -3,6 +3,11 @@ import { toDateStr, isToday } from '../../utils/dates';
 import BlockCard from './BlockCard';
 import styles from './WeekView.module.css';
 
+function blockCoversDate(b, dateStr) {
+  if (!b.end_date) return b.date === dateStr;
+  return b.date <= dateStr && dateStr <= b.end_date;
+}
+
 export default function WeekView({ days, blocks, activeCategory, onEditBlock, onDeleteBlock, onToggleBlock, onUpdateBlock, onAddBlock, onDayClick }) {
   const [dragId, setDragId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
@@ -27,7 +32,7 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
           {days.map((day, i) => {
             const dateStr = toDateStr(day);
             const dayBlocks = blocks
-              .filter(b => b.date === dateStr && (!activeCategory || b.category === activeCategory))
+              .filter(b => blockCoversDate(b, dateStr) && (!activeCategory || b.category === activeCategory))
               .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
             return (

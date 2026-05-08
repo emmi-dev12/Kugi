@@ -13,6 +13,7 @@ export default defineSchema({
     completed: v.boolean(),
     localId: v.optional(v.string()),
     notify_before: v.optional(v.number()),
+    end_date: v.optional(v.string()),
   }).index("by_date", ["date"]),
 
   settings: defineTable({

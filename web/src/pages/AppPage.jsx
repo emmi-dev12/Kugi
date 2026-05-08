@@ -48,9 +48,10 @@ export default function AppPage() {
     : view === 'completed' ? 'Completed'
     : 'Calendar';
 
+  const weekDateStrsSet = new Set(weekDays.map(toDateStr));
   const scopeBlocks = view === 'week'
-    ? blocks.filter(b => weekDays.map(toDateStr).includes(b.date))
-    : view === 'day' ? blocks.filter(b => b.date === toDateStr(currentDay))
+    ? blocks.filter(b => [...weekDateStrsSet].some(ds => (!b.end_date ? b.date === ds : b.date <= ds && ds <= b.end_date)))
+    : view === 'day' ? blocks.filter(b => { const ds = toDateStr(currentDay); return !b.end_date ? b.date === ds : b.date <= ds && ds <= b.end_date; })
     : [];
   const done = scopeBlocks.filter(b => b.completed).length;
   const total = scopeBlocks.length;

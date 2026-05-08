@@ -11,7 +11,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   const emojiInputRef = useRef(null);
   const [form, setForm] = useState({
     title: '', emoji: '💼', category: 'Work',
-    date: toDateStr(new Date()), start_time: '', end_time: '', notes: '',
+    date: toDateStr(new Date()), end_date: '', start_time: '', end_time: '', notes: '',
     completed: false, notify_before: undefined,
   });
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -29,6 +29,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         emoji: block.emoji || '💼',
         category: block.category || 'Work',
         date: block.date || toDateStr(new Date()),
+        end_date: block.end_date || '',
         start_time: block.start_time || '',
         end_time: block.end_time || '',
         notes: block.notes || '',
@@ -42,6 +43,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
       setForm({
         title: '', emoji: '💼', category: 'Work',
         date: defaultDate || toDateStr(new Date()),
+        end_date: '',
         start_time: '', end_time: '', notes: '', completed: false, notify_before: undefined,
       });
       setNotifyMode('global');
@@ -135,10 +137,18 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
           </div>
         </div>
 
-        <div className={styles.group}>
-          <label className="form-label">Date</label>
-          <input className="form-input" type="date" value={form.date}
-            onChange={e => setForm(f => ({...f, date: e.target.value}))} />
+        <div className={styles.row}>
+          <div className={styles.group}>
+            <label className="form-label">Start date</label>
+            <input className="form-input" type="date" value={form.date}
+              onChange={e => setForm(f => ({...f, date: e.target.value}))} />
+          </div>
+          <div className={styles.group}>
+            <label className="form-label">End date</label>
+            <input className="form-input" type="date" value={form.end_date}
+              min={form.date}
+              onChange={e => setForm(f => ({...f, end_date: e.target.value}))} />
+          </div>
         </div>
 
         <div className={styles.row}>
