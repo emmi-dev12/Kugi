@@ -9,11 +9,12 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
   const [name, setName] = useState('');
   const [color, setColor] = useState(DEFAULT_COLORS[0]);
   const [emoji, setEmoji] = useState('🏷');
+  const [emojiDraft, setEmojiDraft] = useState('');
 
   function handleAdd() {
     if (!name.trim()) return;
     onAdd(name, color, emoji);
-    setName(''); setColor(DEFAULT_COLORS[0]); setEmoji('🏷');
+    setName(''); setColor(DEFAULT_COLORS[0]); setEmoji('🏷'); setEmojiDraft('');
     setAdding(false);
   }
 
@@ -40,13 +41,14 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
           <div className={styles.formRow}>
             <input
               className={styles.emojiInput}
-              value={emoji}
+              value={emojiDraft}
               onChange={e => {
                 const segs = [...new Intl.Segmenter().segment(e.target.value)];
-                if (segs.length) setEmoji(segs[0].segment);
+                if (segs.length) { setEmoji(segs[0].segment); setEmojiDraft(segs[0].segment); }
+                else setEmojiDraft(e.target.value);
               }}
               maxLength={8}
-              placeholder="🏷"
+              placeholder={emoji}
             />
             <input
               className={styles.nameInput}
