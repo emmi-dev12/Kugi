@@ -41,6 +41,8 @@ export default function AppPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timezone, setTimezone] = useState(() => getTZ());
   const [theme, setTheme] = useState(() => localStorage.getItem('kugiTheme') || 'dark');
+  const [sidebarWidth, setSidebarWidth] = useState(() => parseInt(localStorage.getItem('kugiSidebarWidth') || '220', 10));
+  const isResizing = useRef(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const historyRef = useRef([]);
@@ -50,6 +52,28 @@ export default function AppPage() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('kugiTheme', theme);
   }, [theme]);
+
+  function startResize(e) {
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (e) => {
+      if (!isResizing.current) return;
+      const w = Math.min(360, Math.max(160, e.clientX));
+      setSidebarWidth(w);
+    };
+    const onUp = (e) => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      const w = Math.min(360, Math.max(160, e.clientX));
+      localStorage.setItem('kugiSidebarWidth', w);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   function toggleTheme() {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -398,9 +422,10 @@ export default function AppPage() {
 
       <div className={styles.body}>
         {/* SIDEBAR — desktop */}
-        <aside className={styles.sidebar}>
+        <aside className={styles.sidebar} style={{ width: sidebarWidth }}>
           <SidebarContent />
         </aside>
+        <div className={styles.resizeHandle} onMouseDown={startResize} />
 
         {/* MAIN */}
         <main className={styles.main}>

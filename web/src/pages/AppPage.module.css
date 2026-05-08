@@ -61,12 +61,24 @@
 
 /* SIDEBAR */
 .sidebar {
-  width: 220px; flex-shrink: 0;
-  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  border-right: none;
   background: var(--surface);
   display: flex; flex-direction: column;
   gap: 20px; padding: 16px 12px;
   overflow-y: auto;
+}
+
+.resizeHandle {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s;
+  position: relative;
+}
+.resizeHandle:hover, .resizeHandle:active {
+  background: var(--accent);
 }
 
 .sectionTitle {
@@ -241,6 +253,7 @@
 /* Mobile */
 @media (max-width: 768px) {
   .sidebar { display: none; }
+  .resizeHandle { display: none; }
   .logoText { display: none; }
 
   /* Push header content below notch / Dynamic Island */
