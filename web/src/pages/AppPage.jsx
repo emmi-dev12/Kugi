@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useBlocks, useApiKey } from '../hooks/useDB';
 import { useNotifications } from '../hooks/useNotifications';
+import { useCategories } from '../hooks/useCategories';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
 import CompletedView from '../components/Calendar/CompletedView';
 import CalendarView from '../components/Calendar/CalendarView';
 import BlockModal from '../components/UI/BlockModal';
 import KugiLogo from '../components/UI/KugiLogo';
-import { CATEGORIES } from '../utils/categories';
+import CategoryManager from '../components/UI/CategoryManager';
 import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
@@ -24,6 +25,7 @@ function changeConvexUrl() {
 
 export default function AppPage() {
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
+  const { categories, customCategories, addCategory, removeCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
   const { permission, minutesBefore, setMinutesBefore, requestPermission } = useNotifications(blocks);
 
@@ -138,7 +140,7 @@ export default function AppPage() {
             All
             <span className={styles.catCount}>{blocks.length}</span>
           </div>
-          {Object.entries(CATEGORIES).map(([cat, info]) => {
+          {Object.entries(categories).map(([cat, info]) => {
             const count = blocks.filter(b => b.category === cat).length;
             if (!count && activeCategory !== cat) return null;
             return (
@@ -151,6 +153,17 @@ export default function AppPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* Manage categories */}
+      <div>
+        <div className={styles.sectionTitle}>Manage Categories</div>
+        <CategoryManager
+          categories={categories}
+          customCategories={customCategories}
+          onAdd={addCategory}
+          onRemove={removeCategory}
+        />
       </div>
 
       {/* Notifications */}
@@ -333,7 +346,8 @@ export default function AppPage() {
       </div>
 
       <BlockModal open={modal.open} block={modal.block} defaultDate={modal.defaultDate}
-        onSave={handleSave} onClose={() => setModal({ open: false, block: null, defaultDate: null })} />
+        onSave={handleSave} onClose={() => setModal({ open: false, block: null, defaultDate: null })}
+        categories={categories} />
 
       {/* SETTINGS SHEET — mobile only */}
       {settingsOpen && (

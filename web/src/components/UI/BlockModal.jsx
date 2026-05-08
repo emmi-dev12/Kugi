@@ -5,7 +5,8 @@ import styles from './BlockModal.module.css';
 
 const NOTIFY_OPTIONS = [5, 10, 15, 30, 60, 120];
 
-export default function BlockModal({ open, block, defaultDate, onSave, onClose }) {
+export default function BlockModal({ open, block, defaultDate, onSave, onClose, categories }) {
+  const cats = categories || CATEGORIES;
   const titleRef = useRef(null);
   const emojiInputRef = useRef(null);
   const [form, setForm] = useState({
@@ -127,7 +128,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose }
             <label className="form-label">Category</label>
             <select className="form-select" value={form.category}
               onChange={e => setForm(f => ({...f, category: e.target.value}))}>
-              {Object.entries(CATEGORIES).map(([cat, info]) => (
+              {Object.entries(cats).map(([cat, info]) => (
                 <option key={cat} value={cat}>{info.emoji} {cat}</option>
               ))}
             </select>

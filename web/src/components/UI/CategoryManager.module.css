@@ -1,0 +1,68 @@
+.wrap { display: flex; flex-direction: column; gap: 8px; }
+
+.list { display: flex; flex-direction: column; gap: 2px; }
+
+.item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px; border-radius: 7px;
+  font-size: 12px; font-weight: 500; color: var(--text-muted);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.itemEmoji { font-size: 13px; flex-shrink: 0; }
+.itemName { flex: 1; }
+.removeBtn {
+  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  font-size: 10px; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.removeBtn:hover { background: rgba(244,63,94,0.12); color: #f43f5e; }
+
+.addBtn {
+  width: 100%; padding: 7px 8px;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  color: var(--text-dim); background: none;
+  border: 1px dashed var(--border2); border-radius: 8px;
+  cursor: pointer; transition: all 0.15s; text-align: left;
+}
+.addBtn:hover { color: var(--text-muted); border-color: var(--border); background: var(--surface2); }
+
+.form { display: flex; flex-direction: column; gap: 8px; }
+.formRow { display: flex; gap: 6px; }
+.emojiInput {
+  width: 40px; padding: 6px 8px;
+  font-size: 16px; text-align: center;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-family: inherit;
+  flex-shrink: 0;
+}
+.nameInput {
+  flex: 1; padding: 6px 10px;
+  font-size: 12px; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-family: inherit;
+}
+.nameInput:focus, .emojiInput:focus { outline: none; border-color: #4f7cff; }
+
+.colorRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.colorSwatch {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform 0.1s;
+}
+.colorSwatch:hover { transform: scale(1.15); }
+.colorActive { border-color: white; transform: scale(1.15); }
+
+.formBtns { display: flex; gap: 6px; }
+.cancelBtn {
+  flex: 1; padding: 6px; font-size: 11px; font-weight: 600; font-family: inherit;
+  background: none; border: 1px solid var(--border2); border-radius: 8px;
+  color: var(--text-dim); cursor: pointer;
+}
+.addConfirmBtn {
+  flex: 1; padding: 6px; font-size: 11px; font-weight: 600; font-family: inherit;
+  background: rgba(79,124,255,0.15); border: 1px solid rgba(79,124,255,0.3); border-radius: 8px;
+  color: #7a9fff; cursor: pointer;
+}
+.addConfirmBtn:hover { background: rgba(79,124,255,0.22); }
