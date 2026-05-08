@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toDateStr, isToday, formatShort } from '../../utils/dates';
+import { toDateStr, isToday } from '../../utils/dates';
 import BlockCard from './BlockCard';
 import styles from './WeekView.module.css';
 
@@ -8,12 +8,11 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
   const [dragOver, setDragOver] = useState(null);
 
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cols = `repeat(${days.length},1fr)`;
 
   return (
     <div className={styles.wrap}>
-      {/* scrollInner keeps headers + grid in one horizontal scroll unit on mobile */}
-      <div className={styles.scrollInner}>
-      <div className={styles.headers}>
+      <div className={styles.headers} style={{ gridTemplateColumns: cols }}>
         {days.map((day, i) => (
           <div key={i} className={`${styles.dayHeader} ${isToday(day) ? styles.today : ''}`}
             onClick={() => onDayClick(day)}>
@@ -23,7 +22,7 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
         ))}
       </div>
 
-      <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${days.length},1fr)` }}>
+      <div className={styles.grid} style={{ gridTemplateColumns: cols }}>
         {days.map((day, i) => {
           const dateStr = toDateStr(day);
           const dayBlocks = blocks
@@ -53,7 +52,6 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
           );
         })}
       </div>
-      </div>{/* end scrollInner */}
     </div>
   );
 }
