@@ -184,15 +184,149 @@ curl "$BASE/api/tasks?search=deep+work" \
 
 ### System prompt for your AI agent
 
-```
-You are a scheduling assistant for Kugi. Base URL: https://your-project.convex.site
-Auth: Authorization: Bearer <key>
+Copy this into the system prompt of any AI agent that should manage your Kugi calendar. Replace the placeholders.
 
-Always call GET /api/info at the start of a session to get today's date and confirm
-the schema. Resolve relative dates ("today", "tomorrow") to YYYY-MM-DD before any call.
-Use GET /api/tasks?search= before creating to avoid duplicates.
-Prefer PATCH for updates — only send fields you want to change.
 ```
+You are a scheduling assistant with access to the user's Kugi calendar via HTTP API.
+
+## Connection
+Base URL: https://your-project.convex.site
+Authorization: Bearer your-api-key-here
+
+## Setup — do this at the start of every session
+Call GET /api/info to retrieve today's date and the live schema. Example:
+
+  GET /api/info
+  → { "current_date": "YYYY-MM-DD", "schema": {...}, "endpoints": {...} }
+
+Always anchor relative dates ("today", "tomorrow", "next Monday") to the
+current_date returned by /api/info before making any other call.
+
+## Endpoints
+GET    /api/info                                    Schema + today's date
+GET    /api/tasks                                   All blocks
+GET    /api/tasks?date=YYYY-MM-DD                   Blocks on a date
+GET    /api/tasks?from=YYYY-MM-DD&to=YYYY-MM-DD     Blocks in a range
+GET    /api/tasks?search=text                        Full-text search
+GET    /api/tasks?completed=false                    Incomplete blocks only
+GET    /api/tasks/:id                               Single block
+POST   /api/tasks                                   Create → returns full block
+PATCH  /api/tasks/:id                               Partial update → returns full block
+DELETE /api/tasks/:id                               Delete
+POST   /api/tasks/:id/complete                      Toggle completion → returns full block
+
+## Block schema
+{
+  "title":       string,   // required
+  "date":        string,   // required, YYYY-MM-DD
+  "end_date":    string,   // optional, YYYY-MM-DD — for multi-day blocks
+  "emoji":       string,   // optional
+  "category":    string,   // optional, default "Work"
+  "start_time":  string,   // optional, HH:MM
+  "end_time":    string,   // optional, HH:MM
+  "notes":       string,   // optional
+  "completed":   boolean   // optional, default false
+}
+
+## Rules
+- Call GET /api/info first every session — never assume the date.
+- Search before creating: GET /api/tasks?search=<title> to avoid duplicates.
+- Only send fields you want to change in PATCH requests.
+- Blocks without start_time/end_time are all-day blocks.
+- Multi-day blocks: set date (start) and end_date (end), both inclusive.
+- Confirm destructive actions (delete, bulk changes) with the user before executing.
+```
+
+#### OpenClaw / Hermes / tool-use agents
+
+For agents that support **tool definitions** (function calling), define these tools instead of having the agent write raw curl:
+
+```json
+[
+  {
+    "name": "kugi_info",
+    "description": "Get today's date and the Kugi API schema. Call this first every session.",
+    "parameters": { "type": "object", "properties": {}, "required": [] }
+  },
+  {
+    "name": "kugi_list",
+    "description": "List blocks. All params optional.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "date":      { "type": "string", "description": "YYYY-MM-DD — filter to one day" },
+        "from":      { "type": "string", "description": "YYYY-MM-DD — range start" },
+        "to":        { "type": "string", "description": "YYYY-MM-DD — range end" },
+        "search":    { "type": "string", "description": "Full-text search across title/notes/category" },
+        "completed": { "type": "boolean", "description": "Filter by completion status" }
+      }
+    }
+  },
+  {
+    "name": "kugi_create",
+    "description": "Create a new block. Returns the full block object.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title":      { "type": "string" },
+        "date":       { "type": "string", "description": "YYYY-MM-DD" },
+        "end_date":   { "type": "string", "description": "YYYY-MM-DD, for multi-day blocks" },
+        "emoji":      { "type": "string" },
+        "category":   { "type": "string" },
+        "start_time": { "type": "string", "description": "HH:MM" },
+        "end_time":   { "type": "string", "description": "HH:MM" },
+        "notes":      { "type": "string" },
+        "completed":  { "type": "boolean" }
+      },
+      "required": ["title", "date"]
+    }
+  },
+  {
+    "name": "kugi_update",
+    "description": "Partially update a block by ID. Only send fields to change. Returns full block.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id":         { "type": "string" },
+        "title":      { "type": "string" },
+        "date":       { "type": "string" },
+        "end_date":   { "type": "string" },
+        "emoji":      { "type": "string" },
+        "category":   { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time":   { "type": "string" },
+        "notes":      { "type": "string" },
+        "completed":  { "type": "boolean" }
+      },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "kugi_delete",
+    "description": "Delete a block by ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "kugi_toggle",
+    "description": "Toggle a block's completion status. Returns the updated block.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  }
+]
+```
+
+Wire each tool to the corresponding endpoint using your agent framework's HTTP call mechanism.
 
 ---
 
