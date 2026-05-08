@@ -152,7 +152,7 @@ function BentoBody({ dayBlocks, dateStr, onEditBlock, onDeleteBlock, onToggleBlo
           <rect x="3" y="26" width="19" height="19" rx="5" fill="rgba(16,185,129,0.25)"/>
           <rect x="26" y="26" width="19" height="19" rx="5" fill="rgba(244,63,94,0.25)"/>
         </svg>
-        <span>Kein Block heute. Füge einen hinzu!</span>
+        <span>No blocks today. Tap + to add one.</span>
       </div>
     );
   }

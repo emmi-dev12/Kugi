@@ -95,7 +95,68 @@
 }
 .actionBtn:hover { background: rgba(0,0,0,0.7); color: rgba(255,255,255,0.9); }
 
-/* Mobile: always show actions */
+/* Mobile: hide desktop hover actions — sheet handles everything */
 @media (max-width: 768px) {
-  .actions { display: flex; }
+  .actions { display: none !important; }
 }
+
+/* Action sheet (portaled to body) */
+.sheetOverlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid var(--border2);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  animation: sheetUp 0.25s cubic-bezier(0.32,0.72,0,1);
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheetHandle {
+  width: 36px; height: 4px;
+  background: var(--border2); border-radius: 2px;
+  margin: 12px auto 8px;
+}
+.sheetBlockName {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 20px 14px;
+  font-size: 15px; font-weight: 700; color: var(--text);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.sheetItem {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 15px 24px;
+  font-size: 15px; font-weight: 500; color: var(--text);
+  background: none; border: none; font-family: inherit;
+  cursor: pointer; text-align: left;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheetItem:active { background: var(--surface2); }
+.sheetIcon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.sheetDanger { color: #f43f5e; }
+.sheetDanger .sheetIcon { background: rgba(244,63,94,0.15); }
+.sheetCancel {
+  display: block; width: calc(100% - 32px);
+  margin: 8px 16px 0;
+  padding: 15px;
+  font-size: 15px; font-weight: 700; color: var(--text-muted);
+  background: var(--surface2); border: none; border-radius: 14px;
+  font-family: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheetCancel:active { opacity: 0.7; }

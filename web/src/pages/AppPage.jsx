@@ -79,6 +79,7 @@ export default function AppPage() {
   function goToday() {
     setWeekStart(getWeekStart(new Date()));
     setCurrentDay(todayZurich());
+    setView('day');
   }
 
   // Mini calendar
