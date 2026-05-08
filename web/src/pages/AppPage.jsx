@@ -39,9 +39,6 @@ export default function AppPage() {
   const [timezone, setTimezone] = useState(() => getTZ());
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  // On mobile (<= 768px): show 3 days centred on currentDay in the "week" view
-  const mobileDays = [-1, 0, 1].map(d => addDays(currentDay, d));
-  const viewDays = isMobile && view === 'week' ? mobileDays : weekDays;
 
   const navLabel = view === 'week'
     ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
@@ -280,7 +277,7 @@ export default function AppPage() {
         <main className={styles.main}>
           {view === 'week' && (
             <WeekView
-              days={viewDays}
+              days={weekDays}
               blocks={blocks}
               activeCategory={activeCategory}
               onEditBlock={block => openModal(block)}
