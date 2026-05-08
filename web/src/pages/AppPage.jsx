@@ -206,6 +206,14 @@ export default function AppPage() {
             <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
               {apiKeyVisible ? '🙈' : '👁'}
             </button>
+            <button className={styles.apiToggle} title="Copy key" onClick={() => navigator.clipboard.writeText(apiKey).then(() => {
+              const btn = document.activeElement;
+              const prev = btn.textContent;
+              btn.textContent = '✓';
+              setTimeout(() => { btn.textContent = prev; }, 1200);
+            })}>
+              ⎘
+            </button>
             <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
               ↺
             </button>
