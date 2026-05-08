@@ -59,6 +59,7 @@ export default function AppPage() {
       if (e.key === 'n') openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()));
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
+      if (e.key === 'f') setView('completed');
       if (e.key === 't' && view === 'day') setDayLayout('timeline');
       if (e.key === 'b' && view === 'day') setDayLayout('bento');
       if (e.key === 'Escape') setSettingsOpen(false);
@@ -241,7 +242,7 @@ export default function AppPage() {
           <div className={styles.viewToggle}>
             <button className={`${styles.viewBtn} ${view === 'week' ? styles.active : ''}`} onClick={() => setView('week')}>Week</button>
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
-            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Done</button>
+            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
           <button className="btn-primary" onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
@@ -380,7 +381,7 @@ export default function AppPage() {
               <path d="M7 11l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Done</span>
+          <span className={styles.bottomNavLabel}>Finished</span>
         </button>
 
         <button className={`${styles.bottomNavItem} ${view === 'calendar' && !settingsOpen ? styles.navActive : ''}`}
