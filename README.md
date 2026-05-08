@@ -4,10 +4,9 @@
 
 # kugi
 
-**Bento-box calendar & task tracker — your data, your backend, AI-ready.**
+**Personal block calendar — your data, your backend, AI-ready.**
 
 [![Live](https://img.shields.io/badge/web-kugi.onrender.com-4f7cff?style=flat-square)](https://kugi.onrender.com)
-[![Mac](https://img.shields.io/badge/mac-download-8b5cf6?style=flat-square)](#releases)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
 
 </div>
@@ -16,22 +15,42 @@
 
 ## What is it
 
-Kugi is a personal planner built around the **bento grid** metaphor — blocks of time you drag, schedule, and complete across a week or day view. It runs as a **PWA** in the browser and as a native **Mac app**. Your data lives in your own [Convex](https://convex.dev) deployment, not on anyone else's server.
+Kugi is a personal planner built around time **blocks** — schedule, complete, and track them across week and day views. It runs as a **PWA** in the browser. Your data lives in your own [Convex](https://convex.dev) deployment.
 
-It also exposes a **REST API** so your AI agents can read and create tasks programmatically.
+It exposes a full **REST API** so AI agents can read, create, update, and search your blocks programmatically.
 
 ---
 
 ## Features
 
-- **Week view** — 7-column bento grid, drag blocks between days
-- **Day view** — timeline (hour-by-hour) or bento grid, toggle between them
-- **Mini calendar** sidebar with category filter
-- **Real-time sync** — Convex keeps every client up to date instantly
-- **PWA** — installable from the browser, works offline
-- **Mac app** — native window, lives in your dock
-- **AI agent API** — `GET /api/tasks` and `POST /api/tasks` with bearer auth
-- **Keyboard shortcuts** — `n` new block, `w` week, `d` day, `t` timeline, `b` bento
+- **Week view** — 7-column grid, horizontal scroll on mobile
+- **Day view** — bento grid or timeline layout, toggle between them
+- **Multi-day blocks** — set a start and end date, block spans every day in between
+- **Custom categories** — add your own with a name, emoji, and color; synced to Convex
+- **Search** — Cmd+K (or `/`) to search across all block titles, notes, and categories
+- **Undo / Redo** — Cmd+Z / Cmd+Shift+Z for create, edit, delete, and toggle
+- **Light & dark mode** — toggle in the header, persisted across sessions
+- **Completed tab** — all finished blocks grouped by date
+- **Calendar tab** — full month view, tap a day to jump to it
+- **Real-time sync** — Convex keeps every open tab in sync instantly
+- **PWA** — installable from the browser, works offline via service worker
+- **AI agent API** — full REST API with bearer auth, search, date range, and a schema endpoint
+
+---
+
+## Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| `n` | New block |
+| `w` | Week view |
+| `d` | Day view |
+| `f` | Finished (completed) view |
+| `t` | Timeline layout (day view) |
+| `b` | Bento layout (day view) |
+| `/` or `⌘K` | Search |
+| `⌘Z` | Undo |
+| `⌘⇧Z` | Redo |
 
 ---
 
@@ -40,10 +59,11 @@ It also exposes a **REST API** so your AI agents can read and create tasks progr
 | Layer | Tech |
 |---|---|
 | UI | React 19 + Vite + CSS Modules |
-| Backend | [Convex](https://convex.dev) (real-time, self-hostable) |
-| Web deploy | Render (static site) |
-| Mac app | Electron 32 |
+| Backend | [Convex](https://convex.dev) — real-time database + HTTP actions |
+| Web deploy | Render (static site, auto-deploys on push to `main`) |
 | PWA | Service Worker + Web App Manifest |
+
+No server to run. The frontend is a static build; Convex is the entire backend.
 
 ---
 
@@ -57,31 +77,25 @@ npm install
 npx convex dev
 ```
 
-Follow the prompts to link your [Convex account](https://convex.dev). Copy the deployment URL — you'll need it next.
+Follow the prompts to create a free [Convex](https://convex.dev) project. Note your deployment URL — you'll need it next.
 
-### 2 — Use the web app
+### 2 — Open the web app
 
-Visit **[kugi.onrender.com](https://kugi.onrender.com)** (or your own deploy — see below).
+Visit **[kugi.onrender.com](https://kugi.onrender.com)** (or self-host — see below).
 
-On first visit, paste your Convex deployment URL:
+On first visit you'll be asked for your Convex deployment URL:
 
 ```
 https://your-project.convex.cloud
 ```
 
-Done. Your calendar loads.
-
-### 3 — Use the Mac app
-
-Download the latest `.dmg` from [Releases](../../releases), open it, drag Kugi to Applications.
-
-On first launch, paste your Convex URL — same one from step 1. From then on it opens straight to your calendar.
+That's it. Your calendar loads and syncs in real time.
 
 ---
 
 ## Self-host the web app
 
-The web app is a static Vite build. Deploy anywhere.
+The web app is a plain Vite static build. Deploy anywhere:
 
 **Render:**
 | Field | Value |
@@ -92,99 +106,93 @@ The web app is a static Vite build. Deploy anywhere.
 
 **Vercel / Netlify / Cloudflare Pages:** same settings, zero config.
 
-No environment variables required — users supply their own Convex URL at setup time.
+No environment variables needed — users supply their own Convex URL at setup time.
 
 ---
 
 ## AI agent API
 
-Once you have Kugi running, grab your API key from the sidebar (Settings → API Key). Use it to talk to your Convex HTTP endpoint:
+Grab your API key from the Settings sidebar (API Key section). Use it against your Convex HTTP endpoint at `https://your-project.convex.site`.
 
-### List tasks
-
-```bash
-curl https://your-project.convex.site/api/tasks \
-  -H "Authorization: Bearer kugi_your_key_here"
-```
-
-Filter by date:
+### Discover the schema
 
 ```bash
-curl "https://your-project.convex.site/api/tasks?date=2025-05-07" \
-  -H "Authorization: Bearer kugi_your_key_here"
+curl https://your-project.convex.site/api/info \
+  -H "Authorization: Bearer <key>"
 ```
 
-### Create a task
+Returns today's date, the full block schema, and all available endpoints. **Give this to your AI agent as part of its system prompt** so it can self-orient.
 
-```bash
-curl -X POST https://your-project.convex.site/api/tasks \
-  -H "Authorization: Bearer kugi_your_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Review PRs",
-    "date": "2025-05-07",
-    "emoji": "🔍",
-    "category": "Work",
-    "start_time": "10:00",
-    "end_time": "11:00"
-  }'
-```
+### Endpoints
 
-### Update a task
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/info` | Schema, route reference, current date |
+| `GET` | `/api/tasks` | List all blocks |
+| `GET` | `/api/tasks?date=YYYY-MM-DD` | Blocks on a specific date |
+| `GET` | `/api/tasks?from=YYYY-MM-DD&to=YYYY-MM-DD` | Blocks in a date range |
+| `GET` | `/api/tasks?search=text` | Full-text search (title, notes, category) |
+| `GET` | `/api/tasks?completed=false` | Filter by completion status |
+| `GET` | `/api/tasks/:id` | Single block by ID |
+| `POST` | `/api/tasks` | Create a block → returns full block |
+| `PATCH` | `/api/tasks/:id` | Update fields (partial) → returns full block |
+| `DELETE` | `/api/tasks/:id` | Delete a block |
+| `POST` | `/api/tasks/:id/complete` | Toggle completion → returns full block |
 
-```bash
-curl -X PATCH https://your-project.convex.site/api/tasks \
-  -H "Authorization: Bearer kugi_your_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{ "id": "<task_id>", "completed": true }'
-```
-
-### Delete a task
-
-```bash
-curl -X DELETE "https://your-project.convex.site/api/tasks?id=<task_id>" \
-  -H "Authorization: Bearer kugi_your_key_here"
-```
-
-### Task schema
+### Block schema
 
 ```ts
 {
-  title:      string          // required
-  date:       string          // required — "YYYY-MM-DD"
-  emoji?:     string          // default "💼"
-  category?:  string          // "Work" | "Personal" | "Health" | "Deep Work"
-                              // "Social" | "Admin" | "Creative" | "Other"
-  start_time?: string         // "HH:MM"
-  end_time?:   string         // "HH:MM"
+  title:       string   // required
+  date:        string   // required — "YYYY-MM-DD"
+  end_date?:   string   // "YYYY-MM-DD" — makes it a multi-day block
+  emoji?:      string
+  category?:   string   // default "Work"
+  start_time?: string   // "HH:MM"
+  end_time?:   string   // "HH:MM"
   notes?:      string
-  completed?:  boolean        // default false
+  completed?:  boolean  // default false
 }
 ```
 
----
-
-## Build the Mac app
+### Examples
 
 ```bash
-cd app
-npm run build:arm64    # Apple Silicon
-npm run build:x64      # Intel
-npm run build:all      # Both
+BASE=https://your-project.convex.site
+KEY=kugi_your_key_here
+
+# Create a block
+curl -X POST $BASE/api/tasks \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Deep work","date":"2025-05-08","emoji":"🧠","start_time":"09:00","end_time":"11:00"}'
+
+# Update it
+curl -X PATCH $BASE/api/tasks/<id> \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"notes":"Focus on API refactor"}'
+
+# Toggle complete
+curl -X POST $BASE/api/tasks/<id>/complete \
+  -H "Authorization: Bearer $KEY"
+
+# Search
+curl "$BASE/api/tasks?search=deep+work" \
+  -H "Authorization: Bearer $KEY"
 ```
 
-Outputs a `.dmg` to `app/dist/`.
+### System prompt for your AI agent
 
-### Release via GitHub Actions
-
-Tag a commit — CI builds both architectures and publishes to GitHub Releases automatically:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
 ```
+You are a scheduling assistant for Kugi. Base URL: https://your-project.convex.site
+Auth: Authorization: Bearer <key>
 
-Or trigger manually from the **Actions** tab with any version tag.
+Always call GET /api/info at the start of a session to get today's date and confirm
+the schema. Resolve relative dates ("today", "tomorrow") to YYYY-MM-DD before any call.
+Use GET /api/tasks?search= before creating to avoid duplicates.
+Prefer PATCH for updates — only send fields you want to change.
+```
 
 ---
 
@@ -192,29 +200,45 @@ Or trigger manually from the **Actions** tab with any version tag.
 
 ```
 kugi/
-├── app/                  Mac app (Electron)
-│   ├── convex/           Convex backend functions + HTTP API
-│   │   ├── schema.ts
-│   │   ├── blocks.ts
-│   │   ├── settings.ts
-│   │   └── http.ts
-│   └── src/
-│       └── main.js       Electron main process
+├── app/
+│   └── convex/               Convex backend
+│       ├── schema.ts         Database schema
+│       ├── blocks.ts         Block queries + mutations
+│       ├── settings.ts       API key management, custom categories
+│       └── http.ts           REST HTTP API
 │
-└── web/                  Web app + PWA (React + Vite)
+└── web/                      React PWA
     └── src/
-        ├── pages/        Landing, Setup, AppPage
-        ├── components/   WeekView, DayView, BlockModal, BlockCard …
+        ├── pages/
+        │   ├── AppPage.jsx   Root — layout, nav, keyboard shortcuts, undo/redo
+        │   └── AppPage.module.css
+        ├── components/
+        │   ├── Calendar/
+        │   │   ├── WeekView        7-column week grid
+        │   │   ├── DayView         Bento / timeline day view
+        │   │   ├── BlockCard       Individual block — tap/hover actions
+        │   │   ├── CompletedView   Finished blocks grouped by date
+        │   │   └── CalendarView    Full month calendar
+        │   └── UI/
+        │       ├── BlockModal      Create / edit form
+        │       ├── BlockDetailsSheet  Read-only detail panel
+        │       ├── CategoryManager    Add / edit / remove categories
+        │       └── SearchModal        Cmd+K search
         ├── hooks/
-        │   └── useDB.js  Convex data layer
+        │   ├── useDB.js          Convex queries + mutations
+        │   ├── useCategories.js  Merge default + custom categories
+        │   └── useNotifications.js  Push notification scheduling
         └── utils/
+            ├── dates.js          Date helpers (timezone-aware)
+            ├── timezone.js       Read/write timezone from localStorage
+            └── categories.js     Default category list + color helpers
 ```
 
 ---
 
 ## License
 
-MIT — do whatever you want with it.
+MIT
 
 ---
 
