@@ -231,10 +231,19 @@
   .sidebar { display: none; }
   .logoText { display: none; }
 
-  .header { padding: 0 10px; height: 50px; }
-  .navLabel { min-width: 0; font-size: 12px; }
-  .headerRight { gap: 6px; }
-  .viewToggle { display: none; }
+  /* Push header content below notch / Dynamic Island */
+  .header {
+    padding: env(safe-area-inset-top) 12px 0;
+    height: calc(50px + env(safe-area-inset-top));
+    align-items: flex-end;
+    padding-bottom: 0;
+  }
+  /* Re-align children to the 50px row below the safe area */
+  .header > * { margin-bottom: 0; height: 50px; display: flex; align-items: center; }
+
+  .navLabel { min-width: 0; font-size: 13px; }
+  /* New Block button lives in the bottom nav + button — hide it in the header */
+  .headerRight { display: none; }
 
   .statsBar { gap: 8px; padding: 5px 10px; overflow-x: auto; flex-wrap: nowrap; }
   .statItem { font-size: 10px; flex-shrink: 0; }
