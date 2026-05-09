@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { toDateStr, isToday, formatFull, minsToPx, timeToMins } from '../../utils/dates';
+import { getTZ } from '../../utils/timezone';
+import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
+import BlockCard from './BlockCard';
+import styles from './DayView.module.css';
 
 function blockCoversDate(b, dateStr) {
   if (!b.end_date) return b.date === dateStr;
   return b.date <= dateStr && dateStr <= b.end_date;
 }
-import { getTZ } from '../../utils/timezone';
-import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
-import BlockCard from './BlockCard';
-import styles from './DayView.module.css';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 

@@ -225,6 +225,16 @@ export default function AppPage() {
 
   const SidebarContent = ({ showMiniCal = true }) => (
     <>
+      {/* Theme toggle — mobile sheet only */}
+      {!showMiniCal && (
+        <div className={styles.notifSection}>
+          <div className={styles.sectionTitle}>Appearance</div>
+          <button className={styles.changeUrlBtn} onClick={toggleTheme}>
+            {theme === 'dark' ? '☀️ Switch to light mode' : '🌙 Switch to dark mode'}
+          </button>
+        </div>
+      )}
+
       {/* Mini calendar — desktop sidebar only */}
       {showMiniCal && <div>
         <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
