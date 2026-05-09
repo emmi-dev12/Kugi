@@ -256,6 +256,14 @@
   .resizeHandle { display: none; }
   .logoText { display: none; }
 
+  /* Colorful gradient background so glass blur has something to work with */
+  .app {
+    background:
+      radial-gradient(ellipse at 18% 0%, rgba(79,124,255,0.28) 0%, transparent 48%),
+      radial-gradient(ellipse at 82% 95%, rgba(139,92,246,0.22) 0%, transparent 48%),
+      var(--bg);
+  }
+
   /* Liquid Glass header */
   .header {
     padding: env(safe-area-inset-top) 12px 0;
@@ -263,8 +271,8 @@
     align-items: flex-end;
     padding-bottom: 0;
     background: var(--glass-bg);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    backdrop-filter: blur(32px) saturate(2);
+    -webkit-backdrop-filter: blur(32px) saturate(2);
     border-bottom: 1px solid var(--glass-border);
     box-shadow: var(--glass-specular);
   }
@@ -290,8 +298,8 @@
   .statsBar {
     gap: 8px; padding: 5px 10px; overflow-x: auto; flex-wrap: nowrap;
     background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(2);
+    -webkit-backdrop-filter: blur(24px) saturate(2);
     border-top: 1px solid var(--glass-border);
     box-shadow: var(--glass-specular);
   }
@@ -308,8 +316,8 @@
     height: calc(64px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--glass-bg);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    backdrop-filter: blur(32px) saturate(2);
+    -webkit-backdrop-filter: blur(32px) saturate(2);
     border-top: 1px solid var(--glass-border);
     box-shadow: var(--glass-specular), var(--glass-shadow);
     z-index: 100;
