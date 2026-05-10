@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBlocks, useApiKey } from '../hooks/useDB';
+import SettingsModal from '../components/UI/SettingsModal';
 import { useNotifications } from '../hooks/useNotifications';
 import { useCategories } from '../hooks/useCategories';
 import WeekView from '../components/Calendar/WeekView';
@@ -467,6 +468,12 @@ export default function AppPage() {
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
             New Block
           </button>
+          <button className={styles.settingsBtn} onClick={() => setSettingsOpen(v => !v)} title="Settings">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
         {/* Settings gear — mobile only */}
         <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)}>
@@ -560,18 +567,34 @@ export default function AppPage() {
 
       {toast && <div className={styles.toast}>{toast}</div>}
 
-      {/* SETTINGS SHEET — mobile only */}
-      {settingsOpen && (
-        <div className={styles.sheetOverlay} onClick={() => setSettingsOpen(false)}>
-          <div className={styles.sheet} onClick={e => e.stopPropagation()}>
-            <div className={styles.sheetHandle} />
-            <div className={styles.sheetTitle}>Settings</div>
-            <div className={styles.sheetContent}>
-              <SidebarContent showMiniCal={false} />
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        permission={permission}
+        pushActive={pushActive}
+        reminders={reminders}
+        onRequestPermission={requestPermission}
+        onDisablePush={disablePush}
+        onAddReminder={addReminder}
+        onUpdateReminder={updateReminder}
+        onRemoveReminder={removeReminder}
+        timezone={timezone}
+        onTimezoneChange={tz => { setTimezone(tz); setTZ(tz); }}
+        apiKey={apiKey}
+        apiKeyVisible={apiKeyVisible}
+        onToggleApiKeyVisible={() => setApiKeyVisible(v => !v)}
+        onCopyApiKey={() => { navigator.clipboard.writeText(apiKey); }}
+        onRotateApiKey={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}
+        onChangeConvexUrl={changeConvexUrl}
+        categories={categories}
+        customCategories={customCategories}
+        CategoryManager={CategoryManager}
+        onAddCategory={addCategory}
+        onRemoveCategory={removeCategory}
+        onEditCategory={editCategory}
+      />
 
       {/* BOTTOM NAV — mobile only */}
       <nav className={styles.bottomNav}>

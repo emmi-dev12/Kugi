@@ -39,6 +39,15 @@
   display: flex; align-items: center; gap: 10px;
 }
 
+/* Settings gear — desktop only */
+.settingsBtn {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text-muted); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+}
+.settingsBtn:hover { background: var(--surface3); color: var(--text); }
+
 /* Settings gear — mobile only */
 .mobileSettingsBtn { display: none; }
 

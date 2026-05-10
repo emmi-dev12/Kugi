@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { makeFunctionReference } from 'convex/server';
 
 // Remove empty strings (optional string fields must be absent, not "")
@@ -21,9 +21,14 @@ const fn = {
     bulkCreate:     makeFunctionReference('blocks:bulkCreate'),
   },
   settings: {
-    getApiKey:    makeFunctionReference('settings:getApiKey'),
-    ensureApiKey: makeFunctionReference('settings:ensureApiKey'),
-    rotateApiKey: makeFunctionReference('settings:rotateApiKey'),
+    getApiKey:         makeFunctionReference('settings:getApiKey'),
+    ensureApiKey:      makeFunctionReference('settings:ensureApiKey'),
+    rotateApiKey:      makeFunctionReference('settings:rotateApiKey'),
+    getComposioApiKey: makeFunctionReference('settings:getComposioApiKey'),
+    setComposioApiKey: makeFunctionReference('settings:setComposioApiKey'),
+  },
+  calendar: {
+    triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
   },
 };
 
@@ -51,6 +56,13 @@ export function useBlocks() {
   const bulkCreate   = (blockList) => bulkMutation({ blocks: blockList });
 
   return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate };
+}
+
+export function useComposio() {
+  const composioKey = useQuery(fn.settings.getComposioApiKey);
+  const setKey = useMutation(fn.settings.setComposioApiKey);
+  const sync = useAction(fn.calendar.triggerSync);
+  return { composioKey, setComposioApiKey: setKey, triggerSync: sync };
 }
 
 export function useApiKey() {
