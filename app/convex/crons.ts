@@ -9,4 +9,10 @@ crons.interval(
   internal.pushActions.checkAndNotify,
 );
 
+crons.interval(
+  "sync google calendar",
+  { minutes: 10 },
+  internal.calendarSyncActions.cronSync,
+);
+
 export default crons;
