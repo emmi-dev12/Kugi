@@ -66,6 +66,7 @@
     }
   },
   "dependencies": {
+    "composio-core": "^0.5",
     "convex": "^1.37.0",
     "web-push": "^3.6.7"
   }

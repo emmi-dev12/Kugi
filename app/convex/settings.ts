@@ -129,3 +129,31 @@ export const setTimezone = mutation({
     else await ctx.db.insert("settings", { key: "timezone", value });
   },
 });
+
+// ── Composio API key (Google Calendar integration) ─────────────
+
+export const getComposioApiKey = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "composioApiKey"))
+      .first();
+    return row?.value || null;
+  },
+});
+
+export const setComposioApiKey = mutation({
+  args: { value: v.string() },
+  handler: async (ctx, { value }) => {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "composioApiKey"))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value });
+    } else if (value) {
+      await ctx.db.insert("settings", { key: "composioApiKey", value });
+    }
+  },
+});
