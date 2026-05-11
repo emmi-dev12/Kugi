@@ -15,6 +15,8 @@ export default defineSchema({
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
     telegramJobId: v.optional(v.id("_scheduled_functions")),
+    recurrence: v.optional(v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly"))),
+    recurrenceGroupId: v.optional(v.string()),
   }).index("by_date", ["date"]),
 
   settings: defineTable({

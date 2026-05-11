@@ -1,0 +1,81 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 22px;
+  padding: 26px;
+  width: 400px; max-width: 92vw;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 24px 80px rgba(0,0,0,0.7);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.title {
+  font-size: 17px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.4px;
+}
+
+.subtitle {
+  font-size: 13px; color: var(--text-muted); margin: 0 0 20px;
+}
+
+.options {
+  display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;
+}
+
+.option {
+  display: flex; align-items: flex-start; gap: 10px;
+  cursor: pointer;
+}
+
+.option input[type="radio"] {
+  margin-top: 2px; flex-shrink: 0;
+  accent-color: #4f7cff;
+  width: 15px; height: 15px;
+}
+
+.optionText {
+  font-size: 13px; font-weight: 500; color: var(--text);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+
+.select {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 4px 8px; font-family: inherit; cursor: pointer;
+}
+
+.footer {
+  display: flex; gap: 7px; justify-content: flex-end;
+}
+
+.deleteBtn {
+  padding: 8px 18px; border-radius: 10px; border: none;
+  background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3);
+  color: #f43f5e; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.deleteBtn:hover {
+  background: rgba(244,63,94,0.25); border-color: rgba(244,63,94,0.5);
+}
+
+@media (max-width: 768px) {
+  .overlay { align-items: flex-end; }
+  .modal {
+    width: 100%; max-width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  }
+}

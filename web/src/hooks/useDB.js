@@ -12,13 +12,15 @@ function stripEmpty(obj) {
 
 const fn = {
   blocks: {
-    list:           makeFunctionReference('blocks:list'),
-    listByDate:     makeFunctionReference('blocks:listByDate'),
-    create:         makeFunctionReference('blocks:create'),
-    update:         makeFunctionReference('blocks:update'),
-    remove:         makeFunctionReference('blocks:remove'),
-    toggleComplete: makeFunctionReference('blocks:toggleComplete'),
-    bulkCreate:     makeFunctionReference('blocks:bulkCreate'),
+    list:             makeFunctionReference('blocks:list'),
+    listByDate:       makeFunctionReference('blocks:listByDate'),
+    create:           makeFunctionReference('blocks:create'),
+    update:           makeFunctionReference('blocks:update'),
+    remove:           makeFunctionReference('blocks:remove'),
+    toggleComplete:   makeFunctionReference('blocks:toggleComplete'),
+    bulkCreate:       makeFunctionReference('blocks:bulkCreate'),
+    createRecurring:  makeFunctionReference('blocks:createRecurring'),
+    deleteRecurring:  makeFunctionReference('blocks:deleteRecurring'),
   },
   settings: {
     getApiKey:              makeFunctionReference('settings:getApiKey'),
@@ -30,6 +32,8 @@ const fn = {
     setIntegrationEnabled:  makeFunctionReference('settings:setIntegrationEnabled'),
     getTelegramConfig:      makeFunctionReference('settings:getTelegramConfig'),
     setTelegramConfig:      makeFunctionReference('settings:setTelegramConfig'),
+    getPushEnabled:         makeFunctionReference('settings:getPushEnabled'),
+    setPushEnabled:         makeFunctionReference('settings:setPushEnabled'),
   },
   calendar: {
     triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
@@ -40,11 +44,13 @@ export function useBlocks() {
   const raw = useQuery(fn.blocks.list) ?? [];
   // Convex documents use _id; normalise to .id so the rest of the UI is consistent
   const blocks = raw.map(b => ({ ...b, id: b._id }));
-  const createMutation   = useMutation(fn.blocks.create);
-  const updateMutation   = useMutation(fn.blocks.update);
-  const removeMutation   = useMutation(fn.blocks.remove);
-  const toggleMutation   = useMutation(fn.blocks.toggleComplete);
-  const bulkMutation     = useMutation(fn.blocks.bulkCreate);
+  const createMutation          = useMutation(fn.blocks.create);
+  const updateMutation          = useMutation(fn.blocks.update);
+  const removeMutation          = useMutation(fn.blocks.remove);
+  const toggleMutation          = useMutation(fn.blocks.toggleComplete);
+  const bulkMutation            = useMutation(fn.blocks.bulkCreate);
+  const createRecurringMutation = useMutation(fn.blocks.createRecurring);
+  const deleteRecurringMutation = useMutation(fn.blocks.deleteRecurring);
 
   const createBlock = async (data) => {
     try {
@@ -58,8 +64,17 @@ export function useBlocks() {
   const deleteBlock  = (id) => removeMutation({ id });
   const toggleComplete = (id) => toggleMutation({ id });
   const bulkCreate   = (blockList) => bulkMutation({ blocks: blockList });
+  const createRecurring = async (data) => {
+    try {
+      return await createRecurringMutation({ completed: false, ...stripEmpty(data) });
+    } catch (e) {
+      alert('Create recurring failed: ' + e.message);
+      throw e;
+    }
+  };
+  const deleteRecurring = (args) => deleteRecurringMutation(args);
 
-  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate };
+  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate, createRecurring, deleteRecurring };
 }
 
 export function useComposio() {
@@ -91,6 +106,12 @@ export function useTelegram() {
   const config = useQuery(fn.settings.getTelegramConfig);
   const setConfig = useMutation(fn.settings.setTelegramConfig);
   return { config, setConfig };
+}
+
+export function usePushEnabled() {
+  const pushEnabled = useQuery(fn.settings.getPushEnabled);
+  const setPushEnabled = useMutation(fn.settings.setPushEnabled);
+  return { pushEnabled: pushEnabled ?? true, setPushEnabled };
 }
 
 export function useApiKey() {

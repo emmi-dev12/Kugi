@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useIntegrations, useTelegram } from '../../hooks/useDB';
+import { useIntegrations, useTelegram, usePushEnabled } from '../../hooks/useDB';
 import { allTimezones } from '../../utils/timezone';
 import styles from './SettingsModal.module.css';
 
@@ -44,6 +44,7 @@ export default function SettingsModal({
     triggerGcalSync,
   } = useIntegrations();
   const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
+  const { pushEnabled, setPushEnabled } = usePushEnabled();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
   const [gcalSyncing, setGcalSyncing] = useState(false);
@@ -117,6 +118,21 @@ export default function SettingsModal({
           {/* ── Notifications ── */}
           {tab === 'notifications' && (
             <div className={styles.section}>
+              <div className={styles.row}>
+                <div className={styles.rowLabel}>
+                  <span className={styles.rowTitle}>Push notifications</span>
+                  <span className={styles.rowHint}>Enable or disable all push notifications</span>
+                </div>
+                <button
+                  className={`${styles.toggle} ${pushEnabled ? styles.toggleOn : ''}`}
+                  onClick={() => setPushEnabled({ enabled: !pushEnabled })}
+                  title={pushEnabled ? 'Disable push notifications' : 'Enable push notifications'}
+                >
+                  <span className={styles.toggleThumb} />
+                </button>
+              </div>
+
+              {pushEnabled && <>
               {permission === 'unsupported' && (
                 <p className={styles.hint}>Push notifications aren't supported in this browser.</p>
               )}
@@ -190,6 +206,7 @@ export default function SettingsModal({
                   </div>
                 </>
               )}
+              </>}
             </div>
           )}
 

@@ -3,7 +3,7 @@ import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
 
-const NOTIFY_OPTIONS = [5, 10, 15, 30, 60, 120];
+const NOTIFY_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 120];
 
 export default function BlockModal({ open, block, defaultDate, onSave, onClose, categories }) {
   const cats = categories || CATEGORIES;
@@ -19,6 +19,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   // 'global' | 'custom' | 'off'
   const [notifyMode, setNotifyMode] = useState('global');
   const [notifyMins, setNotifyMins] = useState(15);
+  const [recurrence, setRecurrence] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +40,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
       if (block.notify_before === null) { setNotifyMode('off'); setNotifyMins(15); }
       else if (block.notify_before !== undefined) { setNotifyMode('custom'); setNotifyMins(block.notify_before); }
       else { setNotifyMode('global'); setNotifyMins(15); }
+      setRecurrence(block.recurrence ?? '');
     } else {
       setForm({
         title: '', emoji: '💼', category: 'Work',
@@ -48,6 +50,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
       });
       setNotifyMode('global');
       setNotifyMins(15);
+      setRecurrence('');
     }
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [open, block, defaultDate]);
@@ -72,7 +75,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
     const notify_before = notifyMode === 'off' ? null
       : notifyMode === 'custom' ? notifyMins
       : undefined;
-    onSave({ ...form, notify_before });
+    onSave({ ...form, notify_before, recurrence: recurrence || undefined });
     onClose();
   }
 
@@ -170,24 +173,34 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
             value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} />
         </div>
 
-        <div className={styles.group}>
-          <label className="form-label">Remind me</label>
-          <div className={styles.notifyRow}>
-            {['global', 'custom', 'off'].map(mode => (
-              <button key={mode}
-                className={`${styles.notifyMode} ${notifyMode === mode ? styles.notifyModeActive : ''}`}
-                onClick={() => setNotifyMode(mode)}>
-                {mode === 'global' ? 'Default' : mode === 'custom' ? 'Custom' : 'Off'}
-              </button>
-            ))}
-            {notifyMode === 'custom' && (
-              <select className={styles.notifySelect} value={notifyMins}
-                onChange={e => setNotifyMins(Number(e.target.value))}>
+        <div className={styles.row}>
+          <div className={styles.group}>
+            <label className="form-label">Repeat</label>
+            <select className="form-select" value={recurrence} onChange={e => setRecurrence(e.target.value)}>
+              <option value=''>None</option>
+              <option value='hourly'>Hourly</option>
+              <option value='daily'>Daily</option>
+              <option value='monthly'>Monthly</option>
+              <option value='yearly'>Yearly</option>
+            </select>
+          </div>
+          <div className={styles.group}>
+            <label className="form-label">Remind me</label>
+            <div className={styles.notifyRow}>
+              <select className={styles.notifySelect} value={notifyMode === 'off' ? 'off' : notifyMode === 'global' ? 'global' : String(notifyMins)}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (v === 'off') { setNotifyMode('off'); }
+                  else if (v === 'global') { setNotifyMode('global'); }
+                  else { setNotifyMode('custom'); setNotifyMins(Number(v)); }
+                }}>
+                <option value='global'>Default</option>
                 {NOTIFY_OPTIONS.map(m => (
-                  <option key={m} value={m}>{m < 60 ? `${m} min` : `${m/60} hr`} before</option>
+                  <option key={m} value={String(m)}>{m < 60 ? `${m} min` : `${m/60} hr`} before</option>
                 ))}
+                <option value='off'>Off</option>
               </select>
-            )}
+            </div>
           </div>
         </div>
 

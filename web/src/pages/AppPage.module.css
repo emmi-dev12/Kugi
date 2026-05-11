@@ -90,6 +90,24 @@
   background: var(--accent);
 }
 
+.sidebarCollapsed {
+  width: 40px !important;
+  min-width: 40px !important;
+  padding: 8px 4px;
+  overflow: hidden;
+}
+
+.collapseBtn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text-muted); font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  margin-bottom: 4px; align-self: flex-start;
+}
+.collapseBtn:hover { background: var(--surface3); color: var(--text); }
+
 .sectionTitle {
   font-size: 10px; font-weight: 700;
   color: var(--text-dim); text-transform: uppercase;

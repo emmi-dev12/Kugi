@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBlocks, useApiKey } from '../hooks/useDB';
+import DeleteRecurringModal from '../components/UI/DeleteRecurringModal';
 import SettingsModal from '../components/UI/SettingsModal';
 import { useNotifications } from '../hooks/useNotifications';
 import { useCategories } from '../hooks/useCategories';
@@ -26,7 +27,7 @@ function changeConvexUrl() {
 }
 
 export default function AppPage() {
-  const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete } = useBlocks();
+  const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, createRecurring, deleteRecurring } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
   const [timezone, setTimezone] = useState(() => getTZ());
@@ -43,9 +44,11 @@ export default function AppPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('kugiTheme') || 'dark');
   const [sidebarWidth, setSidebarWidth] = useState(() => parseInt(localStorage.getItem('kugiSidebarWidth') || '220', 10));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('kugiSidebarCollapsed') === 'true');
   const isResizing = useRef(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
   const futureRef = useRef([]);
 
@@ -54,7 +57,14 @@ export default function AppPage() {
     localStorage.setItem('kugiTheme', theme);
   }, [theme]);
 
+  function toggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem('kugiSidebarCollapsed', next);
+  }
+
   function startResize(e) {
+    if (sidebarCollapsed) return;
     isResizing.current = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -116,6 +126,10 @@ export default function AppPage() {
 
   function handleDelete(id) {
     const block = blocks.find(b => b.id === id);
+    if (block?.recurrenceGroupId) {
+      setDeleteRecurringTarget(block);
+      return;
+    }
     deleteBlock(id);
     if (block) {
       const { id: _id, _id: __id, _creationTime, ...data } = block;
@@ -195,8 +209,13 @@ export default function AppPage() {
   }
 
   function handleSave(form) {
-    if (modal.block) handleUpdate(modal.block.id, form);
-    else handleCreate(form);
+    if (modal.block) {
+      handleUpdate(modal.block.id, form);
+    } else if (form.recurrence) {
+      createRecurring(form);
+    } else {
+      handleCreate(form);
+    }
   }
 
   function nav(dir) {
@@ -283,153 +302,6 @@ export default function AppPage() {
           })}
         </div>
       </div>
-
-      {/* Manage categories */}
-      <div>
-        <div className={styles.sectionTitle}>Manage Categories</div>
-        <CategoryManager
-          categories={categories}
-          customCategories={customCategories}
-          onAdd={addCategory}
-          onRemove={removeCategory}
-          onEdit={editCategory}
-        />
-      </div>
-
-      {/* Notifications */}
-      <div className={styles.notifSection}>
-        <div className={styles.sectionTitle}>Notifications</div>
-        {permission === 'unsupported' ? (
-          <p className={styles.apiHint}>Not supported in this browser.</p>
-        ) : permission === 'denied' ? (
-          <p className={styles.apiHint}>Notifications blocked — enable in browser settings.</p>
-        ) : permission !== 'granted' ? (
-          <button className={styles.notifEnableBtn} onClick={requestPermission}>
-            Enable notifications
-          </button>
-        ) : (
-          <>
-          <div className={pushActive ? styles.pushActive : styles.pushInactive}>
-            {pushActive
-              ? <><span>🔔</span> Push server active</>
-              : <><span>🔕</span> Push server inactive — <button className={styles.pushLink} onClick={requestPermission}>re-enable</button></>}
-            {pushActive && <button className={styles.pushDisableBtn} onClick={disablePush} title="Disable push">✕</button>}
-          </div>
-          <div className={styles.reminderList}>
-            {reminders.map(r => {
-              const isDayScale = r.offsetMinutes >= 1440;
-              return (
-                <div key={r.id} className={styles.reminderCard}>
-                  <div className={styles.reminderRow}>
-                    <select
-                      className={styles.reminderSelect}
-                      value={r.offsetMinutes}
-                      onChange={e => updateReminder(r.id, { offsetMinutes: Number(e.target.value) })}
-                    >
-                      {[
-                        [5,   '5 min before'],
-                        [10,  '10 min before'],
-                        [15,  '15 min before'],
-                        [20,  '20 min before'],
-                        [30,  '30 min before'],
-                        [45,  '45 min before'],
-                        [60,  '1 hour before'],
-                        [120, '2 hours before'],
-                        [180, '3 hours before'],
-                        [360, '6 hours before'],
-                        [720, '12 hours before'],
-                        [1440,'1 day before'],
-                        [2880,'2 days before'],
-                        [4320,'3 days before'],
-                      ].map(([v, label]) => (
-                        <option key={v} value={v}>{label}</option>
-                      ))}
-                    </select>
-                    <button className={styles.reminderDelete} onClick={() => removeReminder(r.id)} title="Remove">✕</button>
-                  </div>
-                  {isDayScale && (
-                    <div className={styles.reminderRow}>
-                      <span className={styles.reminderAtLabel}>at</span>
-                      <input
-                        type="time"
-                        className={styles.reminderTime}
-                        value={r.atTime || '09:00'}
-                        onChange={e => updateReminder(r.id, { atTime: e.target.value })}
-                      />
-                    </div>
-                  )}
-                  <input
-                    className={styles.reminderMsg}
-                    placeholder="Custom message (optional)"
-                    value={r.message || ''}
-                    onChange={e => updateReminder(r.id, { message: e.target.value })}
-                  />
-                </div>
-              );
-            })}
-            {reminders.length < 3 && (
-              <button className={styles.addReminderBtn} onClick={addReminder}>
-                + Add reminder
-              </button>
-            )}
-          </div>
-          </>
-        )}
-      </div>
-
-      {/* Timezone */}
-      <div className={styles.notifSection}>
-        <div className={styles.sectionTitle}>Timezone</div>
-        <select
-          className={styles.notifSelect}
-          value={timezone}
-          onChange={e => {
-            setTZ(e.target.value);
-            setTimezone(e.target.value);
-          }}
-        >
-          {allTimezones().map(tz => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Settings */}
-      <div className={styles.apiSection}>
-        <div className={styles.sectionTitle}>API Key</div>
-        <div className={styles.apiBox}>
-          <code className={styles.apiKey}>
-            {apiKey === undefined ? 'loading…'
-              : apiKey === null ? 'generating…'
-              : apiKeyVisible ? apiKey : '••••••••••••••••'}
-          </code>
-          {apiKey && <>
-            <button className={styles.apiToggle} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={() => setApiKeyVisible(v => !v)}>
-              {apiKeyVisible ? '🙈' : '👁'}
-            </button>
-            <button className={styles.apiToggle} title="Copy key" onClick={() => navigator.clipboard.writeText(apiKey).then(() => {
-              const btn = document.activeElement;
-              const prev = btn.textContent;
-              btn.textContent = '✓';
-              setTimeout(() => { btn.textContent = prev; }, 1200);
-            })}>
-              ⎘
-            </button>
-            <button className={styles.apiToggle} title="Rotate key" onClick={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}>
-              ↺
-            </button>
-          </>}
-        </div>
-        <p className={styles.apiHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code> on your Convex HTTP endpoint.</p>
-
-        <button className={styles.changeUrlBtn} onClick={changeConvexUrl}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1 6a5 5 0 0 1 9.5-2M11 6a5 5 0 0 1-9.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-            <path d="M9 1.5l1.5 2.5-2.5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Change Convex URL
-        </button>
-      </div>
     </>
   );
 
@@ -486,10 +358,16 @@ export default function AppPage() {
 
       <div className={styles.body}>
         {/* SIDEBAR — desktop */}
-        <aside className={styles.sidebar} style={{ width: sidebarWidth }}>
-          <SidebarContent />
+        <aside
+          className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''}`}
+          style={sidebarCollapsed ? {} : { width: sidebarWidth }}
+        >
+          <button className={styles.collapseBtn} onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {sidebarCollapsed ? '›' : '‹'}
+          </button>
+          {!sidebarCollapsed && <SidebarContent />}
         </aside>
-        <div className={styles.resizeHandle} onMouseDown={startResize} />
+        <div className={styles.resizeHandle} onMouseDown={startResize} style={sidebarCollapsed ? { pointerEvents: 'none', opacity: 0 } : {}} />
 
         {/* MAIN */}
         <main className={styles.main}>
@@ -566,6 +444,15 @@ export default function AppPage() {
       )}
 
       {toast && <div className={styles.toast}>{toast}</div>}
+
+      <DeleteRecurringModal
+        open={deleteRecurringTarget !== null}
+        onClose={() => setDeleteRecurringTarget(null)}
+        onConfirm={({ mode, futureDays }) => {
+          deleteRecurring({ id: deleteRecurringTarget._id, mode, futureDays });
+          setDeleteRecurringTarget(null);
+        }}
+      />
 
       <SettingsModal
         open={settingsOpen}

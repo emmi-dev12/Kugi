@@ -196,6 +196,34 @@ export const setTelegramConfig = mutation({
   },
 });
 
+export const getPushEnabled = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "pushEnabled"))
+      .first();
+    if (!row) return true;
+    return row.value !== "false";
+  },
+});
+
+export const setPushEnabled = mutation({
+  args: { enabled: v.boolean() },
+  handler: async (ctx, { enabled }) => {
+    const value = enabled ? "true" : "false";
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "pushEnabled"))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value });
+    } else {
+      await ctx.db.insert("settings", { key: "pushEnabled", value });
+    }
+  },
+});
+
 export const setIntegrationEnabled = mutation({
   args: { integration: v.string(), enabled: v.boolean() },
   handler: async (ctx, { integration, enabled }) => {
