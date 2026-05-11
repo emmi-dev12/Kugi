@@ -34,9 +34,6 @@ const fn = {
   calendar: {
     triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
   },
-  notion: {
-    triggerNotionSync: makeFunctionReference('notionSyncActions:triggerNotionSync'),
-  },
 };
 
 export function useBlocks() {
@@ -76,23 +73,17 @@ export function useIntegrations() {
   const composioKey = useQuery(fn.settings.getComposioApiKey);
   const setComposioApiKey = useMutation(fn.settings.setComposioApiKey);
   const gcalEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'googleCalendar' }) ?? true;
-  const notionEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'notion' }) ?? false;
   const setIntegrationEnabledMutation = useMutation(fn.settings.setIntegrationEnabled);
   const triggerGcalSync = useAction(fn.calendar.triggerSync);
-  const triggerNotionSync = useAction(fn.notion.triggerNotionSync);
 
   const setGcalEnabled = (val) => setIntegrationEnabledMutation({ integration: 'googleCalendar', enabled: val });
-  const setNotionEnabled = (val) => setIntegrationEnabledMutation({ integration: 'notion', enabled: val });
 
   return {
     composioKey,
     setComposioApiKey,
     gcalEnabled,
-    notionEnabled,
     setGcalEnabled,
-    setNotionEnabled,
     triggerGcalSync,
-    triggerNotionSync,
   };
 }
 

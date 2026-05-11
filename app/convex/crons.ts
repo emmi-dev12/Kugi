@@ -16,11 +16,5 @@ crons.interval(
   internal.calendarSyncActions.cronSync,
 );
 
-// Push upcoming blocks to Notion every 10 minutes
-crons.interval(
-  "sync notion",
-  { minutes: 10 },
-  internal.notionSyncActions.cronNotionSync,
-);
 
 export default crons;

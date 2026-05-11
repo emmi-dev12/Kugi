@@ -40,18 +40,15 @@ export default function SettingsModal({
     composioKey,
     setComposioApiKey,
     gcalEnabled,
-    notionEnabled,
     setGcalEnabled,
-    setNotionEnabled,
     triggerGcalSync,
-    triggerNotionSync,
   } = useIntegrations();
   const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
   const [gcalSyncing, setGcalSyncing] = useState(false);
-  const [notionSyncing, setNotionSyncing] = useState(false);
   const [telegramInput, setTelegramInput] = useState({ botToken: '', chatId: '' });
+  const [telegramOffset, setTelegramOffset] = useState('15');
   const [tab, setTab] = useState('general');
 
   if (!open) return null;
@@ -296,58 +293,42 @@ export default function SettingsModal({
                     )}
                   </div>
 
-                  {/* Notion card */}
-                  <div className={styles.integrationCard}>
-                    <div className={styles.integrationCardHeader}>
-                      <div className={styles.rowLabel}>
-                        <span className={styles.rowTitle}>Notion</span>
-                        <span className={styles.rowHint}>Push upcoming blocks to a Notion database named "Kugi". Connect Notion in your Composio dashboard first.</span>
-                      </div>
-                      <button
-                        className={`${styles.toggle} ${notionEnabled ? styles.toggleOn : ''}`}
-                        onClick={() => setNotionEnabled(!notionEnabled)}
-                        title={notionEnabled ? 'Disable' : 'Enable'}
-                      >
-                        <span className={styles.toggleThumb} />
-                      </button>
-                    </div>
-                    {notionEnabled && (
-                      <button
-                        className={styles.syncBtn}
-                        disabled={notionSyncing}
-                        onClick={async () => {
-                          setNotionSyncing(true);
-                          try { await triggerNotionSync(); } catch (e) { alert('Sync failed: ' + e.message); }
-                          setNotionSyncing(false);
-                        }}
-                      >
-                        {notionSyncing ? 'Syncing…' : '↺ Sync now'}
-                      </button>
-                    )}
-                  </div>
-
                   {/* Telegram card */}
                   <div className={styles.integrationCard}>
                     <div className={styles.integrationCardHeader}>
                       <div className={styles.rowLabel}>
                         <span className={styles.rowTitle}>Telegram</span>
-                        <span className={styles.rowHint}>Send block reminders 15 min before start via Telegram bot.</span>
+                        <span className={styles.rowHint}>Send block reminders via Telegram bot before start time.</span>
                       </div>
                     </div>
                     {telegramConfig?.botToken && telegramConfig?.chatId ? (
-                      <div className={styles.connectedRow}>
-                        <span className={styles.connectedDot} />
-                        <span className={styles.connectedLabel}>Connected</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
-                          {telegramConfig.botToken.slice(0, 8)}…
-                        </span>
-                        <button
-                          className={styles.disconnectBtn}
-                          onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '' }); }}
-                        >
-                          Disconnect
-                        </button>
-                      </div>
+                      <>
+                        <div className={styles.connectedRow}>
+                          <span className={styles.connectedDot} />
+                          <span className={styles.connectedLabel}>Connected</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                            {telegramConfig.botToken.slice(0, 8)}…
+                          </span>
+                          <button
+                            className={styles.disconnectBtn}
+                            onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '', offsetMinutes: 15 }); }}
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+                        <div className={styles.row} style={{ marginTop: 8 }}>
+                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>Remind me</span>
+                          <select
+                            className={styles.select}
+                            value={telegramConfig.offsetMinutes ?? 15}
+                            onChange={e => setTelegramConfig({ botToken: telegramConfig.botToken, chatId: telegramConfig.chatId, offsetMinutes: Number(e.target.value) })}
+                          >
+                            {[[5,'5 min before'],[10,'10 min before'],[15,'15 min before'],[20,'20 min before'],[30,'30 min before'],[45,'45 min before'],[60,'1 hour before'],[120,'2 hours before']].map(([v, label]) => (
+                              <option key={v} value={v}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
                     ) : (
                       <form
                         className={styles.telegramForm}
@@ -355,7 +336,7 @@ export default function SettingsModal({
                           e.preventDefault();
                           if (!telegramInput.botToken.trim() || !telegramInput.chatId.trim()) return;
                           try {
-                            await setTelegramConfig({ botToken: telegramInput.botToken.trim(), chatId: telegramInput.chatId.trim() });
+                            await setTelegramConfig({ botToken: telegramInput.botToken.trim(), chatId: telegramInput.chatId.trim(), offsetMinutes: Number(telegramOffset) });
                             setTelegramInput({ botToken: '', chatId: '' });
                           } catch (err) { alert('Failed to save: ' + err.message); }
                         }}
@@ -375,6 +356,18 @@ export default function SettingsModal({
                             value={telegramInput.chatId}
                             onChange={e => setTelegramInput(p => ({ ...p, chatId: e.target.value }))}
                           />
+                        </div>
+                        <div className={styles.row} style={{ marginBottom: 8 }}>
+                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>Remind me</span>
+                          <select
+                            className={styles.select}
+                            value={telegramOffset}
+                            onChange={e => setTelegramOffset(e.target.value)}
+                          >
+                            {[[5,'5 min before'],[10,'10 min before'],[15,'15 min before'],[20,'20 min before'],[30,'30 min before'],[45,'45 min before'],[60,'1 hour before'],[120,'2 hours before']].map(([v, label]) => (
+                              <option key={v} value={v}>{label}</option>
+                            ))}
+                          </select>
                         </div>
                         <button type="submit" className={styles.saveBtn}>Connect</button>
                       </form>

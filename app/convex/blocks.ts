@@ -2,9 +2,9 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
-function reminderTimestamp(date: string, startTime: string): number {
+function reminderTimestamp(date: string, startTime: string, offsetMinutes: number): number {
   const dt = new Date(`${date}T${startTime}:00`);
-  return dt.getTime() - 15 * 60 * 1000;
+  return dt.getTime() - offsetMinutes * 60 * 1000;
 }
 
 export const list = query({
@@ -48,7 +48,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("blocks", args);
     if (args.start_time && args.date) {
-      const ts = reminderTimestamp(args.date, args.start_time);
+      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
+      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
+      const ts = reminderTimestamp(args.date, args.start_time, offsetMinutes);
       if (ts > Date.now()) {
         const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
         await ctx.db.patch(id, { telegramJobId: jobId });
@@ -80,7 +82,9 @@ export const update = mutation({
     await ctx.db.patch(id, fields);
     const updated = await ctx.db.get(id);
     if (updated?.start_time && updated?.date) {
-      const ts = reminderTimestamp(updated.date, updated.start_time);
+      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
+      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
+      const ts = reminderTimestamp(updated.date, updated.start_time, offsetMinutes);
       if (ts > Date.now()) {
         const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
         await ctx.db.patch(id, { telegramJobId: jobId });
@@ -115,7 +119,9 @@ export const toggleComplete = mutation({
       await ctx.scheduler.cancel(block.telegramJobId as any);
       await ctx.db.patch(id, { telegramJobId: undefined });
     } else if (!nowCompleted && block.start_time && block.date) {
-      const ts = reminderTimestamp(block.date, block.start_time);
+      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
+      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
+      const ts = reminderTimestamp(block.date, block.start_time, offsetMinutes);
       if (ts > Date.now()) {
         const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
         await ctx.db.patch(id, { telegramJobId: jobId });
