@@ -89,7 +89,8 @@ http.route({
         end_time: "string (optional) — HH:MM",
         notes: "string (optional)",
         completed: "boolean (optional, default: false)",
-        notify_before: "number (optional) — minutes before start_time to send reminders",
+        notify_before: "number (optional) — minutes before start_time to send reminders. null = off.",
+        notify_message: "string (optional) — custom notification text sent verbatim via push and Telegram, overriding the global template. Leave unset to use the default.",
         recurrence: "string (optional) — 'hourly' | 'daily' | 'monthly' | 'yearly'. When set on POST, generates all future occurrences automatically.",
         recurrenceGroupId: "string (optional, read-only) — shared ID linking all blocks in a recurring series",
       },
@@ -258,7 +259,8 @@ http.route({
         notes: "string (optional)",
         completed: "boolean (optional, default: false)",
         end_date: "YYYY-MM-DD (optional, for multi-day blocks)",
-        notify_before: "number (optional) — minutes before start_time to send reminders",
+        notify_before: "number (optional) — minutes before start_time to send reminders. null = off.",
+        notify_message: "string (optional) — custom notification text, overrides global template",
         recurrence: "\"hourly\" | \"daily\" | \"monthly\" | \"yearly\" (optional)",
         recurrenceGroupId: "string (optional, auto-set for recurring blocks)",
       },
@@ -319,7 +321,7 @@ http.route({
 });
 
 // ── POST /api/tasks ────────────────────────────────────────────
-// Body: { title, date, emoji?, category?, start_time?, end_time?, notes?, completed?, end_date?, recurrence?, notify_before? }
+// Body: { title, date, emoji?, category?, start_time?, end_time?, notes?, completed?, end_date?, recurrence?, notify_before?, notify_message? }
 // Returns: full task object, or { created: number } if recurrence is set
 http.route({
   path: "/api/tasks",
@@ -341,6 +343,7 @@ http.route({
       completed: body.completed ?? false,
       end_date: body.end_date ?? undefined,
       notify_before: body.notify_before ?? undefined,
+      notify_message: body.notify_message ?? undefined,
     };
 
     if (body.recurrence) {
