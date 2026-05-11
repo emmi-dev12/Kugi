@@ -18,6 +18,7 @@ export default defineSchema({
     recurrence: v.optional(v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly"))),
     recurrenceGroupId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
+    notify_message: v.optional(v.string()),
   }).index("by_date", ["date"]),
 
   settings: defineTable({

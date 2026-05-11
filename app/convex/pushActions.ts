@@ -102,7 +102,7 @@ export const checkAndNotify = internalAction({
       const timeStr = block.start_time
         ? ` · ${block.start_time}${block.end_time ? "–" + block.end_time : ""}`
         : "";
-      const body = reminder.message || `${autoLabel}${timeStr}`;
+      const body = block.notify_message || reminder.message || `${autoLabel}${timeStr}`;
       const payload = JSON.stringify({
         title: `${block.emoji || "📅"} ${block.title}`,
         body,

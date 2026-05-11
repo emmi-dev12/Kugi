@@ -12,7 +12,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   const [form, setForm] = useState({
     title: '', emoji: '💼', category: 'Work',
     date: toDateStr(new Date()), end_date: '', start_time: '', end_time: '', notes: '',
-    completed: false, notify_before: undefined,
+    completed: false, notify_before: undefined, notify_message: '',
   });
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiDraft, setEmojiDraft] = useState('');
@@ -36,6 +36,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         notes: block.notes || '',
         completed: block.completed || false,
         notify_before: block.notify_before,
+        notify_message: block.notify_message || '',
       });
       if (block.notify_before === null) { setNotifyMode('off'); setNotifyMins(15); }
       else if (block.notify_before !== undefined) { setNotifyMode('custom'); setNotifyMins(block.notify_before); }
@@ -203,6 +204,18 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
             </div>
           </div>
         </div>
+
+        {notifyMode !== 'off' && (
+          <div className={styles.group}>
+            <label className="form-label">Notification message <span style={{fontWeight:400,opacity:.55}}>(optional)</span></label>
+            <input
+              className="form-input"
+              placeholder="e.g. Hope it's delicious! 🍜"
+              value={form.notify_message}
+              onChange={e => setForm(f => ({ ...f, notify_message: e.target.value }))}
+            />
+          </div>
+        )}
 
         <div className={styles.footer}>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>

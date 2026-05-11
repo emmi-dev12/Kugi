@@ -45,6 +45,7 @@ export const create = mutation({
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
+    notify_message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("blocks", args);
@@ -75,6 +76,7 @@ export const update = mutation({
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
+    notify_message: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const block = await ctx.db.get(id);
@@ -163,6 +165,7 @@ export const createRecurring = mutation({
     localId: v.optional(v.string()),
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
+    notify_message: v.optional(v.string()),
     recurrence: v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
