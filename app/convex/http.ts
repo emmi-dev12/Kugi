@@ -107,8 +107,8 @@ http.route({
         description: "Use bulk endpoints for efficiency — always prefer bulk-create over multiple single POSTs.",
         endpoints: [
           "POST /api/tasks/bulk — body: { blocks: [...] } — create many blocks at once. Returns { created: number }.",
-          "POST /api/tasks/bulk-complete — body: { ids: [...], completed: boolean } — set completion on many blocks. Returns { updated: number }.",
-          "POST /api/tasks/bulk-delete — body: { ids: [...] } — delete many blocks. Returns { deleted: number }.",
+          "POST /api/tasks/bulk-complete — body: { ids?: [...], search?: string, completed?: boolean } — set completion on many blocks. Use 'search' to match by text instead of listing ids. Returns { updated: number }.",
+          "POST /api/tasks/bulk-delete — body: { ids?: [...], search?: string } — delete many blocks. Use 'search' to select all matching blocks in one call. Returns { deleted: number }.",
           "POST /api/tasks/bulk-update — body: { ids: [...], fields: { category?, emoji?, completed? } } — patch fields on many blocks. Returns { updated: number }.",
         ],
       },
@@ -159,12 +159,12 @@ http.route({
         {
           method: "POST", path: "/api/tasks/bulk-complete",
           auth: true,
-          description: "Set completion on many blocks. body: { ids: [...], completed: boolean }. Returns { updated: number }.",
+          description: "Set completion on many blocks. body: { ids?: [...], search?: string, completed?: boolean }. Pass 'search' to select all matching blocks in one call instead of listing ids. Returns { updated: number }.",
         },
         {
           method: "POST", path: "/api/tasks/bulk-delete",
           auth: true,
-          description: "Delete many blocks. body: { ids: [...] }. Returns { deleted: number }.",
+          description: "Delete many blocks. body: { ids?: [...], search?: string }. Pass 'search' to select-all-matching and delete in one call. Returns { deleted: number }.",
         },
         {
           method: "POST", path: "/api/tasks/bulk-update",
@@ -508,9 +508,22 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!Array.isArray(body?.ids)) return json({ error: "ids array required" }, 400);
+    let ids: string[] = body?.ids ?? [];
+    if (body?.search) {
+      const all: any[] = await ctx.runQuery(api.blocks.list);
+      const q = (body.search as string).toLowerCase();
+      ids = all
+        .filter(b =>
+          b.title?.toLowerCase().includes(q) ||
+          b.notes?.toLowerCase().includes(q) ||
+          b.category?.toLowerCase().includes(q) ||
+          b.emoji?.includes(q)
+        )
+        .map(b => b._id);
+    }
+    if (!Array.isArray(ids) || ids.length === 0) return json({ updated: 0 });
     const count = await ctx.runMutation(api.blocks.bulkComplete, {
-      ids: body.ids,
+      ids,
       completed: body.completed ?? true,
     });
     return json({ updated: count });
@@ -525,8 +538,21 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!Array.isArray(body?.ids)) return json({ error: "ids array required" }, 400);
-    const count = await ctx.runMutation(api.blocks.bulkDelete, { ids: body.ids });
+    let ids: string[] = body?.ids ?? [];
+    if (body?.search) {
+      const all: any[] = await ctx.runQuery(api.blocks.list);
+      const q = (body.search as string).toLowerCase();
+      ids = all
+        .filter(b =>
+          b.title?.toLowerCase().includes(q) ||
+          b.notes?.toLowerCase().includes(q) ||
+          b.category?.toLowerCase().includes(q) ||
+          b.emoji?.includes(q)
+        )
+        .map(b => b._id);
+    }
+    if (!Array.isArray(ids) || ids.length === 0) return json({ deleted: 0 });
+    const count = await ctx.runMutation(api.blocks.bulkDelete, { ids });
     return json({ deleted: count });
   }),
 });
