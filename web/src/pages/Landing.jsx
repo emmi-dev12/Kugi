@@ -18,18 +18,9 @@ Then: organize today's blocks, set up Telegram reminders, sync Google Calendar, 
 Always call /api/docs at the start of every session — it contains the full API reference.`;
 
 const AI_PRINCIPLES = [
-  {
-    title: 'Fetch docs first',
-    desc: 'The agent reads the full API reference before every session',
-  },
-  {
-    title: 'One Bearer token',
-    desc: 'Paste it once. Every agent that has it can do everything you can',
-  },
-  {
-    title: 'Full read/write',
-    desc: 'Create, complete, delete, bulk-edit, set notifications, sync calendars',
-  },
+  { title: 'Fetch docs first', desc: 'The agent reads the full API reference before every session' },
+  { title: 'One Bearer token', desc: 'Paste it once. Every agent that has it can do everything you can' },
+  { title: 'Full read/write', desc: 'Create, complete, delete, bulk-edit, set notifications, sync calendars' },
 ];
 
 function detectOS() {
@@ -41,17 +32,7 @@ function detectOS() {
   return 'other';
 }
 
-function detectBrowser() {
-  const ua = navigator.userAgent;
-  if (/Edg\//.test(ua)) return 'edge';
-  if (/Chrome\//.test(ua)) return 'chrome';
-  if (/Safari\//.test(ua)) return 'safari';
-  if (/Firefox\//.test(ua)) return 'firefox';
-  return 'other';
-}
-
-/* useInView — fires once when element enters viewport */
-function useInView(threshold = 0.15) {
+function useInView(threshold = 0.12) {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -74,16 +55,13 @@ export default function Landing({ onGetStarted }) {
   const [showIOSHint, setShowIOSHint] = useState(false);
   const [copied, setCopied] = useState(false);
   const os = detectOS();
-  const browser = detectBrowser();
   const canPrompt = !!installPrompt;
 
-  // Hero parallax
   const heroRef = useRef(null);
   const previewRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Pick up prompt captured before React mounted
     if (window.__pwaInstallPrompt) {
       setInstallPrompt(window.__pwaInstallPrompt);
       window.__pwaInstallPrompt = null;
@@ -103,12 +81,10 @@ export default function Landing({ onGetStarted }) {
     const cy = rect.top + rect.height / 2;
     const dx = (e.clientX - cx) / (rect.width / 2);
     const dy = (e.clientY - cy) / (rect.height / 2);
-    setTilt({ x: dy * -5, y: dx * 3 });
+    setTilt({ x: dy * -4, y: dx * 3 });
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
-    setTilt({ x: 0, y: 0 });
-  }, []);
+  const handleMouseLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
 
   function handleOpen() {
     if (localStorage.getItem('kugiConvexUrl')) navigate('/app');
@@ -130,7 +106,6 @@ export default function Landing({ onGetStarted }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // In-view refs
   const [aiRef, aiInView] = useInView();
   const [featRef, featInView] = useInView();
   const [howRef, howInView] = useInView();
@@ -138,22 +113,21 @@ export default function Landing({ onGetStarted }) {
 
   return (
     <div className={styles.page}>
+
       {/* NAV */}
       <nav className={styles.nav}>
         <div className={styles.navInner}>
           <div className={styles.brand}>
-            <div className={styles.brandIcon}><KugiLogo size={18} /></div>
-            <span>kugi</span>
+            <div className={styles.brandIcon}><KugiLogo size={16} /></div>
+            <span className={styles.brandName}>kugi</span>
           </div>
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navLink}>Features</a>
             <a href="#agent" className={styles.navLink}>AI Agent</a>
             <a href="#install" className={styles.navLink}>Install</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
-            <button className={`btn-primary ${styles.navCta}`} onClick={handleOpen}>
-              Open App
-            </button>
           </div>
+          <button className={styles.navCta} onClick={handleOpen}>Open App</button>
         </div>
       </nav>
 
@@ -164,59 +138,55 @@ export default function Landing({ onGetStarted }) {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <div className={styles.heroGlowTop} />
-        <div className={styles.heroGlowPurple} />
+        <div className={styles.heroStripe} aria-hidden="true" />
 
-        <div className={styles.heroBadge}>
-          <span className={styles.heroBadgeDot} />
-          Free forever · Open source · BYOC
-        </div>
+        <div className={styles.heroContent}>
+          <div className={styles.heroBadge}>
+            <span className={styles.heroBadgeDot} />
+            Free forever · Open source · BYOC
+          </div>
 
-        <h1 className={styles.heroTitle}>
-          Your AI-ready<br />
-          <span className={styles.heroGrad}>block calendar</span>
-        </h1>
+          <h1 className={styles.heroTitle}>
+            Your AI-ready<br />block calendar
+          </h1>
 
-        <p className={styles.heroSub}>
-          Plan your week in beautiful bento blocks. Connect your AI agents.
-          Own your data — no subscription, no central server, ever.
-        </p>
+          <p className={styles.heroSub}>
+            Plan your week in beautiful bento blocks. Connect your AI agents.
+            Own your data — no subscription, no central server, ever.
+          </p>
 
-        <div className={styles.heroCTA}>
-          <button className={`btn-primary ${styles.ctaMain}`} onClick={handleOpen}>
-            Start for free →
-          </button>
-          {installed ? (
-            <span className={styles.installedBadge}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              App installed
-            </span>
-          ) : canPrompt ? (
-            <button className={styles.installBtn} onClick={triggerInstall}>
-              <DownloadIcon />
-              Install app
+          <div className={styles.heroCTA}>
+            <button className={styles.ctaPrimary} onClick={handleOpen}>
+              Start for free
             </button>
-          ) : null}
+            {installed ? (
+              <span className={styles.installedBadge}>
+                <CheckIcon />
+                Installed
+              </span>
+            ) : canPrompt ? (
+              <button className={styles.ctaSecondary} onClick={triggerInstall}>
+                <DownloadIcon />
+                Install app
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        {/* 3D tilted preview */}
+        {/* 3D preview */}
         <div className={styles.previewWrap}>
-          <div
-            className={styles.previewAura}
-            style={{ '--tilt-x': `${tilt.x}deg`, '--tilt-y': `${tilt.y}deg` }}
-          />
           <div
             ref={previewRef}
             className={styles.previewWindow}
             style={{
-              transform: `perspective(1200px) rotateX(calc(10deg + ${tilt.x}deg)) rotateY(${tilt.y}deg)`,
+              transform: `perspective(1200px) rotateX(calc(8deg + ${tilt.x}deg)) rotateY(${tilt.y}deg)`,
               transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.8s cubic-bezier(0.23,1,0.32,1)' : 'transform 0.1s linear',
             }}
           >
             <div className={styles.previewBar}>
-              <span className={styles.dot} style={{ background: '#f43f5e' }} />
-              <span className={styles.dot} style={{ background: '#fbbf24' }} />
-              <span className={styles.dot} style={{ background: '#10b981' }} />
+              <span className={styles.trafficDot} style={{ background: '#ff5f57' }} />
+              <span className={styles.trafficDot} style={{ background: '#febc2e' }} />
+              <span className={styles.trafficDot} style={{ background: '#28c840' }} />
               <span className={styles.previewTitle}>kugi — Week of May 5–11</span>
             </div>
             <div className={styles.previewGrid}>
@@ -244,75 +214,18 @@ export default function Landing({ onGetStarted }) {
         </div>
       </section>
 
-      {/* AI AGENT SECTION */}
-      <section
-        id="agent"
-        className={`${styles.aiSection} ${aiInView ? styles.inView : ''}`}
-        ref={aiRef}
-      >
-        <div className={styles.aiGlow} />
-        <div className={styles.aiInner}>
-          <div className={styles.aiEyebrow}>AI Agent</div>
-          <h2 className={styles.aiTitle}>Your AI agent.<br />Already home.</h2>
-          <p className={styles.aiSub}>
-            Give any LLM one prompt and it can read, write, and manage your entire schedule.
-          </p>
-
-          <div className={styles.aiCard}>
-            <div className={styles.aiCardBorder} />
-            <div className={styles.aiCardHeader}>
-              <span className={styles.aiCardLabel}>Starter prompt</span>
-              <button
-                className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ''}`}
-                onClick={copyPrompt}
-              >
-                {copied ? (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M3 9H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.4"/></svg>
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-            <pre className={styles.aiPromptBlock}>{AI_PROMPT}</pre>
-          </div>
-
-          <div className={styles.aiPrinciples}>
-            {AI_PRINCIPLES.map((p, i) => (
-              <div key={i} className={styles.aiPrinciple}>
-                <div className={styles.aiPrincipleNum}>{i + 1}</div>
-                <div>
-                  <div className={styles.aiPrincipleTitle}>{p.title}</div>
-                  <div className={styles.aiPrincipleDesc}>{p.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* FEATURES */}
       <section
         id="features"
-        className={`${styles.features} ${featInView ? styles.inView : ''}`}
+        className={`${styles.section} ${featInView ? styles.inView : ''}`}
         ref={featRef}
       >
-        <div className={styles.featuresInner}>
-          <div className={styles.sectionEyebrow}>Features</div>
-          <h2 className={styles.featTitle}>Everything you need.<br />Nothing you don't.</h2>
+        <div className={styles.sectionInner}>
+          <div className={styles.eyebrow}>Features</div>
+          <h2 className={styles.sectionTitle}>Everything you need.<br />Nothing you don't.</h2>
           <div className={styles.featGrid}>
             {FEATURES.map((f, i) => (
-              <div
-                key={i}
-                className={styles.featCard}
-                style={{ transitionDelay: `${i * 60}ms` }}
-              >
-                <div className={styles.featCardGlow} />
+              <div key={i} className={styles.featCard} style={{ transitionDelay: `${i * 60}ms` }}>
                 <div className={styles.featIcon}>{f.icon}</div>
                 <div className={styles.featCardTitle}>{f.title}</div>
                 <div className={styles.featCardDesc}>{f.desc}</div>
@@ -322,21 +235,65 @@ export default function Landing({ onGetStarted }) {
         </div>
       </section>
 
+      {/* AI AGENT */}
+      <section
+        id="agent"
+        className={`${styles.section} ${aiInView ? styles.inView : ''}`}
+        ref={aiRef}
+      >
+        <div className={styles.sectionInner} style={{ maxWidth: 780 }}>
+          <div className={styles.eyebrow}>AI Agent</div>
+          <h2 className={styles.sectionTitle}>Your AI agent.<br />Already home.</h2>
+          <p className={styles.sectionSub}>
+            Give any LLM one prompt and it can read, write, and manage your entire schedule.
+          </p>
+
+          <div className={styles.promptCard}>
+            <div className={styles.promptCardHeader}>
+              <span className={styles.promptLabel}>Starter prompt</span>
+              <button
+                className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ''}`}
+                onClick={copyPrompt}
+              >
+                {copied ? (
+                  <><CheckIcon size={12} /> Copied</>
+                ) : (
+                  <><CopyIcon /> Copy</>
+                )}
+              </button>
+            </div>
+            <pre className={styles.promptBlock}>{AI_PROMPT}</pre>
+          </div>
+
+          <div className={styles.principlesGrid}>
+            {AI_PRINCIPLES.map((p, i) => (
+              <div key={i} className={styles.principleCard}>
+                <div className={styles.principleNum}>{i + 1}</div>
+                <div>
+                  <div className={styles.principleTitle}>{p.title}</div>
+                  <div className={styles.principleDesc}>{p.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* HOW IT WORKS */}
       <section
-        className={`${styles.how} ${howInView ? styles.inView : ''}`}
+        className={`${styles.section} ${howInView ? styles.inView : ''}`}
         ref={howRef}
       >
-        <div className={styles.howInner}>
-          <div className={styles.sectionEyebrow}>Quick start</div>
-          <h2 className={styles.featTitle}>Up in 3 minutes</h2>
+        <div className={styles.sectionInner} style={{ maxWidth: 560 }}>
+          <div className={styles.eyebrow}>Quick start</div>
+          <h2 className={styles.sectionTitle}>Up in 3 minutes</h2>
           <div className={styles.steps}>
             {[
               { n: '1', t: 'Deploy Convex', d: 'Run npx convex dev once. Free tier covers everything.' },
               { n: '2', t: 'Connect Kugi', d: 'Paste your deployment URL. Your calendar is ready instantly.' },
               { n: '3', t: 'Install & block', d: 'Install as a PWA, create blocks, plug in your AI agent.' },
             ].map((s, i) => (
-              <div key={i} className={styles.step} style={{ transitionDelay: `${i * 100}ms` }}>
+              <div key={i} className={styles.step} style={{ transitionDelay: `${i * 80}ms` }}>
                 <div className={styles.stepNumWrap}>
                   <div className={styles.stepNum}>{s.n}</div>
                   {i < 2 && <div className={styles.stepLine} />}
@@ -348,27 +305,27 @@ export default function Landing({ onGetStarted }) {
               </div>
             ))}
           </div>
-          <button className={`btn-primary ${styles.ctaMain}`} onClick={handleOpen} style={{ marginTop: 52 }}>
-            Get started free →
-          </button>
+          <div style={{ marginTop: 48, textAlign: 'center' }}>
+            <button className={styles.ctaPrimary} onClick={handleOpen}>
+              Get started free
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* INSTALL SECTION */}
+      {/* INSTALL */}
       <section
-        className={`${styles.installSection} ${installInView ? styles.inView : ''}`}
         id="install"
+        className={`${styles.section} ${installInView ? styles.inView : ''}`}
         ref={installRef}
       >
-        <div className={styles.installGlow} />
-        <div className={styles.installInner}>
-          <div className={styles.sectionEyebrow}>Install</div>
-          <h2 className={styles.installTitle}>Install on any device</h2>
-          <p className={styles.installSub}>
+        <div className={styles.sectionInner}>
+          <div className={styles.eyebrow}>Install</div>
+          <h2 className={styles.sectionTitle}>Install on any device</h2>
+          <p className={styles.sectionSub}>
             No App Store. No waiting. Kugi installs as a native-feeling app on every platform.
-            {os !== 'other' && <strong> Your device is highlighted below.</strong>}
+            {os !== 'other' && <> <strong style={{ color: '#f4f4f6' }}>Your device is highlighted below.</strong></>}
           </p>
-
           <div className={styles.osGrid}>
             <OSCard
               icon="🍎"
@@ -380,22 +337,18 @@ export default function Landing({ onGetStarted }) {
                 : ['Open this page in Chrome or Edge', 'Click Install in the address bar or use the button below']}
               actions={
                 installed ? (
-                  <span className={styles.installedBadge}>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    Installed
-                  </span>
+                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
                 ) : canPrompt ? (
-                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
+                  <button className={styles.installOsBtn} onClick={triggerInstall}>
                     <DownloadIcon /> Install as app
                   </button>
                 ) : (
-                  <a className={`btn-primary ${styles.osBtn}`} href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">
+                  <a className={styles.installOsBtn} href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">
                     Get Chrome to install
                   </a>
                 )
               }
             />
-
             <OSCard
               icon="📱"
               label="iPhone / iPad"
@@ -406,16 +359,15 @@ export default function Landing({ onGetStarted }) {
                 showIOSHint ? (
                   <div className={styles.iosSteps}>
                     <div className={styles.iosStep}><span className={styles.iosNum}>1</span> Open in <strong>Safari</strong></div>
-                    <div className={styles.iosStep}><span className={styles.iosNum}>2</span> Tap <strong>Share</strong> <ShareIcon /> then "Add to Home Screen"</div>
+                    <div className={styles.iosStep}><span className={styles.iosNum}>2</span> Tap <strong>Share</strong> then "Add to Home Screen"</div>
                   </div>
                 ) : (
-                  <button className={`btn-primary ${styles.osBtn}`} onClick={() => setShowIOSHint(true)}>
+                  <button className={styles.installOsBtn} onClick={() => setShowIOSHint(true)}>
                     How to install
                   </button>
                 )
               }
             />
-
             <OSCard
               icon="🤖"
               label="Android"
@@ -424,20 +376,14 @@ export default function Landing({ onGetStarted }) {
               steps={['Open in Chrome', 'Tap Install in the address bar or menu', 'Kugi lands on your home screen']}
               actions={
                 installed && os === 'android' ? (
-                  <span className={styles.installedBadge}>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    Installed
-                  </span>
+                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
                 ) : canPrompt && os === 'android' ? (
-                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
-                    <DownloadIcon /> Install
-                  </button>
+                  <button className={styles.installOsBtn} onClick={triggerInstall}><DownloadIcon /> Install</button>
                 ) : (
                   <span className={styles.osHint}>Open in Chrome to install</span>
                 )
               }
             />
-
             <OSCard
               icon="🪟"
               label="Windows"
@@ -446,14 +392,9 @@ export default function Landing({ onGetStarted }) {
               steps={['Open in Chrome or Edge', 'Click Install in the address bar', 'Kugi opens as a standalone window']}
               actions={
                 installed && os === 'windows' ? (
-                  <span className={styles.installedBadge}>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7l3.5 3.5L11 3" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    Installed
-                  </span>
+                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
                 ) : canPrompt && os === 'windows' ? (
-                  <button className={`btn-primary ${styles.osBtn}`} onClick={triggerInstall}>
-                    <DownloadIcon /> Install
-                  </button>
+                  <button className={styles.installOsBtn} onClick={triggerInstall}><DownloadIcon /> Install</button>
                 ) : (
                   <span className={styles.osHint}>Open in Chrome or Edge to install</span>
                 )
@@ -467,17 +408,18 @@ export default function Landing({ onGetStarted }) {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.brand}>
-            <div className={styles.brandIcon}><KugiLogo size={16} /></div>
-            <span>kugi</span>
+            <div className={styles.brandIcon}><KugiLogo size={14} /></div>
+            <span className={styles.brandName}>kugi</span>
           </div>
           <div className={styles.footerLinks}>
-            <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
-            <a href="https://github.com/emmi-dev12/Kugi/releases" target="_blank" rel="noopener noreferrer" className={styles.navLink}>Releases</a>
-            <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.navLink}>Convex</a>
+            <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>GitHub</a>
+            <a href="https://github.com/emmi-dev12/Kugi/releases" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Releases</a>
+            <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Convex</a>
           </div>
           <div className={styles.footerMeta}>MIT License · Made with ❤️ in Switzerland</div>
         </div>
       </footer>
+
     </div>
   );
 }
@@ -502,8 +444,8 @@ function OSCard({ icon, label, current, installed, steps, actions }) {
 
 function MockBlock({ color, title, time, emoji }) {
   return (
-    <div className={styles.mockBlock} style={{ borderLeft: `3px solid ${color}`, background: `${color}22` }}>
-      <span style={{ fontSize: 11 }}>{emoji}</span>
+    <div className={styles.mockBlock} style={{ borderLeft: `2px solid ${color}`, background: `${color}1a` }}>
+      <span style={{ fontSize: 10 }}>{emoji}</span>
       <div>
         <div className={styles.mockTitle}>{title}</div>
         <div className={styles.mockTime}>{time}</div>
@@ -514,18 +456,26 @@ function MockBlock({ color, title, time, emoji }) {
 
 function DownloadIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M6.5 1v8M3 6l3.5 3.5L10 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M1 12h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M6 1v7M3 5.5 6 9l3-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M1 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   );
 }
 
-function ShareIcon() {
+function CheckIcon({ size = 12 }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }}>
-      <path d="M6 1v7M3 4l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M2 9h8v2H2z" fill="currentColor" opacity="0.3"/>
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <path d="M2 6.5l2.5 2.5L10 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M3 8H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.3"/>
     </svg>
   );
 }
