@@ -205,8 +205,24 @@ http.route({
           auth: true,
           description: "Remove a custom category by name. Returns { ok: true }.",
         },
+        {
+          method: "GET", path: "/api/settings",
+          auth: true,
+          description: "Read all configurable settings. Returns { telegram: { botToken, chatId, offsetMinutes }, push: { enabled }, googleCalendar: { enabled, composioApiKey } }.",
+        },
+        {
+          method: "PATCH", path: "/api/settings",
+          auth: true,
+          description: "Update any subset of settings. All fields optional. body: { telegram?: { botToken?, chatId?, offsetMinutes? }, push?: { enabled? }, googleCalendar?: { enabled?, composioApiKey? } }. Returns { ok: true }.",
+          example_bodies: {
+            set_telegram: '{ "telegram": { "botToken": "123:ABC", "chatId": "-100123456", "offsetMinutes": 10 } }',
+            disable_push: '{ "push": { "enabled": false } }',
+            toggle_gcal: '{ "googleCalendar": { "enabled": true } }',
+            set_composio_key: '{ "googleCalendar": { "composioApiKey": "your-key-here" } }',
+          },
+        },
       ],
-      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Confirm destructive actions with the user.",
+      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Use GET /api/settings to read current notification config, PATCH /api/settings to update Telegram bot, push notifications, or Google Calendar integration. Confirm destructive actions with the user.",
     });
   }),
 });
@@ -568,6 +584,75 @@ http.route({
     if (!Array.isArray(body?.ids) || !body?.fields) return json({ error: "ids array and fields object required" }, 400);
     const count = await ctx.runMutation(api.blocks.bulkUpdate, { ids: body.ids, fields: body.fields });
     return json({ updated: count });
+  }),
+});
+
+// ── GET /api/settings ─────────────────────────────────────────
+// Returns all configurable settings in one call.
+http.route({
+  path: "/api/settings",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    const telegram = await ctx.runQuery(api.settings.getTelegramConfig, {});
+    const pushEnabled = await ctx.runQuery(api.settings.getPushEnabled, {});
+    const gcalEnabled = await ctx.runQuery(api.settings.getIntegrationEnabled, { integration: "googleCalendar" });
+    const composioApiKey = await ctx.runQuery(api.settings.getComposioApiKey, {});
+    return json({
+      telegram: {
+        botToken: telegram.botToken,
+        chatId: telegram.chatId,
+        offsetMinutes: telegram.offsetMinutes,
+      },
+      push: { enabled: pushEnabled },
+      googleCalendar: {
+        enabled: gcalEnabled,
+        composioApiKey: composioApiKey ?? null,
+      },
+    });
+  }),
+});
+
+// ── PATCH /api/settings ────────────────────────────────────────
+// Update any subset of settings. All fields optional.
+// Body: {
+//   telegram?: { botToken?: string, chatId?: string, offsetMinutes?: number },
+//   push?: { enabled?: boolean },
+//   googleCalendar?: { enabled?: boolean, composioApiKey?: string },
+// }
+http.route({
+  path: "/api/settings",
+  method: "PATCH",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+    if (body?.telegram) {
+      const current = await ctx.runQuery(api.settings.getTelegramConfig, {});
+      await ctx.runMutation(api.settings.setTelegramConfig, {
+        botToken: body.telegram.botToken ?? current.botToken ?? "",
+        chatId: body.telegram.chatId ?? current.chatId ?? "",
+        offsetMinutes: body.telegram.offsetMinutes ?? current.offsetMinutes ?? 15,
+      });
+    }
+
+    if (body?.push?.enabled !== undefined) {
+      await ctx.runMutation(api.settings.setPushEnabled, { enabled: !!body.push.enabled });
+    }
+
+    if (body?.googleCalendar?.enabled !== undefined) {
+      await ctx.runMutation(api.settings.setIntegrationEnabled, {
+        integration: "googleCalendar",
+        enabled: !!body.googleCalendar.enabled,
+      });
+    }
+
+    if (body?.googleCalendar?.composioApiKey !== undefined) {
+      await ctx.runMutation(api.settings.setComposioApiKey, { value: body.googleCalendar.composioApiKey });
+    }
+
+    return json({ ok: true });
   }),
 });
 
