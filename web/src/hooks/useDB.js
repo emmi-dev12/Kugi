@@ -36,7 +36,9 @@ const fn = {
     setPushEnabled:         makeFunctionReference('settings:setPushEnabled'),
   },
   calendar: {
-    triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
+    triggerSync:     makeFunctionReference('calendarSyncActions:triggerSync'),
+    fetchFromGoogle: makeFunctionReference('calendarSyncActions:fetchFromGoogle'),
+    pushToGoogle:    makeFunctionReference('calendarSyncActions:pushToGoogle'),
   },
 };
 
@@ -90,6 +92,8 @@ export function useIntegrations() {
   const gcalEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'googleCalendar' }) ?? true;
   const setIntegrationEnabledMutation = useMutation(fn.settings.setIntegrationEnabled);
   const triggerGcalSync = useAction(fn.calendar.triggerSync);
+  const fetchFromGoogle  = useAction(fn.calendar.fetchFromGoogle);
+  const pushToGoogle     = useAction(fn.calendar.pushToGoogle);
 
   const setGcalEnabled = (val) => setIntegrationEnabledMutation({ integration: 'googleCalendar', enabled: val });
 
@@ -99,6 +103,8 @@ export function useIntegrations() {
     gcalEnabled,
     setGcalEnabled,
     triggerGcalSync,
+    fetchFromGoogle,
+    pushToGoogle,
   };
 }
 

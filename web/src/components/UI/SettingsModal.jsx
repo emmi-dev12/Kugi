@@ -42,12 +42,16 @@ export default function SettingsModal({
     gcalEnabled,
     setGcalEnabled,
     triggerGcalSync,
+    fetchFromGoogle,
+    pushToGoogle,
   } = useIntegrations();
   const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
   const { pushEnabled, setPushEnabled } = usePushEnabled();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
   const [gcalSyncing, setGcalSyncing] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [telegramInput, setTelegramInput] = useState({ botToken: '', chatId: '' });
   const [telegramOffset, setTelegramOffset] = useState('15');
   const [tab, setTab] = useState('general');
@@ -296,17 +300,30 @@ export default function SettingsModal({
                       </button>
                     </div>
                     {gcalEnabled && (
-                      <button
-                        className={styles.syncBtn}
-                        disabled={gcalSyncing}
-                        onClick={async () => {
-                          setGcalSyncing(true);
-                          try { await triggerGcalSync(); } catch (e) { alert('Sync failed: ' + e.message); }
-                          setGcalSyncing(false);
-                        }}
-                      >
-                        {gcalSyncing ? 'Syncing…' : '↺ Sync now'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          className={styles.syncBtn}
+                          disabled={fetching}
+                          onClick={async () => {
+                            setFetching(true);
+                            try { await fetchFromGoogle(); } catch (e) { alert('Fetch failed: ' + e.message); }
+                            setFetching(false);
+                          }}
+                        >
+                          {fetching ? 'Fetching…' : '↓ Fetch'}
+                        </button>
+                        <button
+                          className={styles.syncBtn}
+                          disabled={pushing}
+                          onClick={async () => {
+                            setPushing(true);
+                            try { await pushToGoogle(); } catch (e) { alert('Push failed: ' + e.message); }
+                            setPushing(false);
+                          }}
+                        >
+                          {pushing ? 'Pushing…' : '↑ Push'}
+                        </button>
+                      </div>
                     )}
                   </div>
 

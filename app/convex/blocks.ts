@@ -44,6 +44,7 @@ export const create = mutation({
     localId: v.optional(v.string()),
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
+    googleEventId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("blocks", args);
@@ -73,6 +74,7 @@ export const update = mutation({
     completed: v.optional(v.boolean()),
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
+    googleEventId: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     const block = await ctx.db.get(id);
