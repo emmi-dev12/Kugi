@@ -208,21 +208,31 @@ http.route({
         {
           method: "GET", path: "/api/settings",
           auth: true,
-          description: "Read all configurable settings. Returns { telegram: { botToken, chatId, offsetMinutes }, push: { enabled }, googleCalendar: { enabled, composioApiKey } }.",
+          description: "Read all configurable settings. Returns telegram config (including messageTemplate and templateVariables), push notification reminders array, and Google Calendar integration state.",
         },
         {
           method: "PATCH", path: "/api/settings",
           auth: true,
-          description: "Update any subset of settings. All fields optional. body: { telegram?: { botToken?, chatId?, offsetMinutes? }, push?: { enabled? }, googleCalendar?: { enabled?, composioApiKey? } }. Returns { ok: true }.",
+          description: "Update any subset of settings. All fields optional.",
+          body_schema: {
+            "telegram.botToken": "string — Telegram bot token",
+            "telegram.chatId": "string — Telegram chat/user ID",
+            "telegram.offsetMinutes": "number — minutes before event to send Telegram reminder",
+            "telegram.messageTemplate": "string — Telegram message template. Variables: {emoji} {title} {time} {date} {notes} {category}. {time} expands to ' starts at HH:MM' or ' is coming up'. {notes} expands to newline+notes or empty.",
+            "push.enabled": "boolean — enable/disable browser push notifications",
+            "push.reminders": "array — push notification schedule. Each item: { id: string, offsetMinutes: number, atTime?: string (HH:MM, for day-before reminders use offsetMinutes=1440+), message?: string (custom body text) }",
+            "googleCalendar.enabled": "boolean",
+            "googleCalendar.composioApiKey": "string",
+          },
           example_bodies: {
-            set_telegram: '{ "telegram": { "botToken": "123:ABC", "chatId": "-100123456", "offsetMinutes": 10 } }',
+            set_telegram_template: '{ "telegram": { "messageTemplate": "🔔 {emoji}{title} at {time}", "offsetMinutes": 10 } }',
+            set_push_reminders: '{ "push": { "reminders": [{ "id": "r1", "offsetMinutes": 15 }, { "id": "r2", "offsetMinutes": 60, "message": "1 hour to go!" }] } }',
             disable_push: '{ "push": { "enabled": false } }',
             toggle_gcal: '{ "googleCalendar": { "enabled": true } }',
-            set_composio_key: '{ "googleCalendar": { "composioApiKey": "your-key-here" } }',
           },
         },
       ],
-      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Use GET /api/settings to read current notification config, PATCH /api/settings to update Telegram bot, push notifications, or Google Calendar integration. Confirm destructive actions with the user.",
+      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Use GET /api/settings to read all notification and integration config. Use PATCH /api/settings to update: Telegram bot token/chatId/offset/messageTemplate, push notification reminders list, or Google Calendar integration. The Telegram messageTemplate supports variables: {emoji} {title} {time} {date} {notes} {category}. Push reminders is an array — replace it entirely when updating. Confirm destructive actions with the user.",
     });
   }),
 });
@@ -595,16 +605,23 @@ http.route({
   handler: httpAction(async (ctx, req) => {
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     const telegram = await ctx.runQuery(api.settings.getTelegramConfig, {});
+    const telegramTemplate = await ctx.runQuery(api.settings.getTelegramTemplate, {});
     const pushEnabled = await ctx.runQuery(api.settings.getPushEnabled, {});
     const gcalEnabled = await ctx.runQuery(api.settings.getIntegrationEnabled, { integration: "googleCalendar" });
     const composioApiKey = await ctx.runQuery(api.settings.getComposioApiKey, {});
+    const remindersJson = await ctx.runQuery(api.settings.getReminders, {});
     return json({
       telegram: {
         botToken: telegram.botToken,
         chatId: telegram.chatId,
         offsetMinutes: telegram.offsetMinutes,
+        messageTemplate: telegramTemplate ?? "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}",
+        templateVariables: ["{emoji}", "{title}", "{time}", "{date}", "{notes}", "{category}"],
       },
-      push: { enabled: pushEnabled },
+      push: {
+        enabled: pushEnabled,
+        reminders: remindersJson ?? [],
+      },
       googleCalendar: {
         enabled: gcalEnabled,
         composioApiKey: composioApiKey ?? null,
@@ -635,10 +652,18 @@ http.route({
         chatId: body.telegram.chatId ?? current.chatId ?? "",
         offsetMinutes: body.telegram.offsetMinutes ?? current.offsetMinutes ?? 15,
       });
+      if (body.telegram.messageTemplate !== undefined) {
+        await ctx.runMutation(api.settings.setTelegramTemplate, { template: body.telegram.messageTemplate });
+      }
     }
 
     if (body?.push?.enabled !== undefined) {
       await ctx.runMutation(api.settings.setPushEnabled, { enabled: !!body.push.enabled });
+    }
+
+    if (body?.push?.reminders !== undefined) {
+      if (!Array.isArray(body.push.reminders)) return json({ error: "push.reminders must be an array" }, 400);
+      await ctx.runMutation(api.settings.setReminders, { value: JSON.stringify(body.push.reminders) });
     }
 
     if (body?.googleCalendar?.enabled !== undefined) {

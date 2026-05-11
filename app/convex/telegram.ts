@@ -14,9 +14,19 @@ export const sendReminder = internalAction({
     const chatId = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramChatId" });
     if (!botToken || !chatId) return;
 
-    const emoji = block.emoji ? `${block.emoji} ` : "";
-    const time = block.start_time ?? "";
-    const text = `⏰ Reminder: ${emoji}<b>${block.title}</b>${time ? ` starts at ${time}` : " is coming up"}${block.notes ? `\n\n${block.notes}` : ""}`;
+    const templateRaw = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramTemplate" });
+    const DEFAULT_TEMPLATE = "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}";
+    const template = templateRaw || DEFAULT_TEMPLATE;
+
+    const vars: Record<string, string> = {
+      emoji: block.emoji ? `${block.emoji} ` : "",
+      title: block.title ?? "",
+      time: block.start_time ? ` starts at ${block.start_time}` : " is coming up",
+      date: block.date ?? "",
+      notes: block.notes ? `\n\n${block.notes}` : "",
+      category: block.category ?? "",
+    };
+    const text = template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
 
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",

@@ -258,6 +258,23 @@ export const setPushEnabled = mutation({
   },
 });
 
+export const getTelegramTemplate = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramTemplate")).first();
+    return row?.value ?? null;
+  },
+});
+
+export const setTelegramTemplate = mutation({
+  args: { template: v.string() },
+  handler: async (ctx, { template }) => {
+    const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramTemplate")).first();
+    if (existing) await ctx.db.patch(existing._id, { value: template });
+    else await ctx.db.insert("settings", { key: "telegramTemplate", value: template });
+  },
+});
+
 export const setIntegrationEnabled = mutation({
   args: { integration: v.string(), enabled: v.boolean() },
   handler: async (ctx, { integration, enabled }) => {
