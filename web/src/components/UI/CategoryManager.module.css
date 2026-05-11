@@ -17,7 +17,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: all 0.1s;
 }
-.editBtn:hover { background: rgba(79,124,255,0.12); color: #7a9fff; }
+.editBtn:hover { background: rgba(93,138,106,0.12); color: #7aad8a; }
 
 .removeBtn {
   width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
@@ -52,7 +52,7 @@
   background: var(--surface2); border: 1px solid var(--border2);
   border-radius: 8px; color: var(--text); font-family: inherit;
 }
-.nameInput:focus, .emojiInput:focus { outline: none; border-color: #4f7cff; }
+.nameInput:focus, .emojiInput:focus { outline: none; border-color: #5d8a6a; }
 
 .colorRow { display: flex; flex-wrap: wrap; gap: 6px; }
 .colorSwatch {
@@ -71,7 +71,7 @@
 }
 .addConfirmBtn {
   flex: 1; padding: 6px; font-size: 11px; font-weight: 600; font-family: inherit;
-  background: rgba(79,124,255,0.15); border: 1px solid rgba(79,124,255,0.3); border-radius: 8px;
-  color: #7a9fff; cursor: pointer;
+  background: rgba(93,138,106,0.15); border: 1px solid rgba(93,138,106,0.30); border-radius: 8px;
+  color: #7aad8a; cursor: pointer;
 }
-.addConfirmBtn:hover { background: rgba(79,124,255,0.22); }
+.addConfirmBtn:hover { background: rgba(93,138,106,0.22); }

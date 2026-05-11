@@ -10,10 +10,10 @@
 ───────────────────────────────────────────── */
 .page {
   min-height: 100dvh;
-  background: #07080a;
+  background: #0c0f0d;
   overflow-x: hidden;
   padding-top: env(safe-area-inset-top);
-  color: #cdcdcd;
+  color: #dde8e0;
   font-family: 'Inter', 'Inter Fallback', system-ui, sans-serif;
   font-feature-settings: "calt", "kern", "liga", "ss03";
 }
@@ -54,10 +54,10 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(7, 8, 10, 0.88);
+  background: rgba(12, 15, 13, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid #242728;
+  border-bottom: 1px solid #26332c;
   height: 56px;
 }
 .navInner {
@@ -79,7 +79,7 @@
 .brandIcon {
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, #4f7cff 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #5d8a6a 0%, #3d5c47 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -90,7 +90,7 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.2px;
-  color: #f4f4f6;
+  color: #dde8e0;
 }
 .navLinks {
   display: flex;
@@ -100,14 +100,14 @@
 .navLink {
   font-size: 14px;
   font-weight: 500;
-  color: #9c9c9d;
+  color: #7a9485;
   text-decoration: none;
   padding: 6px 10px;
   border-radius: 6px;
   transition: color 0.15s;
   letter-spacing: 0.2px;
 }
-.navLink:hover { color: #f4f4f6; }
+.navLink:hover { color: #dde8e0; }
 .navCta {
   background: #ffffff;
   color: #000000;
@@ -149,12 +149,12 @@
       -55deg,
       transparent,
       transparent 28px,
-      rgba(79, 124, 255, 0.055) 28px,
-      rgba(79, 124, 255, 0.055) 56px,
+      rgba(93, 138, 106, 0.06) 28px,
+      rgba(93, 138, 106, 0.06) 56px,
       transparent 56px,
       transparent 112px,
-      rgba(139, 92, 246, 0.04) 112px,
-      rgba(139, 92, 246, 0.04) 140px
+      rgba(61, 92, 71, 0.04) 112px,
+      rgba(61, 92, 71, 0.04) 140px
     );
   mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
@@ -171,9 +171,9 @@
   gap: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #9c9c9d;
-  background: #0d0d0d;
-  border: 1px solid #242728;
+  color: #7a9485;
+  background: #141a16;
+  border: 1px solid #26332c;
   border-radius: 9999px;
   padding: 5px 16px;
   margin-bottom: 28px;
@@ -193,13 +193,13 @@
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.1;
-  color: #f4f4f6;
+  color: #dde8e0;
   margin: 0 0 20px;
 }
 
 .heroSub {
   font-size: 18px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.6;
   margin: 0 auto 36px;
   max-width: 500px;
@@ -239,9 +239,9 @@
 .ctaPrimary:hover { background: #e8e8e8; }
 
 .ctaSecondary {
-  background: #101111;
-  color: #f4f4f6;
-  border: 1px solid #242728;
+  background: #1d2520;
+  color: #dde8e0;
+  border: 1px solid #26332c;
   border-radius: 8px;
   padding: 8px 16px;
   font-size: 14px;
@@ -258,7 +258,7 @@
 }
 .ctaSecondary:hover {
   border-color: rgba(255,255,255,0.16);
-  background: #121212;
+  background: #243029;
 }
 
 .installedBadge {
@@ -289,8 +289,8 @@
 .previewWindow {
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid #242728;
-  background: #0d0d0d;
+  border: 1px solid #26332c;
+  background: #141a16;
   will-change: transform;
 }
 .previewBar {
@@ -298,14 +298,14 @@
   align-items: center;
   gap: 6px;
   padding: 11px 14px;
-  border-bottom: 1px solid #242728;
-  background: #101111;
+  border-bottom: 1px solid #26332c;
+  background: #1d2520;
 }
 .trafficDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .previewTitle {
   font-size: 12px;
   font-weight: 500;
-  color: #434345;
+  color: #3d5243;
   margin-left: 6px;
   letter-spacing: 0.1px;
 }
@@ -319,7 +319,7 @@
 .previewDay {
   font-size: 10px;
   font-weight: 600;
-  color: #434345;
+  color: #3d5243;
   text-align: center;
   padding: 3px;
   letter-spacing: 0.2px;
@@ -346,14 +346,14 @@
 /* Each section gets 96px top+bottom padding */
 .section {
   padding: 96px 0;
-  border-top: 1px solid #242728;
+  border-top: 1px solid #26332c;
 }
 
 .eyebrow {
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.4px;
-  color: #9c9c9d;
+  color: #7a9485;
   margin-bottom: 14px;
   text-align: center;
 }
@@ -363,14 +363,14 @@
   font-weight: 600;
   letter-spacing: 0.2px;
   line-height: 1.17;
-  color: #f4f4f6;
+  color: #dde8e0;
   margin: 0 0 16px;
   text-align: center;
 }
 
 .sectionSub {
   font-size: 18px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.6;
   text-align: center;
   max-width: 520px;
@@ -388,8 +388,8 @@
 }
 
 .featCard {
-  background: #0d0d0d;
-  border: 1px solid #242728;
+  background: #141a16;
+  border: 1px solid #26332c;
   border-radius: 10px;
   padding: 24px;
   transition: border-color 0.2s;
@@ -400,13 +400,13 @@
 .featCardTitle {
   font-size: 16px;
   font-weight: 500;
-  color: #f4f4f6;
+  color: #dde8e0;
   margin-bottom: 6px;
   letter-spacing: 0.2px;
 }
 .featCardDesc {
   font-size: 14px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.6;
 }
 
@@ -414,8 +414,8 @@
    AI AGENT SECTION
 ───────────────────────────────────────────── */
 .promptCard {
-  background: #0d0d0d;
-  border: 1px solid #242728;
+  background: #141a16;
+  border: 1px solid #26332c;
   border-radius: 10px;
   padding: 24px;
   text-align: left;
@@ -431,7 +431,7 @@
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.4px;
-  color: #434345;
+  color: #3d5243;
   text-transform: uppercase;
 }
 .copyBtn {
@@ -440,9 +440,9 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #9c9c9d;
-  background: #101111;
-  border: 1px solid #242728;
+  color: #7a9485;
+  background: #1d2520;
+  border: 1px solid #26332c;
   border-radius: 6px;
   padding: 5px 11px;
   cursor: pointer;
@@ -451,14 +451,14 @@
   transition: color 0.15s, border-color 0.15s;
   letter-spacing: 0.2px;
 }
-.copyBtn:hover { color: #f4f4f6; border-color: rgba(255,255,255,0.16); }
+.copyBtn:hover { color: #dde8e0; border-color: rgba(255,255,255,0.16); }
 .copyBtnDone { color: #59d499 !important; border-color: rgba(89,212,153,0.25) !important; }
 
 .promptBlock {
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
   font-size: 13px;
   line-height: 1.75;
-  color: #cdcdcd;
+  color: #dde8e0;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -474,8 +474,8 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  background: #0d0d0d;
-  border: 1px solid #242728;
+  background: #141a16;
+  border: 1px solid #26332c;
   border-radius: 10px;
   padding: 20px;
   transition: border-color 0.2s;
@@ -486,26 +486,26 @@
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: #121212;
-  border: 1px solid #242728;
+  background: #243029;
+  border: 1px solid #26332c;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
   font-weight: 600;
-  color: #f4f4f6;
+  color: #dde8e0;
   flex-shrink: 0;
 }
 .principleTitle {
   font-size: 14px;
   font-weight: 500;
-  color: #f4f4f6;
+  color: #dde8e0;
   margin-bottom: 4px;
   letter-spacing: 0.2px;
 }
 .principleDesc {
   font-size: 13px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.55;
 }
 
@@ -533,34 +533,34 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #121212;
-  border: 1px solid #242728;
+  background: #243029;
+  border: 1px solid #26332c;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 15px;
   font-weight: 600;
-  color: #f4f4f6;
+  color: #dde8e0;
   flex-shrink: 0;
 }
 .stepLine {
   width: 1px;
   flex: 1;
   min-height: 32px;
-  background: #242728;
+  background: #26332c;
   margin: 4px 0;
 }
 .stepContent { padding-bottom: 32px; padding-top: 6px; }
 .stepTitle {
   font-size: 16px;
   font-weight: 500;
-  color: #f4f4f6;
+  color: #dde8e0;
   margin-bottom: 4px;
   letter-spacing: 0.2px;
 }
 .stepDesc {
   font-size: 14px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.6;
 }
 
@@ -574,8 +574,8 @@
   margin-top: 0;
 }
 .osCard {
-  background: #0d0d0d;
-  border: 1px solid #242728;
+  background: #141a16;
+  border: 1px solid #26332c;
   border-radius: 10px;
   padding: 20px;
   display: flex;
@@ -585,8 +585,8 @@
 }
 .osCard:hover { border-color: rgba(255,255,255,0.16); }
 .osCurrent {
-  border-color: rgba(79, 124, 255, 0.4) !important;
-  background: rgba(79, 124, 255, 0.04) !important;
+  border-color: rgba(93, 138, 106, 0.40) !important;
+  background: rgba(93, 138, 106, 0.04) !important;
 }
 .osInstalled {
   border-color: rgba(89, 212, 153, 0.3) !important;
@@ -594,12 +594,12 @@
 }
 .osCardHeader { display: flex; align-items: center; gap: 12px; }
 .osIcon { font-size: 26px; line-height: 1; }
-.osLabel { font-size: 14px; font-weight: 500; color: #f4f4f6; letter-spacing: 0.2px; }
+.osLabel { font-size: 14px; font-weight: 500; color: #dde8e0; letter-spacing: 0.2px; }
 .osCurrentBadge {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.2px;
-  color: #57c1ff;
+  color: #7aad8a;
   background: rgba(87, 193, 255, 0.1);
   border-radius: 4px;
   padding: 1px 7px;
@@ -616,7 +616,7 @@
 }
 .osStepList li {
   font-size: 12px;
-  color: #9c9c9d;
+  color: #7a9485;
   line-height: 1.55;
 }
 .osActionWrap { margin-top: auto; }
@@ -633,7 +633,7 @@
   font-family: inherit;
   font-feature-settings: "calt", "kern", "liga", "ss03";
   letter-spacing: 0.2px;
-  color: #f4f4f6;
+  color: #dde8e0;
   background: transparent;
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 8px;
@@ -644,15 +644,15 @@
 }
 .installOsBtn:hover {
   border-color: rgba(255,255,255,0.26);
-  background: #101111;
+  background: #1d2520;
 }
 
-.osHint { font-size: 12px; color: #434345; line-height: 1.5; display: block; }
+.osHint { font-size: 12px; color: #3d5243; line-height: 1.5; display: block; }
 
 .iosSteps { display: flex; flex-direction: column; gap: 8px; }
 .iosStep {
   font-size: 12px;
-  color: #9c9c9d;
+  color: #7a9485;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -662,9 +662,9 @@
   height: 18px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: #121212;
-  border: 1px solid #242728;
-  color: #9c9c9d;
+  background: #243029;
+  border: 1px solid #26332c;
+  color: #7a9485;
   font-size: 10px;
   font-weight: 600;
   display: flex;
@@ -676,10 +676,10 @@
    FOOTER
 ───────────────────────────────────────────── */
 .footer {
-  border-top: 1px solid #242728;
+  border-top: 1px solid #26332c;
   padding: 32px 24px;
   padding-bottom: calc(32px + env(safe-area-inset-bottom));
-  background: #07080a;
+  background: #0c0f0d;
 }
 .footerInner {
   max-width: 1240px;
@@ -693,18 +693,18 @@
 .footerLink {
   font-size: 13px;
   font-weight: 400;
-  color: #6a6b6c;
+  color: #4a5c52;
   text-decoration: none;
   padding: 5px 10px;
   border-radius: 6px;
   letter-spacing: 0.1px;
   transition: color 0.15s;
 }
-.footerLink:hover { color: #cdcdcd; }
+.footerLink:hover { color: #dde8e0; }
 .footerMeta {
   margin-left: auto;
   font-size: 12px;
-  color: #434345;
+  color: #3d5243;
   letter-spacing: 0.1px;
 }
 
