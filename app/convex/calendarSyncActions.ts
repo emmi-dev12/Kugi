@@ -3,37 +3,58 @@
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { ComposioToolSet } from "composio-core";
 
 const ENTITY_ID = "boop-default";
 const CALENDAR_ID = "primary";
-const GCAL_BASE = "https://www.googleapis.com/calendar/v3";
+const COMPOSIO_BASE = "https://backend.composio.dev";
 
-async function getAccessToken(composioApiKey: string): Promise<string> {
-  const toolset = new ComposioToolSet({ apiKey: composioApiKey });
-  const entity = await (toolset as any).client.getEntity(ENTITY_ID);
-  const conn = await entity.getConnection({ app: "googlecalendar" });
-  const token = conn?.connectionParams?.access_token ?? conn?.data?.access_token;
-  if (!token) throw new Error("Google Calendar is not connected in your Composio account. Visit composio.dev, connect Google Calendar, then try again.");
-  return token;
-}
-
-async function gcalGet(token: string, path: string, params: Record<string, string> = {}) {
-  const url = new URL(`${GCAL_BASE}${path}`);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error(`Google Calendar API error ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function gcalPost(token: string, path: string, body: unknown) {
-  const res = await fetch(`${GCAL_BASE}${path}`, {
+// Route a Google Calendar request through Composio's proxy, which handles token refresh.
+async function gcalProxy(
+  composioApiKey: string,
+  connectedAccountId: string,
+  endpoint: string,
+  method: "GET" | "POST",
+  queryParams: Record<string, string> = {},
+  body?: unknown,
+): Promise<any> {
+  const parameters = Object.entries(queryParams).map(([name, value]) => ({
+    name,
+    value,
+    in: "query",
+  }));
+  const res = await fetch(`${COMPOSIO_BASE}/api/v2/actions/proxy`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "x-api-key": composioApiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      endpoint,
+      method,
+      connectedAccountId,
+      parameters,
+      ...(body ? { body } : {}),
+    }),
   });
-  if (!res.ok) throw new Error(`Google Calendar API error ${res.status}: ${await res.text()}`);
-  return res.json();
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Composio proxy error ${res.status}: ${JSON.stringify(json)}`);
+  return json?.data ?? json;
+}
+
+async function getConnectedAccountId(composioApiKey: string): Promise<string> {
+  const res = await fetch(
+    `${COMPOSIO_BASE}/api/v1/connectedAccounts?user_uuid=${ENTITY_ID}&appNames=googlecalendar&status=ACTIVE`,
+    { headers: { "x-api-key": composioApiKey } },
+  );
+  const json = await res.json();
+  const id = json?.items?.[0]?.id;
+  if (!id) {
+    throw new Error(
+      "Google Calendar is not connected in your Composio account. " +
+        "Visit composio.dev, connect Google Calendar in your dashboard, then try again.",
+    );
+  }
+  return id;
 }
 
 function isoDateTime(date: string, time: string): string {
@@ -58,17 +79,23 @@ function dateWindow(pastDays: number, futureDays: number) {
 export const syncCalendar = internalAction({
   args: { composioApiKey: v.string(), outbound: v.optional(v.boolean()) },
   handler: async (ctx, { composioApiKey, outbound = false }) => {
-    const token = await getAccessToken(composioApiKey);
+    const accountId = await getConnectedAccountId(composioApiKey);
     const { min, max } = dateWindow(1, 14);
 
     // ── Inbound: GCal events → Kugi blocks ───────────────────────
-    const result = await gcalGet(token, `/calendars/${CALENDAR_ID}/events`, {
-      timeMin: `${isoDateTime(min, "00:00")}Z`,
-      timeMax: `${isoDateTime(max, "23:59")}Z`,
-      maxResults: "200",
-      singleEvents: "true",
-      orderBy: "startTime",
-    });
+    const result = await gcalProxy(
+      composioApiKey,
+      accountId,
+      `/calendars/${CALENDAR_ID}/events`,
+      "GET",
+      {
+        timeMin: `${isoDateTime(min, "00:00")}Z`,
+        timeMax: `${isoDateTime(max, "23:59")}Z`,
+        maxResults: "200",
+        singleEvents: "true",
+        orderBy: "startTime",
+      },
+    );
 
     const events: any[] = result?.items ?? [];
     const allBlocks: any[] = await ctx.runQuery(api.blocks.list);
@@ -101,12 +128,19 @@ export const syncCalendar = internalAction({
       (b: any) => !b.completed && b.date >= today && b.start_time && b.end_time,
     );
     for (const block of outBlocks) {
-      await gcalPost(token, `/calendars/${CALENDAR_ID}/events`, {
-        summary: `${block.emoji ? block.emoji + " " : ""}${block.title}`,
-        ...(block.notes ? { description: block.notes } : {}),
-        start: { dateTime: isoDateTime(block.date, block.start_time) },
-        end: { dateTime: isoDateTime(block.date, block.end_time) },
-      });
+      await gcalProxy(
+        composioApiKey,
+        accountId,
+        `/calendars/${CALENDAR_ID}/events`,
+        "POST",
+        {},
+        {
+          summary: `${block.emoji ? block.emoji + " " : ""}${block.title}`,
+          ...(block.notes ? { description: block.notes } : {}),
+          start: { dateTime: isoDateTime(block.date, block.start_time) },
+          end: { dateTime: isoDateTime(block.date, block.end_time) },
+        },
+      );
     }
   },
 });
