@@ -7,28 +7,33 @@ import { ComposioToolSet } from "composio-core";
 
 const ENTITY_ID = "boop-default";
 const CALENDAR_ID = "primary";
+const GCAL_BASE = "https://www.googleapis.com/calendar/v3";
 
-async function execute(
-  toolset: ComposioToolSet,
-  actionName: string,
-  params: Record<string, unknown>,
-) {
-  try {
-    return await (toolset as any).executeAction({
-      action: actionName,
-      params,
-      entityId: ENTITY_ID,
-    });
-  } catch (err: any) {
-    const msg: string = err?.message ?? String(err);
-    if (msg.includes("Could not find a connection")) {
-      throw new Error(
-        "Google Calendar is not connected in your Composio account. " +
-          "Visit composio.dev, connect Google Calendar in your dashboard, then try again.",
-      );
-    }
-    throw err;
-  }
+async function getAccessToken(composioApiKey: string): Promise<string> {
+  const toolset = new ComposioToolSet({ apiKey: composioApiKey });
+  const entity = await (toolset as any).client.getEntity(ENTITY_ID);
+  const conn = await entity.getConnection({ app: "googlecalendar" });
+  const token = conn?.connectionParams?.access_token ?? conn?.data?.access_token;
+  if (!token) throw new Error("Google Calendar is not connected in your Composio account. Visit composio.dev, connect Google Calendar, then try again.");
+  return token;
+}
+
+async function gcalGet(token: string, path: string, params: Record<string, string> = {}) {
+  const url = new URL(`${GCAL_BASE}${path}`);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Google Calendar API error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function gcalPost(token: string, path: string, body: unknown) {
+  const res = await fetch(`${GCAL_BASE}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Google Calendar API error ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 function isoDateTime(date: string, time: string): string {
@@ -53,20 +58,19 @@ function dateWindow(pastDays: number, futureDays: number) {
 export const syncCalendar = internalAction({
   args: { composioApiKey: v.string(), outbound: v.optional(v.boolean()) },
   handler: async (ctx, { composioApiKey, outbound = false }) => {
-    const toolset = new ComposioToolSet({ apiKey: composioApiKey });
+    const token = await getAccessToken(composioApiKey);
     const { min, max } = dateWindow(1, 14);
 
     // ── Inbound: GCal events → Kugi blocks ───────────────────────
-    const result = await execute(toolset, "GOOGLECALENDAR_LIST_EVENTS", {
-      calendarId: CALENDAR_ID,
-      timeMin: isoDateTime(min, "00:00"),
-      timeMax: isoDateTime(max, "23:59"),
-      maxResults: 200,
-      singleEvents: true,
+    const result = await gcalGet(token, `/calendars/${CALENDAR_ID}/events`, {
+      timeMin: `${isoDateTime(min, "00:00")}Z`,
+      timeMax: `${isoDateTime(max, "23:59")}Z`,
+      maxResults: "200",
+      singleEvents: "true",
       orderBy: "startTime",
     });
 
-    const events: any[] = result?.data?.items ?? [];
+    const events: any[] = result?.items ?? [];
     const allBlocks: any[] = await ctx.runQuery(api.blocks.list);
     const blockKeys = new Set(allBlocks.map((b: any) => `${b.date}||${b.title}`));
 
@@ -97,8 +101,7 @@ export const syncCalendar = internalAction({
       (b: any) => !b.completed && b.date >= today && b.start_time && b.end_time,
     );
     for (const block of outBlocks) {
-      await execute(toolset, "GOOGLECALENDAR_CREATE_EVENT", {
-        calendarId: CALENDAR_ID,
+      await gcalPost(token, `/calendars/${CALENDAR_ID}/events`, {
         summary: `${block.emoji ? block.emoji + " " : ""}${block.title}`,
         ...(block.notes ? { description: block.notes } : {}),
         start: { dateTime: isoDateTime(block.date, block.start_time) },
