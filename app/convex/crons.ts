@@ -9,6 +9,7 @@ crons.interval(
   internal.pushActions.checkAndNotify,
 );
 
+// Pull changes from Google Calendar every 10 minutes
 crons.interval(
   "sync google calendar",
   { minutes: 10 },
