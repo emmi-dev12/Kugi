@@ -44,6 +44,8 @@ export default function SettingsModal({
     triggerGcalSync,
     fetchFromGoogle,
     pushToGoogle,
+    getSyncDiff,
+    deleteGcalEvents,
   } = useIntegrations();
   const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
   const { pushEnabled, setPushEnabled } = usePushEnabled();
@@ -52,6 +54,10 @@ export default function SettingsModal({
   const [gcalSyncing, setGcalSyncing] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [pushing, setPushing] = useState(false);
+  // Sync diff confirmation state
+  const [syncDiff, setSyncDiff] = useState(null); // { orphanedOnKugi, orphanedOnGcal, newOnKugi, mode }
+  const [selectedKugiDeletes, setSelectedKugiDeletes] = useState(new Set());
+  const [selectedGcalDeletes, setSelectedGcalDeletes] = useState(new Set());
   const [telegramInput, setTelegramInput] = useState({ botToken: '', chatId: '' });
   const [telegramOffset, setTelegramOffset] = useState('15');
   const [tab, setTab] = useState('general');
@@ -303,26 +309,128 @@ export default function SettingsModal({
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                         <button
                           className={styles.syncBtn}
-                          disabled={fetching}
+                          disabled={fetching || pushing}
                           onClick={async () => {
                             setFetching(true);
-                            try { await fetchFromGoogle(); } catch (e) { alert('Fetch failed: ' + e.message); }
+                            try {
+                              const diff = await getSyncDiff();
+                              const hasOrphans = diff.orphanedOnKugi.length > 0 || diff.orphanedOnGcal.length > 0;
+                              if (hasOrphans) {
+                                setSyncDiff({ ...diff, mode: 'fetch' });
+                                setSelectedKugiDeletes(new Set(diff.orphanedOnKugi.map(b => b.kugiId)));
+                                setSelectedGcalDeletes(new Set());
+                              } else {
+                                await fetchFromGoogle();
+                              }
+                            } catch (e) { alert('Fetch failed: ' + e.message); }
                             setFetching(false);
                           }}
                         >
-                          {fetching ? 'Fetching…' : '↓ Fetch'}
+                          {fetching ? 'Checking…' : '↓ Fetch'}
                         </button>
                         <button
                           className={styles.syncBtn}
-                          disabled={pushing}
+                          disabled={pushing || fetching}
                           onClick={async () => {
                             setPushing(true);
-                            try { await pushToGoogle(); } catch (e) { alert('Push failed: ' + e.message); }
+                            try {
+                              const diff = await getSyncDiff();
+                              const hasOrphans = diff.orphanedOnKugi.length > 0 || diff.orphanedOnGcal.length > 0;
+                              if (hasOrphans) {
+                                setSyncDiff({ ...diff, mode: 'push' });
+                                setSelectedKugiDeletes(new Set());
+                                setSelectedGcalDeletes(new Set(diff.orphanedOnGcal.map(e => e.gcalId)));
+                              } else {
+                                await pushToGoogle();
+                              }
+                            } catch (e) { alert('Push failed: ' + e.message); }
                             setPushing(false);
                           }}
                         >
-                          {pushing ? 'Pushing…' : '↑ Push'}
+                          {pushing ? 'Checking…' : '↑ Push'}
                         </button>
+                      </div>
+                    )}
+
+                    {/* Sync diff confirmation dialog */}
+                    {syncDiff && (
+                      <div className={styles.syncDiffBox}>
+                        <div className={styles.syncDiffTitle}>Review before syncing</div>
+
+                        {syncDiff.orphanedOnKugi.length > 0 && (
+                          <div className={styles.syncDiffSection}>
+                            <div className={styles.syncDiffSectionHeader}>
+                              <span>These blocks exist in Kugi but their Google Calendar event was deleted. Remove from Kugi?</span>
+                            </div>
+                            {syncDiff.orphanedOnKugi.map(b => (
+                              <label key={b.kugiId} className={styles.syncDiffRow}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedKugiDeletes.has(b.kugiId)}
+                                  onChange={e => {
+                                    setSelectedKugiDeletes(prev => {
+                                      const next = new Set(prev);
+                                      if (e.target.checked) next.add(b.kugiId); else next.delete(b.kugiId);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span>{b.emoji || '📦'} {b.title}</span>
+                                <span className={styles.syncDiffDate}>{b.date}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+
+                        {syncDiff.orphanedOnGcal.length > 0 && (
+                          <div className={styles.syncDiffSection}>
+                            <div className={styles.syncDiffSectionHeader}>
+                              <span>These Google Calendar events have no matching block in Kugi. Remove from Google Calendar?</span>
+                            </div>
+                            {syncDiff.orphanedOnGcal.map(e => (
+                              <label key={e.gcalId} className={styles.syncDiffRow}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedGcalDeletes.has(e.gcalId)}
+                                  onChange={ev => {
+                                    setSelectedGcalDeletes(prev => {
+                                      const next = new Set(prev);
+                                      if (ev.target.checked) next.add(e.gcalId); else next.delete(e.gcalId);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span>📅 {e.title}</span>
+                                <span className={styles.syncDiffDate}>{e.date}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className={styles.syncDiffActions}>
+                          <button className={styles.syncDiffCancel} onClick={() => setSyncDiff(null)}>Cancel</button>
+                          <button
+                            className={styles.syncDiffConfirm}
+                            onClick={async () => {
+                              const mode = syncDiff.mode;
+                              setSyncDiff(null);
+                              if (mode === 'fetch') setFetching(true); else setPushing(true);
+                              try {
+                                // Fetch new GCal events into Kugi, deleting only user-confirmed Kugi orphans
+                                await fetchFromGoogle({ deleteKugiIds: [...selectedKugiDeletes] });
+                                // Delete user-confirmed GCal orphans
+                                if (selectedGcalDeletes.size > 0) {
+                                  await deleteGcalEvents({ gcalIds: [...selectedGcalDeletes] });
+                                }
+                                // If this was a Push, also push new Kugi blocks to GCal
+                                if (mode === 'push') await pushToGoogle();
+                              } catch (e) { alert('Sync failed: ' + e.message); }
+                              if (mode === 'fetch') setFetching(false); else setPushing(false);
+                            }}
+                          >
+                            Confirm &amp; Sync
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

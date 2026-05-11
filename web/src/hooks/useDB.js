@@ -38,9 +38,11 @@ const fn = {
     setPushEnabled:         makeFunctionReference('settings:setPushEnabled'),
   },
   calendar: {
-    triggerSync:     makeFunctionReference('calendarSyncActions:triggerSync'),
-    fetchFromGoogle: makeFunctionReference('calendarSyncActions:fetchFromGoogle'),
-    pushToGoogle:    makeFunctionReference('calendarSyncActions:pushToGoogle'),
+    triggerSync:       makeFunctionReference('calendarSyncActions:triggerSync'),
+    fetchFromGoogle:   makeFunctionReference('calendarSyncActions:fetchFromGoogle'),
+    pushToGoogle:      makeFunctionReference('calendarSyncActions:pushToGoogle'),
+    getSyncDiff:       makeFunctionReference('calendarSyncActions:getSyncDiff'),
+    deleteGcalEvents:  makeFunctionReference('calendarSyncActions:deleteGcalEvents'),
   },
 };
 
@@ -97,9 +99,11 @@ export function useIntegrations() {
   const setComposioApiKey = useMutation(fn.settings.setComposioApiKey);
   const gcalEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'googleCalendar' }) ?? true;
   const setIntegrationEnabledMutation = useMutation(fn.settings.setIntegrationEnabled);
-  const triggerGcalSync = useAction(fn.calendar.triggerSync);
+  const triggerGcalSync  = useAction(fn.calendar.triggerSync);
   const fetchFromGoogle  = useAction(fn.calendar.fetchFromGoogle);
   const pushToGoogle     = useAction(fn.calendar.pushToGoogle);
+  const getSyncDiff      = useAction(fn.calendar.getSyncDiff);
+  const deleteGcalEvents = useAction(fn.calendar.deleteGcalEvents);
 
   const setGcalEnabled = (val) => setIntegrationEnabledMutation({ integration: 'googleCalendar', enabled: val });
 
@@ -111,6 +115,8 @@ export function useIntegrations() {
     triggerGcalSync,
     fetchFromGoogle,
     pushToGoogle,
+    getSyncDiff,
+    deleteGcalEvents,
   };
 }
 

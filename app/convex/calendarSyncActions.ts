@@ -44,12 +44,92 @@ async function getEnabledAndApiKey(ctx: any): Promise<string> {
   return apiKey;
 }
 
+// Returns what would change in each direction — without making any changes.
+// Used by the UI to show a confirmation dialog before syncing.
+export const getSyncDiff = action({
+  args: {},
+  handler: async (ctx) => {
+    const composioApiKey = await getEnabledAndApiKey(ctx);
+    const toolset = new ComposioToolSet({ apiKey: composioApiKey });
+    const { min, max } = dateWindow(1, 14);
+
+    const result = await toolset.executeAction({
+      action: "GOOGLECALENDAR_EVENTS_LIST",
+      params: {
+        calendarId: CALENDAR_ID,
+        timeMin: `${isoDateTime(min, "00:00")}Z`,
+        timeMax: `${isoDateTime(max, "23:59")}Z`,
+        maxResults: 200,
+        singleEvents: true,
+        orderBy: "startTime",
+      },
+      entityId: ENTITY_ID,
+    });
+
+    const gcalEvents: any[] = (result as any)?.data?.items ?? [];
+    const gcalById = new Map(gcalEvents.map((e: any) => [e.id, e]));
+    const allBlocks: any[] = await ctx.runQuery(api.blocks.list);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const kugiGcalIds = new Set(allBlocks.map((b: any) => b.googleEventId).filter(Boolean));
+
+    // Kugi blocks whose GCal event no longer exists → offer to delete from Kugi
+    const orphanedOnKugi = allBlocks
+      .filter((b: any) => b.googleEventId && !gcalById.has(b.googleEventId))
+      .map((b: any) => ({ kugiId: b._id, title: b.title, emoji: b.emoji, date: b.date }));
+
+    // GCal events with no matching Kugi block → offer to delete from GCal
+    // (these were likely pushed from Kugi then deleted in Kugi)
+    const orphanedOnGcal = gcalEvents
+      .filter((e: any) => e.id && !kugiGcalIds.has(e.id))
+      .map((e: any) => ({
+        gcalId: e.id,
+        title: e.summary ?? "(No title)",
+        date: (e.start?.dateTime ?? e.start?.date ?? "").slice(0, 10),
+      }));
+
+    // New Kugi blocks that would be pushed (no googleEventId, future, has times)
+    const newOnKugi = allBlocks
+      .filter((b: any) => !b.completed && !b.googleEventId && b.date >= today && b.start_time && b.end_time)
+      .map((b: any) => ({ kugiId: b._id, title: b.title, emoji: b.emoji, date: b.date }));
+
+    return { orphanedOnKugi, orphanedOnGcal, newOnKugi };
+  },
+});
+
+// Delete specific GCal events by ID — called after user confirms orphan cleanup.
+export const deleteGcalEvents = action({
+  args: { gcalIds: v.array(v.string()) },
+  handler: async (ctx, { gcalIds }) => {
+    const composioApiKey = await getEnabledAndApiKey(ctx);
+    const toolset = new ComposioToolSet({ apiKey: composioApiKey });
+    let deleted = 0;
+    for (const eventId of gcalIds) {
+      try {
+        await toolset.executeAction({
+          action: "GOOGLECALENDAR_DELETE_EVENT",
+          params: { calendarId: CALENDAR_ID, eventId },
+          entityId: ENTITY_ID,
+        });
+        deleted++;
+      } catch {
+        // Event may already be gone
+      }
+    }
+    return { deleted };
+  },
+});
+
 // Public action: pulls GCal events → Kugi blocks.
 // - New events (no block with matching googleEventId) → create block
 // - Deleted events (block has googleEventId not in GCal list) → delete block
 export const fetchFromGoogle = action({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    // When provided, only these Kugi block IDs are deleted (user-confirmed orphans).
+    // When absent, auto-deletes all orphaned Kugi blocks (legacy behaviour).
+    deleteKugiIds: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, { deleteKugiIds } = {}) => {
     const composioApiKey = await getEnabledAndApiKey(ctx);
     const toolset = new ComposioToolSet({ apiKey: composioApiKey });
     const { min, max } = dateWindow(1, 14);
@@ -98,11 +178,17 @@ export const fetchFromGoogle = action({
       });
     }
 
-    // Delete blocks whose GCal event was removed
-    const blocksFromGcal = allBlocks.filter((b: any) => b.googleEventId);
-    for (const block of blocksFromGcal) {
-      if (!gcalIds.has(block.googleEventId)) {
-        await ctx.runMutation(api.blocks.remove, { id: block._id });
+    // Delete orphaned Kugi blocks — either the user-selected IDs or all auto-detected ones
+    if (deleteKugiIds !== undefined) {
+      for (const id of deleteKugiIds) {
+        await ctx.runMutation(api.blocks.remove, { id: id as any });
+      }
+    } else {
+      const blocksFromGcal = allBlocks.filter((b: any) => b.googleEventId);
+      for (const block of blocksFromGcal) {
+        if (!gcalIds.has(block.googleEventId)) {
+          await ctx.runMutation(api.blocks.remove, { id: block._id });
+        }
       }
     }
   },
