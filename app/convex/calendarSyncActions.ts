@@ -5,7 +5,7 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { ComposioToolSet } from "composio-core";
 
-const ENTITY_ID = "default";
+const ENTITY_ID = "boop-default";
 const CALENDAR_ID = "primary";
 
 async function execute(
