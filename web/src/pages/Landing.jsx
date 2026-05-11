@@ -3,25 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import KugiLogo from '../components/UI/KugiLogo';
 import styles from './Landing.module.css';
 
-const FEATURES = [
-  { icon: '⬡', title: 'Bento blocks', desc: 'Drag between days. Timeline and bento layouts for every mood.' },
-  { icon: '🤖', title: 'AI agent API', desc: 'Bearer-auth REST API. Any LLM can read and write your schedule.' },
-  { icon: '🔒', title: 'Your data, your server', desc: 'Bring your own Convex backend. Zero central servers, ever.' },
-  { icon: '📲', title: 'Install anywhere', desc: 'PWA on Mac, iOS, Android, Windows. No App Store.' },
-  { icon: '⚡', title: 'Real-time sync', desc: 'Convex keeps every device in sync instantly.' },
-  { icon: '🔔', title: 'Smart reminders', desc: 'Push + Telegram with per-block custom messages.' },
-];
+/* ─── constants ─── */
 
-const AI_PROMPT = `Fetch my Kugi API docs first: GET https://[your-deployment].convex.site/api/docs
+const AI_PROMPT = `Fetch my Kugi API docs first: GET https://[deployment].convex.site/api/docs
 Use my Bearer token from Settings → Developer.
-Then: organize today's blocks, set up Telegram reminders, sync Google Calendar, and help me plan the week.
-Always call /api/docs at the start of every session — it contains the full API reference.`;
+Then: organize today's blocks, set up Telegram reminders,
+sync Google Calendar, and help me plan the week.
+Always call /api/docs at the start of every session.`;
 
-const AI_PRINCIPLES = [
-  { title: 'Fetch docs first', desc: 'The agent reads the full API reference before every session' },
-  { title: 'One Bearer token', desc: 'Paste it once. Every agent that has it can do everything you can' },
-  { title: 'Full read/write', desc: 'Create, complete, delete, bulk-edit, set notifications, sync calendars' },
+const WEEK_BLOCKS = [
+  { day: 0, title: 'Deep Work',  time: '09–11', color: '#5d8a6a', emoji: '💻' },
+  { day: 0, title: 'Standup',    time: '11–12', color: '#7a8a5d', emoji: '🗣️' },
+  { day: 1, title: 'Planning',   time: '10–11', color: '#7a8a5d', emoji: '🗂️' },
+  { day: 1, title: 'Call',       time: '14–15', color: '#a05a5a', emoji: '📞' },
+  { day: 2, title: 'Research',   time: '09–12', color: '#5d7a8a', emoji: '🔬' },
+  { day: 3, title: 'Writing',    time: '10–12', color: '#a08a5d', emoji: '✍️' },
+  { day: 3, title: 'Walk',       time: '17–18', color: '#6b8a7a', emoji: '🚶' },
+  { day: 4, title: 'Review',     time: '11–12', color: '#7a6a8a', emoji: '👁️' },
+  { day: 4, title: 'Deploy',     time: '15–16', color: '#5d8a6a', emoji: '🚀' },
 ];
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DATES = ['5', '6', '7', '8', '9'];
+
+/* ─── utilities ─── */
 
 function detectOS() {
   const ua = navigator.userAgent;
@@ -32,14 +37,14 @@ function detectOS() {
   return 'other';
 }
 
-function useInView(threshold = 0.12) {
+function useInView(threshold = 0.1) {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
       { threshold }
     );
     obs.observe(el);
@@ -47,6 +52,8 @@ function useInView(threshold = 0.12) {
   }, [threshold]);
   return [ref, inView];
 }
+
+/* ─── main component ─── */
 
 export default function Landing({ onGetStarted }) {
   const navigate = useNavigate();
@@ -57,33 +64,25 @@ export default function Landing({ onGetStarted }) {
   const os = detectOS();
   const canPrompt = !!installPrompt;
 
-  const heroRef = useRef(null);
   const previewRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const heroRef = useRef(null);
 
   useEffect(() => {
-    if (window.__pwaInstallPrompt) {
-      setInstallPrompt(window.__pwaInstallPrompt);
-      window.__pwaInstallPrompt = null;
-    }
-    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
-    window.addEventListener('beforeinstallprompt', handler);
+    if (window.__pwaInstallPrompt) { setInstallPrompt(window.__pwaInstallPrompt); window.__pwaInstallPrompt = null; }
+    const h = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', h);
     window.addEventListener('appinstalled', () => setInstalled(true));
     if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', h);
   }, []);
 
   const handleMouseMove = useCallback((e) => {
     const el = heroRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = (e.clientX - cx) / (rect.width / 2);
-    const dy = (e.clientY - cy) / (rect.height / 2);
-    setTilt({ x: dy * -4, y: dx * 3 });
+    const r = el.getBoundingClientRect();
+    setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -6, y: ((e.clientX - r.left) / r.width - 0.5) * 5 });
   }, []);
-
   const handleMouseLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
 
   function handleOpen() {
@@ -92,12 +91,11 @@ export default function Landing({ onGetStarted }) {
   }
 
   async function triggerInstall() {
-    if (!installPrompt) return false;
+    if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') setInstalled(true);
     setInstallPrompt(null);
-    return outcome === 'accepted';
   }
 
   function copyPrompt() {
@@ -106,24 +104,23 @@ export default function Landing({ onGetStarted }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const [aiRef, aiInView] = useInView();
-  const [featRef, featInView] = useInView();
-  const [howRef, howInView] = useInView();
-  const [installRef, installInView] = useInView();
+  const [bentoRef, bentoInView] = useInView();
+  const [devRef, devInView] = useInView();
+  const [ctaRef, ctaInView] = useInView();
 
   return (
     <div className={styles.page}>
 
-      {/* NAV */}
+      {/* ── NAV ── */}
       <nav className={styles.nav}>
         <div className={styles.navInner}>
           <div className={styles.brand}>
-            <div className={styles.brandIcon}><KugiLogo size={16} /></div>
+            <div className={styles.brandMark}><KugiLogo size={14} /></div>
             <span className={styles.brandName}>kugi</span>
           </div>
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navLink}>Features</a>
-            <a href="#agent" className={styles.navLink}>AI Agent</a>
+            <a href="#developer" className={styles.navLink}>Developer</a>
             <a href="#install" className={styles.navLink}>Install</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
           </div>
@@ -131,284 +128,316 @@ export default function Landing({ onGetStarted }) {
         </div>
       </nav>
 
-      {/* HERO */}
-      <section
-        className={styles.hero}
-        ref={heroRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div className={styles.heroStripe} aria-hidden="true" />
+      {/* ── HERO ── */}
+      <section className={styles.hero} ref={heroRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+        <div className={styles.heroStripe} aria-hidden />
 
-        <div className={styles.heroContent}>
-          <div className={styles.heroBadge}>
-            <span className={styles.heroBadgeDot} />
+        {/* Left: copy */}
+        <div className={styles.heroLeft}>
+          <div className={styles.heroPill}>
+            <span className={styles.heroPillDot} />
             Free forever · Open source · BYOC
           </div>
 
-          <h1 className={styles.heroTitle}>
-            Your AI-ready<br />block calendar
+          <h1 className={styles.heroH1}>
+            Clarity<br />
+            is the<br />
+            feature.
           </h1>
 
           <p className={styles.heroSub}>
-            Plan your week in beautiful bento blocks. Connect your AI agents.
-            Own your data — no subscription, no central server, ever.
+            A bento calendar for developers.<br />
+            Your data. Your server. Your week.
           </p>
 
-          <div className={styles.heroCTA}>
-            <button className={styles.ctaPrimary} onClick={handleOpen}>
+          <div className={styles.heroCta}>
+            <button className={styles.btnPrimary} onClick={handleOpen}>
               Start for free
             </button>
             {installed ? (
-              <span className={styles.installedBadge}>
-                <CheckIcon />
-                Installed
-              </span>
+              <span className={styles.installedChip}><CheckIcon /> Installed</span>
             ) : canPrompt ? (
-              <button className={styles.ctaSecondary} onClick={triggerInstall}>
-                <DownloadIcon />
-                Install app
+              <button className={styles.btnGhost} onClick={triggerInstall}>
+                <DownloadIcon /> Install app
               </button>
             ) : null}
           </div>
+
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>∞</span> Free plan</div>
+            <div className={styles.heroStatDiv} />
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>3 min</span> Setup</div>
+            <div className={styles.heroStatDiv} />
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>REST</span> AI API</div>
+          </div>
         </div>
 
-        {/* 3D preview */}
-        <div className={styles.previewWrap}>
+        {/* Right: bento preview */}
+        <div className={styles.heroRight}>
           <div
             ref={previewRef}
-            className={styles.previewWindow}
+            className={styles.preview}
             style={{
-              transform: `perspective(1200px) rotateX(calc(8deg + ${tilt.x}deg)) rotateY(${tilt.y}deg)`,
-              transition: tilt.x === 0 && tilt.y === 0 ? 'transform 0.8s cubic-bezier(0.23,1,0.32,1)' : 'transform 0.1s linear',
+              transform: `perspective(1100px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+              transition: tilt.x === 0 ? 'transform 0.9s cubic-bezier(0.23,1,0.32,1)' : 'transform 0.08s linear',
             }}
           >
             <div className={styles.previewBar}>
-              <span className={styles.trafficDot} style={{ background: '#ff5f57' }} />
-              <span className={styles.trafficDot} style={{ background: '#febc2e' }} />
-              <span className={styles.trafficDot} style={{ background: '#28c840' }} />
-              <span className={styles.previewTitle}>kugi — Week of May 5–11</span>
+              <span className={styles.dot} style={{ background: '#ff5f57' }} />
+              <span className={styles.dot} style={{ background: '#febc2e' }} />
+              <span className={styles.dot} style={{ background: '#28c840' }} />
+              <span className={styles.previewLabel}>kugi — week of may 5</span>
+              <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />live</div>
             </div>
-            <div className={styles.previewGrid}>
-              {['Mon 5', 'Tue 6', 'Wed 7', 'Thu 8', 'Fri 9', 'Sat 10', 'Sun 11'].map((d, i) => (
-                <div key={i} className={styles.previewCol}>
-                  <div className={styles.previewDay}>{d}</div>
-                  {i === 0 && <>
-                    <MockBlock color="#4f7cff" title="Deep Work" time="09–11" emoji="💻" />
-                    <MockBlock color="#10b981" title="Gym" time="12–13" emoji="🏋️" />
-                  </>}
-                  {i === 1 && <>
-                    <MockBlock color="#8b5cf6" title="Planning" time="10–11" emoji="🗂️" />
-                    <MockBlock color="#f43f5e" title="Call" time="14–15" emoji="📞" />
-                  </>}
-                  {i === 2 && <MockBlock color="#4f7cff" title="Research" time="09–12" emoji="🔬" />}
-                  {i === 3 && <>
-                    <MockBlock color="#fbbf24" title="Writing" time="10–12" emoji="✍️" />
-                    <MockBlock color="#10b981" title="Walk" time="17–18" emoji="🚶" />
-                  </>}
-                  {i === 4 && <MockBlock color="#8b5cf6" title="Review" time="11–12" emoji="👁️" />}
-                </div>
-              ))}
+
+            <div className={styles.previewBody}>
+              {/* Day headers */}
+              <div className={styles.previewDayRow}>
+                {DAYS.map((d, i) => (
+                  <div key={i} className={`${styles.previewDayCell} ${i === 2 ? styles.previewDayToday : ''}`}>
+                    <span className={styles.previewDayName}>{d}</span>
+                    <span className={`${styles.previewDayNum} ${i === 2 ? styles.previewDayNumToday : ''}`}>{DATES[i]}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Block columns */}
+              <div className={styles.previewGrid}>
+                {DAYS.map((_, dayIdx) => (
+                  <div key={dayIdx} className={styles.previewCol}>
+                    {WEEK_BLOCKS.filter(b => b.day === dayIdx).map((b, bi) => (
+                      <div key={bi} className={styles.previewBlock} style={{ borderLeftColor: b.color, background: `${b.color}18` }}>
+                        <div className={styles.previewBlockEmoji}>{b.emoji}</div>
+                        <div>
+                          <div className={styles.previewBlockTitle}>{b.title}</div>
+                          <div className={styles.previewBlockTime}>{b.time}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Floating AI badge */}
+            <div className={styles.floatBadge} style={{ bottom: 24, right: 20 }}>
+              <span className={styles.floatBadgeIcon}>🤖</span>
+              <span>AI connected</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FEATURES */}
+      {/* ── BENTO FEATURES ── */}
       <section
         id="features"
-        className={`${styles.section} ${featInView ? styles.inView : ''}`}
-        ref={featRef}
+        className={`${styles.bentoSection} ${bentoInView ? styles.inView : ''}`}
+        ref={bentoRef}
       >
         <div className={styles.sectionInner}>
-          <div className={styles.eyebrow}>Features</div>
-          <h2 className={styles.sectionTitle}>Everything you need.<br />Nothing you don't.</h2>
-          <div className={styles.featGrid}>
-            {FEATURES.map((f, i) => (
-              <div key={i} className={styles.featCard} style={{ transitionDelay: `${i * 60}ms` }}>
-                <div className={styles.featIcon}>{f.icon}</div>
-                <div className={styles.featCardTitle}>{f.title}</div>
-                <div className={styles.featCardDesc}>{f.desc}</div>
+          <div className={styles.sectionHead}>
+            <div className={styles.eyebrow}>Built different</div>
+            <h2 className={styles.sectionH2}>Every block. Yours.</h2>
+          </div>
+
+          <div className={styles.bento}>
+
+            {/* AI Agent — wide */}
+            <div className={`${styles.bentoCard} ${styles.bentoAi}`}>
+              <div className={styles.bentoEyebrow}>AI-Native</div>
+              <div className={styles.bentoTitle}>Your agents already<br />speak its language.</div>
+              <p className={styles.bentoDesc}>
+                One Bearer token. Full REST API. Any LLM can read, write,
+                and reorganize your schedule — no plugin required.
+              </p>
+              <div className={styles.aiPromptCard}>
+                <div className={styles.aiPromptHeader}>
+                  <span className={styles.aiPromptLabel}>starter prompt</span>
+                  <button className={`${styles.copyBtn} ${copied ? styles.copyDone : ''}`} onClick={copyPrompt}>
+                    {copied ? <><CheckIcon size={11} /> copied</> : <><CopyIcon /> copy</>}
+                  </button>
+                </div>
+                <pre className={styles.aiPromptPre}>{AI_PROMPT}</pre>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI AGENT */}
-      <section
-        id="agent"
-        className={`${styles.section} ${aiInView ? styles.inView : ''}`}
-        ref={aiRef}
-      >
-        <div className={styles.sectionInner} style={{ maxWidth: 780 }}>
-          <div className={styles.eyebrow}>AI Agent</div>
-          <h2 className={styles.sectionTitle}>Your AI agent.<br />Already home.</h2>
-          <p className={styles.sectionSub}>
-            Give any LLM one prompt and it can read, write, and manage your entire schedule.
-          </p>
-
-          <div className={styles.promptCard}>
-            <div className={styles.promptCardHeader}>
-              <span className={styles.promptLabel}>Starter prompt</span>
-              <button
-                className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ''}`}
-                onClick={copyPrompt}
-              >
-                {copied ? (
-                  <><CheckIcon size={12} /> Copied</>
-                ) : (
-                  <><CopyIcon /> Copy</>
-                )}
-              </button>
             </div>
-            <pre className={styles.promptBlock}>{AI_PROMPT}</pre>
-          </div>
 
-          <div className={styles.principlesGrid}>
-            {AI_PRINCIPLES.map((p, i) => (
-              <div key={i} className={styles.principleCard}>
-                <div className={styles.principleNum}>{i + 1}</div>
-                <div>
-                  <div className={styles.principleTitle}>{p.title}</div>
-                  <div className={styles.principleDesc}>{p.desc}</div>
+            {/* PWA — narrow tall */}
+            <div className={`${styles.bentoCard} ${styles.bentoPwa}`}>
+              <div className={styles.bentoEyebrow}>Universal</div>
+              <div className={styles.bentoTitle}>Installs<br />everywhere.</div>
+              <p className={styles.bentoDesc}>Mac, iOS, Android, Windows. No App Store. No waiting.</p>
+              <div className={styles.osChips}>
+                {['🍎 Mac', '📱 iOS', '🤖 Android', '🪟 Windows'].map(l => (
+                  <span key={l} className={styles.osChip}>{l}</span>
+                ))}
+              </div>
+              {canPrompt ? (
+                <button className={styles.btnPrimary} style={{ marginTop: 'auto', width: '100%' }} onClick={triggerInstall}>
+                  <DownloadIcon /> Install now
+                </button>
+              ) : (
+                <button className={styles.btnOutline} style={{ marginTop: 'auto', width: '100%' }} onClick={handleOpen}>
+                  Open App →
+                </button>
+              )}
+            </div>
+
+            {/* Real-time sync — small */}
+            <div className={`${styles.bentoCard} ${styles.bentoSync}`}>
+              <div className={styles.bentoEyebrow}>Infrastructure</div>
+              <div className={styles.bentoTitle}>Real-time,<br />always.</div>
+              <p className={styles.bentoDesc}>Convex keeps every device in sync. No polling. No stale state.</p>
+              <div className={styles.syncDots}>
+                {[...Array(3)].map((_, i) => (
+                  <span key={i} className={styles.syncDot} style={{ animationDelay: `${i * 0.3}s` }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Reminders — wide */}
+            <div className={`${styles.bentoCard} ${styles.bentoReminders}`}>
+              <div className={styles.bentoEyebrow}>Notifications</div>
+              <div className={styles.bentoTitle}>Remind me the way I want to be reminded.</div>
+              <p className={styles.bentoDesc}>
+                Per-block custom messages. Push notifications. Telegram.
+                Write exactly what gets sent, for every event.
+              </p>
+              <div className={styles.reminderPreview}>
+                <div className={styles.reminderMsg}>
+                  <span className={styles.reminderIcon}>🔔</span>
+                  <div>
+                    <div className={styles.reminderTitle}>Deploy to prod in 15 min</div>
+                    <div className={styles.reminderSub}>Custom message · Push + Telegram</div>
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Data ownership */}
+            <div className={`${styles.bentoCard} ${styles.bentoData}`}>
+              <div className={styles.bentoEyebrow}>Ownership</div>
+              <div className={styles.bentoTitle}>Zero central servers. Ever.</div>
+              <p className={styles.bentoDesc}>
+                Bring your own Convex deployment. Your data lives where you put it.
+                We never touch it.
+              </p>
+              <div className={styles.dataTag}>
+                <LockIcon />
+                <span>Your Convex · Your rules</span>
+              </div>
+            </div>
+
+            {/* API */}
+            <div className={`${styles.bentoCard} ${styles.bentoApi}`}>
+              <div className={styles.bentoEyebrow}>Developer</div>
+              <div className={styles.bentoTitle}>A REST API<br />worth using.</div>
+              <div className={styles.apiSnippet}>
+                <div className={styles.apiLine}>
+                  <span className={styles.apiMethod}>GET</span>
+                  <span className={styles.apiPath}>/api/tasks?date=today</span>
+                </div>
+                <div className={styles.apiLine}>
+                  <span className={styles.apiMethod}>POST</span>
+                  <span className={styles.apiPath}>/api/tasks</span>
+                </div>
+                <div className={styles.apiLine}>
+                  <span className={styles.apiMethod}>PATCH</span>
+                  <span className={styles.apiPath}>/api/tasks/:id</span>
+                </div>
+                <div className={styles.apiLine}>
+                  <span className={styles.apiMethod}>GET</span>
+                  <span className={styles.apiPath}>/api/docs</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
+      {/* ── DEVELOPER SECTION ── */}
       <section
-        className={`${styles.section} ${howInView ? styles.inView : ''}`}
-        ref={howRef}
+        id="developer"
+        className={`${styles.devSection} ${devInView ? styles.inView : ''}`}
+        ref={devRef}
       >
-        <div className={styles.sectionInner} style={{ maxWidth: 560 }}>
-          <div className={styles.eyebrow}>Quick start</div>
-          <h2 className={styles.sectionTitle}>Up in 3 minutes</h2>
+        <div className={styles.sectionInner}>
+          <div className={styles.sectionHead}>
+            <div className={styles.eyebrow}>For developers</div>
+            <h2 className={styles.sectionH2}>Up in 3 minutes.</h2>
+            <p className={styles.sectionSub}>Deploy a backend, paste a URL, start blocking time.</p>
+          </div>
+
           <div className={styles.steps}>
             {[
-              { n: '1', t: 'Deploy Convex', d: 'Run npx convex dev once. Free tier covers everything.' },
-              { n: '2', t: 'Connect Kugi', d: 'Paste your deployment URL. Your calendar is ready instantly.' },
-              { n: '3', t: 'Install & block', d: 'Install as a PWA, create blocks, plug in your AI agent.' },
+              {
+                n: '01',
+                title: 'Deploy Convex',
+                desc: 'Run one command. Free tier covers everything — no credit card.',
+                code: 'npx convex dev',
+              },
+              {
+                n: '02',
+                title: 'Connect Kugi',
+                desc: 'Paste your deployment URL at /setup. Your calendar is ready instantly.',
+                code: 'https://[name].convex.cloud',
+              },
+              {
+                n: '03',
+                title: 'Plug in your agent',
+                desc: 'Copy your Bearer token from Settings → Developer. Point your LLM at the API.',
+                code: 'GET /api/docs',
+              },
             ].map((s, i) => (
-              <div key={i} className={styles.step} style={{ transitionDelay: `${i * 80}ms` }}>
-                <div className={styles.stepNumWrap}>
-                  <div className={styles.stepNum}>{s.n}</div>
-                  {i < 2 && <div className={styles.stepLine} />}
-                </div>
-                <div className={styles.stepContent}>
-                  <div className={styles.stepTitle}>{s.t}</div>
-                  <div className={styles.stepDesc}>{s.d}</div>
+              <div key={i} className={styles.step}>
+                <div className={styles.stepNum}>{s.n}</div>
+                <div className={styles.stepBody}>
+                  <div className={styles.stepTitle}>{s.title}</div>
+                  <div className={styles.stepDesc}>{s.desc}</div>
+                  <div className={styles.stepCode}>{s.code}</div>
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 48, textAlign: 'center' }}>
-            <button className={styles.ctaPrimary} onClick={handleOpen}>
-              Get started free
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* INSTALL */}
-      <section
-        id="install"
-        className={`${styles.section} ${installInView ? styles.inView : ''}`}
-        ref={installRef}
-      >
+      {/* ── INSTALL ── */}
+      <section id="install" className={`${styles.installSection} ${devInView ? styles.inView : ''}`}>
         <div className={styles.sectionInner}>
-          <div className={styles.eyebrow}>Install</div>
-          <h2 className={styles.sectionTitle}>Install on any device</h2>
-          <p className={styles.sectionSub}>
-            No App Store. No waiting. Kugi installs as a native-feeling app on every platform.
-            {os !== 'other' && <> <strong style={{ color: '#f4f4f6' }}>Your device is highlighted below.</strong></>}
-          </p>
+          <div className={styles.sectionHead}>
+            <div className={styles.eyebrow}>Install</div>
+            <h2 className={styles.sectionH2}>Any device. Any platform.</h2>
+          </div>
           <div className={styles.osGrid}>
-            <OSCard
-              icon="🍎"
-              label="Mac"
-              current={os === 'mac'}
-              installed={installed}
-              steps={canPrompt
-                ? ['Click Install — browser prompt appears', 'Kugi opens in its own window, no browser chrome']
-                : ['Open this page in Chrome or Edge', 'Click Install in the address bar or use the button below']}
-              actions={
-                installed ? (
-                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
-                ) : canPrompt ? (
-                  <button className={styles.installOsBtn} onClick={triggerInstall}>
-                    <DownloadIcon /> Install as app
-                  </button>
-                ) : (
-                  <a className={styles.installOsBtn} href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer">
-                    Get Chrome to install
-                  </a>
-                )
-              }
-            />
-            <OSCard
-              icon="📱"
-              label="iPhone / iPad"
-              current={os === 'ios'}
-              installed={installed && os === 'ios'}
-              steps={['Open kugi.onrender.com in Safari', 'Tap Share → "Add to Home Screen"', 'Kugi appears on your home screen']}
-              actions={
-                showIOSHint ? (
-                  <div className={styles.iosSteps}>
-                    <div className={styles.iosStep}><span className={styles.iosNum}>1</span> Open in <strong>Safari</strong></div>
-                    <div className={styles.iosStep}><span className={styles.iosNum}>2</span> Tap <strong>Share</strong> then "Add to Home Screen"</div>
-                  </div>
-                ) : (
-                  <button className={styles.installOsBtn} onClick={() => setShowIOSHint(true)}>
-                    How to install
-                  </button>
-                )
-              }
-            />
-            <OSCard
-              icon="🤖"
-              label="Android"
-              current={os === 'android'}
-              installed={installed && os === 'android'}
-              steps={['Open in Chrome', 'Tap Install in the address bar or menu', 'Kugi lands on your home screen']}
-              actions={
-                installed && os === 'android' ? (
-                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
-                ) : canPrompt && os === 'android' ? (
-                  <button className={styles.installOsBtn} onClick={triggerInstall}><DownloadIcon /> Install</button>
-                ) : (
-                  <span className={styles.osHint}>Open in Chrome to install</span>
-                )
-              }
-            />
-            <OSCard
-              icon="🪟"
-              label="Windows"
-              current={os === 'windows'}
-              installed={installed && os === 'windows'}
-              steps={['Open in Chrome or Edge', 'Click Install in the address bar', 'Kugi opens as a standalone window']}
-              actions={
-                installed && os === 'windows' ? (
-                  <span className={styles.installedBadge}><CheckIcon /> Installed</span>
-                ) : canPrompt && os === 'windows' ? (
-                  <button className={styles.installOsBtn} onClick={triggerInstall}><DownloadIcon /> Install</button>
-                ) : (
-                  <span className={styles.osHint}>Open in Chrome or Edge to install</span>
-                )
-              }
-            />
+            <OSCard os="mac"     icon="🍎" label="Mac"          current={os === 'mac'}     steps={['Open in Chrome or Edge', 'Click Install in address bar', 'Kugi runs as a native window']} installAction={canPrompt ? () => triggerInstall() : null} installed={installed} />
+            <OSCard os="ios"     icon="📱" label="iPhone / iPad" current={os === 'ios'}     steps={['Open in Safari', 'Tap Share → Add to Home Screen', 'Kugi appears on your home screen']} iosHint={showIOSHint} onIosHint={() => setShowIOSHint(true)} installed={installed && os === 'ios'} />
+            <OSCard os="android" icon="🤖" label="Android"      current={os === 'android'} steps={['Open in Chrome', 'Tap Install in the address bar', 'Kugi lands on your home screen']} installAction={canPrompt && os === 'android' ? () => triggerInstall() : null} installed={installed && os === 'android'} />
+            <OSCard os="win"     icon="🪟" label="Windows"      current={os === 'windows'} steps={['Open in Chrome or Edge', 'Click Install in address bar', 'Kugi opens as a standalone window']} installAction={canPrompt && os === 'windows' ? () => triggerInstall() : null} installed={installed && os === 'windows'} />
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ── CTA ── */}
+      <section
+        className={`${styles.ctaSection} ${ctaInView ? styles.inView : ''}`}
+        ref={ctaRef}
+      >
+        <div className={styles.ctaInner}>
+          <div className={styles.ctaEyebrow}>Ready?</div>
+          <h2 className={styles.ctaH2}>Start building your week.</h2>
+          <p className={styles.ctaSub}>Free forever. No account. Deploy your own backend in minutes.</p>
+          <button className={styles.btnPrimary} onClick={handleOpen} style={{ fontSize: 15, padding: '10px 28px', height: 42 }}>
+            Get started →
+          </button>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.brand}>
-            <div className={styles.brandIcon}><KugiLogo size={14} /></div>
+            <div className={styles.brandMark}><KugiLogo size={12} /></div>
             <span className={styles.brandName}>kugi</span>
           </div>
           <div className={styles.footerLinks}>
@@ -416,7 +445,7 @@ export default function Landing({ onGetStarted }) {
             <a href="https://github.com/emmi-dev12/Kugi/releases" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Releases</a>
             <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Convex</a>
           </div>
-          <div className={styles.footerMeta}>MIT License · Made with ❤️ in Switzerland</div>
+          <span className={styles.footerMeta}>MIT · Made in Switzerland</span>
         </div>
       </footer>
 
@@ -424,33 +453,50 @@ export default function Landing({ onGetStarted }) {
   );
 }
 
-function OSCard({ icon, label, current, installed, steps, actions }) {
+/* ─── sub-components ─── */
+
+function OSCard({ icon, label, current, installed, steps, installAction, iosHint, onIosHint }) {
   return (
-    <div className={`${styles.osCard} ${current ? styles.osCurrent : ''} ${installed ? styles.osInstalled : ''}`}>
-      <div className={styles.osCardHeader}>
+    <div className={`${styles.osCard} ${current ? styles.osCardCurrent : ''} ${installed ? styles.osCardDone : ''}`}>
+      <div className={styles.osCardTop}>
         <span className={styles.osIcon}>{icon}</span>
         <div>
           <div className={styles.osLabel}>{label}</div>
-          {current && <div className={styles.osCurrentBadge}>Your device</div>}
+          {current && <div className={styles.osCurrentTag}>Your device</div>}
         </div>
       </div>
-      <ul className={styles.osStepList}>
+      <ol className={styles.osSteps}>
         {steps.map((s, i) => <li key={i}>{s}</li>)}
-      </ul>
-      <div className={styles.osActionWrap}>{actions}</div>
+      </ol>
+      <div className={styles.osAction}>
+        {installed ? (
+          <span className={styles.installedChip}><CheckIcon /> Installed</span>
+        ) : installAction ? (
+          <button className={styles.btnOutline} style={{ width: '100%' }} onClick={installAction}>
+            <DownloadIcon /> Install
+          </button>
+        ) : onIosHint ? (
+          iosHint ? (
+            <div className={styles.iosHintBox}>
+              <div className={styles.iosHintStep}><span>1</span> Open in <strong>Safari</strong></div>
+              <div className={styles.iosHintStep}><span>2</span> Tap <strong>Share</strong> → Add to Home Screen</div>
+            </div>
+          ) : (
+            <button className={styles.btnOutline} style={{ width: '100%' }} onClick={onIosHint}>How to install</button>
+          )
+        ) : (
+          <span className={styles.osHint}>Open in Chrome to install</span>
+        )}
+      </div>
     </div>
   );
 }
 
-function MockBlock({ color, title, time, emoji }) {
+function CheckIcon({ size = 12 }) {
   return (
-    <div className={styles.mockBlock} style={{ borderLeft: `2px solid ${color}`, background: `${color}1a` }}>
-      <span style={{ fontSize: 10 }}>{emoji}</span>
-      <div>
-        <div className={styles.mockTitle}>{title}</div>
-        <div className={styles.mockTime}>{time}</div>
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <path d="M2 6.5l2.5 2.5L10 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   );
 }
 
@@ -463,19 +509,20 @@ function DownloadIcon() {
   );
 }
 
-function CheckIcon({ size = 12 }) {
+function CopyIcon() {
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <path d="M2 6.5l2.5 2.5L10 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M3 8H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.3"/>
     </svg>
   );
 }
 
-function CopyIcon() {
+function LockIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-      <path d="M3 8H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.3"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="2.5" y="5.5" width="8" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M4 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   );
 }

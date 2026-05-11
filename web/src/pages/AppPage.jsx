@@ -44,7 +44,6 @@ export default function AppPage() {
   const [modal, setModal] = useState({ open: false, block: null, defaultDate: null });
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('kugiTheme') || 'dark');
   const [sidebarWidth, setSidebarWidth] = useState(() => parseInt(localStorage.getItem('kugiSidebarWidth') || '220', 10));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('kugiSidebarCollapsed') === 'true');
   const isResizing = useRef(false);
@@ -54,11 +53,6 @@ export default function AppPage() {
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
   const futureRef = useRef([]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('kugiTheme', theme);
-  }, [theme]);
 
   function toggleSidebar() {
     const next = !sidebarCollapsed;
@@ -87,10 +81,6 @@ export default function AppPage() {
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }
-
-  function toggleTheme() {
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
   }
 
   function showToast(msg) {
@@ -255,16 +245,6 @@ export default function AppPage() {
 
   const SidebarContent = ({ showMiniCal = true }) => (
     <>
-      {/* Theme toggle — mobile sheet only */}
-      {!showMiniCal && (
-        <div className={styles.notifSection}>
-          <div className={styles.sectionTitle}>Appearance</div>
-          <button className={styles.changeUrlBtn} onClick={toggleTheme}>
-            {theme === 'dark' ? '☀️ Switch to light mode' : '🌙 Switch to dark mode'}
-          </button>
-        </div>
-      )}
-
       {/* Mini calendar — desktop sidebar only */}
       {showMiniCal && <div>
         <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
@@ -335,9 +315,6 @@ export default function AppPage() {
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
             <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
-          <button className="btn-icon" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={{ fontSize: 15 }}>
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
           <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title="Search blocks (/)">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
@@ -481,8 +458,6 @@ export default function AppPage() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         permission={permission}
         pushActive={pushActive}
         reminders={reminders}

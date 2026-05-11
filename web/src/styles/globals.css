@@ -43,57 +43,6 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* ── LIGHT THEME ── */
-[data-theme="light"] {
-  --bg: #dddde0;
-  --surface: #f5f5f7;
-  --surface2: #e8e8eb;
-  --surface3: #d8d8dc;
-  --surface4: #c8c8cd;
-  --border: #c8c8cd;
-  --border2: #b8b8be;
-  --text: #0a0a0a;
-  --text-muted: #4a4a5a;
-  --text-dim: #9090a0;
-  --glow: 0 0 0 1px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.12);
-  --glow-hover: 0 0 0 1px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.2);
-  --today-bg: #5d8a6a;
-  --today-text: #fff;
-  /* Block card text */
-  --card-text: rgba(0,0,0,0.88);
-  --card-text-sub: rgba(0,0,0,0.55);
-  --card-text-time: rgba(0,0,0,0.58);
-  --card-badge-bg: rgba(0,0,0,0.1);
-  --card-badge-text: rgba(0,0,0,0.65);
-  --card-action-bg: rgba(0,0,0,0.1);
-  --card-action-border: rgba(0,0,0,0.14);
-  --card-action-text: rgba(0,0,0,0.65);
-  --card-action-hover-bg: rgba(0,0,0,0.22);
-  --card-action-hover-text: rgba(0,0,0,0.95);
-  --card-drag-over: rgba(0,0,0,0.12);
-  color-scheme: light;
-  /* Liquid Glass material — light */
-  --glass-bg: rgba(255, 255, 255, 0.52);
-  --glass-bg-heavy: rgba(255, 255, 255, 0.70);
-  --glass-border: rgba(0, 0, 0, 0.07);
-  --glass-specular: inset 0 1.5px 0 rgba(255, 255, 255, 0.98), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-[data-theme="light"] .btn-primary {
-  background: #111;
-  color: #fff;
-}
-[data-theme="light"] .btn-primary:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-}
-[data-theme="light"] .form-input:focus,
-[data-theme="light"] .form-select:focus,
-[data-theme="light"] .form-textarea:focus {
-  border-color: rgba(0,0,0,0.25);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
-}
-
 html { font-size: 16px; }
 
 body {

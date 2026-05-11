@@ -6,9 +6,6 @@ import styles from './SettingsModal.module.css';
 export default function SettingsModal({
   open,
   onClose,
-  // Appearance
-  theme,
-  onToggleTheme,
   // Notifications
   permission,
   pushActive,
@@ -97,16 +94,6 @@ export default function SettingsModal({
           {/* ── General ── */}
           {tab === 'general' && (
             <div className={styles.section}>
-              <div className={styles.row}>
-                <div className={styles.rowLabel}>
-                  <span className={styles.rowTitle}>Appearance</span>
-                  <span className={styles.rowHint}>Switch between dark and light mode</span>
-                </div>
-                <button className={styles.pill} onClick={onToggleTheme}>
-                  {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-                </button>
-              </div>
-
               <div className={styles.row}>
                 <div className={styles.rowLabel}>
                   <span className={styles.rowTitle}>Timezone</span>
