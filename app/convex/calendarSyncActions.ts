@@ -3,59 +3,10 @@
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import { ComposioToolSet } from "composio-core";
 
 const ENTITY_ID = "boop-default";
 const CALENDAR_ID = "primary";
-const COMPOSIO_BASE = "https://backend.composio.dev";
-
-// Route a Google Calendar request through Composio's proxy, which handles token refresh.
-async function gcalProxy(
-  composioApiKey: string,
-  connectedAccountId: string,
-  endpoint: string,
-  method: "GET" | "POST",
-  queryParams: Record<string, string> = {},
-  body?: unknown,
-): Promise<any> {
-  const parameters = Object.entries(queryParams).map(([name, value]) => ({
-    name,
-    value,
-    in: "query",
-  }));
-  const res = await fetch(`${COMPOSIO_BASE}/api/v2/actions/proxy`, {
-    method: "POST",
-    headers: {
-      "x-api-key": composioApiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      endpoint,
-      method,
-      connectedAccountId,
-      parameters,
-      ...(body ? { body } : {}),
-    }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`Composio proxy error ${res.status}: ${JSON.stringify(json)}`);
-  return json?.data ?? json;
-}
-
-async function getConnectedAccountId(composioApiKey: string): Promise<string> {
-  const res = await fetch(
-    `${COMPOSIO_BASE}/api/v1/connectedAccounts?user_uuid=${ENTITY_ID}&appNames=googlecalendar&status=ACTIVE`,
-    { headers: { "x-api-key": composioApiKey } },
-  );
-  const json = await res.json();
-  const id = json?.items?.[0]?.id;
-  if (!id) {
-    throw new Error(
-      "Google Calendar is not connected in your Composio account. " +
-        "Visit composio.dev, connect Google Calendar in your dashboard, then try again.",
-    );
-  }
-  return id;
-}
 
 function isoDateTime(date: string, time: string): string {
   return `${date}T${time}:00`;
@@ -79,25 +30,24 @@ function dateWindow(pastDays: number, futureDays: number) {
 export const syncCalendar = internalAction({
   args: { composioApiKey: v.string(), outbound: v.optional(v.boolean()) },
   handler: async (ctx, { composioApiKey, outbound = false }) => {
-    const accountId = await getConnectedAccountId(composioApiKey);
+    const toolset = new ComposioToolSet({ apiKey: composioApiKey });
     const { min, max } = dateWindow(1, 14);
 
     // ── Inbound: GCal events → Kugi blocks ───────────────────────
-    const result = await gcalProxy(
-      composioApiKey,
-      accountId,
-      `/calendars/${CALENDAR_ID}/events`,
-      "GET",
-      {
+    const result = await toolset.executeAction({
+      action: "GOOGLECALENDAR_EVENTS_LIST",
+      params: {
+        calendarId: CALENDAR_ID,
         timeMin: `${isoDateTime(min, "00:00")}Z`,
         timeMax: `${isoDateTime(max, "23:59")}Z`,
-        maxResults: "200",
-        singleEvents: "true",
+        maxResults: 200,
+        singleEvents: true,
         orderBy: "startTime",
       },
-    );
+      entityId: ENTITY_ID,
+    });
 
-    const events: any[] = result?.items ?? [];
+    const events: any[] = (result as any)?.data?.items ?? [];
     const allBlocks: any[] = await ctx.runQuery(api.blocks.list);
     const blockKeys = new Set(allBlocks.map((b: any) => `${b.date}||${b.title}`));
 
@@ -128,19 +78,17 @@ export const syncCalendar = internalAction({
       (b: any) => !b.completed && b.date >= today && b.start_time && b.end_time,
     );
     for (const block of outBlocks) {
-      await gcalProxy(
-        composioApiKey,
-        accountId,
-        `/calendars/${CALENDAR_ID}/events`,
-        "POST",
-        {},
-        {
+      await toolset.executeAction({
+        action: "GOOGLECALENDAR_CREATE_EVENT",
+        params: {
+          calendarId: CALENDAR_ID,
           summary: `${block.emoji ? block.emoji + " " : ""}${block.title}`,
           ...(block.notes ? { description: block.notes } : {}),
-          start: { dateTime: isoDateTime(block.date, block.start_time) },
-          end: { dateTime: isoDateTime(block.date, block.end_time) },
+          start_datetime: isoDateTime(block.date, block.start_time),
+          end_datetime: isoDateTime(block.date, block.end_time),
         },
-      );
+        entityId: ENTITY_ID,
+      });
     }
   },
 });
