@@ -183,7 +183,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #59d499;
+  background: #5d8a6a;
   animation: badgePulse 2.4s ease-in-out infinite;
   flex-shrink: 0;
 }
@@ -267,9 +267,9 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #59d499;
-  background: rgba(89, 212, 153, 0.1);
-  border: 1px solid rgba(89, 212, 153, 0.2);
+  color: #5d8a6a;
+  background: rgba(93,138,106,0.12);
+  border: 1px solid rgba(93,138,106,0.22);
   border-radius: 8px;
   padding: 7px 14px;
   height: 36px;
@@ -452,7 +452,7 @@
   letter-spacing: 0.2px;
 }
 .copyBtn:hover { color: #dde8e0; border-color: rgba(255,255,255,0.16); }
-.copyBtnDone { color: #59d499 !important; border-color: rgba(89,212,153,0.25) !important; }
+.copyBtnDone { color: #5d8a6a !important; border-color: rgba(93,138,106,0.25) !important; }
 
 .promptBlock {
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
@@ -589,8 +589,8 @@
   background: rgba(93, 138, 106, 0.04) !important;
 }
 .osInstalled {
-  border-color: rgba(89, 212, 153, 0.3) !important;
-  background: rgba(89, 212, 153, 0.03) !important;
+  border-color: rgba(93,138,106,0.28) !important;
+  background: rgba(93,138,106,0.04) !important;
 }
 .osCardHeader { display: flex; align-items: center; gap: 12px; }
 .osIcon { font-size: 26px; line-height: 1; }

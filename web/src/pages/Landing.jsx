@@ -194,19 +194,19 @@ export default function Landing({ onGetStarted }) {
                 <div key={i} className={styles.previewCol}>
                   <div className={styles.previewDay}>{d}</div>
                   {i === 0 && <>
-                    <MockBlock color="#4f7cff" title="Deep Work" time="09–11" emoji="💻" />
-                    <MockBlock color="#10b981" title="Gym" time="12–13" emoji="🏋️" />
+                    <MockBlock color="#5d8a6a" title="Deep Work" time="09–11" emoji="💻" />
+                    <MockBlock color="#6b8a7a" title="Gym" time="12–13" emoji="🏋️" />
                   </>}
                   {i === 1 && <>
-                    <MockBlock color="#8b5cf6" title="Planning" time="10–11" emoji="🗂️" />
-                    <MockBlock color="#f43f5e" title="Call" time="14–15" emoji="📞" />
+                    <MockBlock color="#7a8a5d" title="Planning" time="10–11" emoji="🗂️" />
+                    <MockBlock color="#a05a5a" title="Call" time="14–15" emoji="📞" />
                   </>}
-                  {i === 2 && <MockBlock color="#4f7cff" title="Research" time="09–12" emoji="🔬" />}
+                  {i === 2 && <MockBlock color="#5d7a8a" title="Research" time="09–12" emoji="🔬" />}
                   {i === 3 && <>
-                    <MockBlock color="#fbbf24" title="Writing" time="10–12" emoji="✍️" />
-                    <MockBlock color="#10b981" title="Walk" time="17–18" emoji="🚶" />
+                    <MockBlock color="#a08a5d" title="Writing" time="10–12" emoji="✍️" />
+                    <MockBlock color="#5d8a6a" title="Walk" time="17–18" emoji="🚶" />
                   </>}
-                  {i === 4 && <MockBlock color="#8b5cf6" title="Review" time="11–12" emoji="👁️" />}
+                  {i === 4 && <MockBlock color="#7a6a8a" title="Review" time="11–12" emoji="👁️" />}
                 </div>
               ))}
             </div>
@@ -324,7 +324,7 @@ export default function Landing({ onGetStarted }) {
           <h2 className={styles.sectionTitle}>Install on any device</h2>
           <p className={styles.sectionSub}>
             No App Store. No waiting. Kugi installs as a native-feeling app on every platform.
-            {os !== 'other' && <> <strong style={{ color: '#f4f4f6' }}>Your device is highlighted below.</strong></>}
+            {os !== 'other' && <> <strong style={{ color: '#dde8e0' }}>Your device is highlighted below.</strong></>}
           </p>
           <div className={styles.osGrid}>
             <OSCard
