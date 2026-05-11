@@ -269,6 +269,121 @@ export const deleteRecurring = mutation({
   },
 });
 
+export const bulkComplete = mutation({
+  args: { ids: v.array(v.id("blocks")), completed: v.boolean() },
+  handler: async (ctx, { ids, completed }) => {
+    let count = 0;
+    for (const id of ids) {
+      const block = await ctx.db.get(id);
+      if (!block) continue;
+      await ctx.db.patch(id, { completed });
+      if (completed && block.telegramJobId) {
+        await ctx.scheduler.cancel(block.telegramJobId as any);
+        await ctx.db.patch(id, { telegramJobId: undefined });
+      } else if (!completed && block.start_time && block.date) {
+        const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
+        const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
+        const ts = reminderTimestamp(block.date, block.start_time, offsetMinutes);
+        if (ts > Date.now()) {
+          const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
+          await ctx.db.patch(id, { telegramJobId: jobId });
+        }
+      }
+      count++;
+    }
+    return count;
+  },
+});
+
+export const bulkDelete = mutation({
+  args: { ids: v.array(v.id("blocks")) },
+  handler: async (ctx, { ids }) => {
+    let count = 0;
+    for (const id of ids) {
+      const block = await ctx.db.get(id);
+      if (!block) continue;
+      if (block.telegramJobId) {
+        await ctx.scheduler.cancel(block.telegramJobId as any);
+      }
+      await ctx.db.delete(id);
+      count++;
+    }
+    return count;
+  },
+});
+
+export const bulkUpdate = mutation({
+  args: {
+    ids: v.array(v.id("blocks")),
+    fields: v.object({
+      category: v.optional(v.string()),
+      completed: v.optional(v.boolean()),
+      emoji: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, { ids, fields }) => {
+    let count = 0;
+    for (const id of ids) {
+      const block = await ctx.db.get(id);
+      if (!block) continue;
+      await ctx.db.patch(id, fields);
+      count++;
+    }
+    return count;
+  },
+});
+
+export const getStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("blocks").collect();
+    const today = new Date().toISOString().slice(0, 10);
+    const todayDate = new Date(today);
+    // Get Monday of this week
+    const dow = todayDate.getDay(); // 0=Sun
+    const diffToMon = (dow + 6) % 7; // days since Monday
+    const mon = new Date(todayDate);
+    mon.setDate(todayDate.getDate() - diffToMon);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const weekStart = mon.toISOString().slice(0, 10);
+    const weekEnd = sun.toISOString().slice(0, 10);
+    const next7 = new Date(todayDate);
+    next7.setDate(todayDate.getDate() + 7);
+    const next7Str = next7.toISOString().slice(0, 10);
+
+    let todayCount = 0, todayCompleted = 0;
+    let thisWeek = 0, thisWeekCompleted = 0;
+    let overdue = 0, total = 0, totalCompleted = 0, upcoming7Days = 0;
+
+    for (const b of all) {
+      total++;
+      if (b.completed) totalCompleted++;
+      if (b.date === today) {
+        todayCount++;
+        if (b.completed) todayCompleted++;
+      }
+      if (b.date >= weekStart && b.date <= weekEnd) {
+        thisWeek++;
+        if (b.completed) thisWeekCompleted++;
+      }
+      if (!b.completed && b.date < today) overdue++;
+      if (!b.completed && b.date > today && b.date <= next7Str) upcoming7Days++;
+    }
+
+    return {
+      today: todayCount,
+      todayCompleted,
+      thisWeek,
+      thisWeekCompleted,
+      overdue,
+      total,
+      totalCompleted,
+      upcoming7Days,
+    };
+  },
+});
+
 export const bulkCreate = mutation({
   args: {
     blocks: v.array(

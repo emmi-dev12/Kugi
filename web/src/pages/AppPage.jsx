@@ -12,6 +12,8 @@ import BlockModal from '../components/UI/BlockModal';
 import KugiLogo from '../components/UI/KugiLogo';
 import CategoryManager from '../components/UI/CategoryManager';
 import SearchModal from '../components/UI/SearchModal';
+import CommandPalette from '../components/UI/CommandPalette';
+import QuickAdd from '../components/UI/QuickAdd';
 import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
@@ -46,6 +48,7 @@ export default function AppPage() {
   const [sidebarWidth, setSidebarWidth] = useState(() => parseInt(localStorage.getItem('kugiSidebarWidth') || '220', 10));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('kugiSidebarCollapsed') === 'true');
   const isResizing = useRef(false);
+  const quickAddRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
@@ -196,8 +199,10 @@ export default function AppPage() {
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
       if (e.key === 'f') setView('completed');
-      if (e.key === 't' && view === 'day') setDayLayout('timeline');
+      if (e.key === 't') goToday();
+      if (e.key === 'l' && view === 'day') setDayLayout('timeline');
       if (e.key === 'b' && view === 'day') setDayLayout('bento');
+      if (e.key === 'q') { e.preventDefault(); quickAddRef.current?.focus(); }
       if (e.key === 'Escape') setSettingsOpen(false);
     };
     document.addEventListener('keydown', handler);
@@ -206,6 +211,11 @@ export default function AppPage() {
 
   function openModal(block, defaultDate) {
     setModal({ open: true, block, defaultDate });
+  }
+
+  function handleQuickAdd(blockData) {
+    handleCreate(blockData);
+    showToast('Block added');
   }
 
   function handleSave(form) {
@@ -371,6 +381,11 @@ export default function AppPage() {
 
         {/* MAIN */}
         <main className={styles.main}>
+          <QuickAdd
+            ref={quickAddRef}
+            onAdd={handleQuickAdd}
+            defaultDate={view === 'day' ? currentDay : todayZurich()}
+          />
           {view === 'week' && (
             <WeekView
               days={weekDays}
@@ -433,13 +448,20 @@ export default function AppPage() {
         categories={categories} />
 
       {searchOpen && (
-        <SearchModal
+        <CommandPalette
           blocks={blocks}
+          categories={categories}
           onClose={() => setSearchOpen(false)}
           onGoToBlock={block => {
             setCurrentDay(new Date(block.date + 'T12:00:00'));
             setView('day');
           }}
+          onNavigateToday={goToday}
+          onSwitchView={setView}
+          onNewBlock={title => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
+          onCompleteBlocks={id => toggleComplete(id)}
+          onDeleteBlocks={id => handleDelete(id)}
+          onFilterCategory={cat => setActiveCategory(cat)}
         />
       )}
 

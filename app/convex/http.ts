@@ -46,6 +46,21 @@ http.route({
   method: "OPTIONS",
   handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
 });
+http.route({
+  path: "/api/stats",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+});
+http.route({
+  path: "/api/categories",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+});
+http.route({
+  pathPrefix: "/api/categories/",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+});
 
 // ── GET /api/docs ──────────────────────────────────────────────
 // Comprehensive self-documenting endpoint — no auth required
@@ -78,6 +93,25 @@ http.route({
         recurrence: "string (optional) — 'hourly' | 'daily' | 'monthly' | 'yearly'. When set on POST, generates all future occurrences automatically.",
         recurrenceGroupId: "string (optional, read-only) — shared ID linking all blocks in a recurring series",
       },
+      stats_schema: {
+        today: "number — blocks dated today",
+        todayCompleted: "number",
+        thisWeek: "number — blocks this Mon–Sun",
+        thisWeekCompleted: "number",
+        overdue: "number — incomplete blocks with date < today",
+        total: "number",
+        totalCompleted: "number",
+        upcoming7Days: "number — incomplete blocks in next 7 days",
+      },
+      bulk_operations: {
+        description: "Use bulk endpoints for efficiency — always prefer bulk-create over multiple single POSTs.",
+        endpoints: [
+          "POST /api/tasks/bulk — body: { blocks: [...] } — create many blocks at once. Returns { created: number }.",
+          "POST /api/tasks/bulk-complete — body: { ids: [...], completed: boolean } — set completion on many blocks. Returns { updated: number }.",
+          "POST /api/tasks/bulk-delete — body: { ids: [...] } — delete many blocks. Returns { deleted: number }.",
+          "POST /api/tasks/bulk-update — body: { ids: [...], fields: { category?, emoji?, completed? } } — patch fields on many blocks. Returns { updated: number }.",
+        ],
+      },
       endpoints: [
         {
           method: "GET", path: "/api/docs",
@@ -88,6 +122,11 @@ http.route({
           method: "GET", path: "/api/info",
           auth: true,
           description: "Schema + today's date. Deprecated in favour of /api/docs.",
+        },
+        {
+          method: "GET", path: "/api/stats",
+          auth: true,
+          description: "Quick usage stats. Use at session start for orientation.",
         },
         {
           method: "GET", path: "/api/tasks",
@@ -113,6 +152,26 @@ http.route({
           required_fields: ["title", "date"],
         },
         {
+          method: "POST", path: "/api/tasks/bulk",
+          auth: true,
+          description: "Bulk-create blocks. body: { blocks: [...] }. Returns { created: number }.",
+        },
+        {
+          method: "POST", path: "/api/tasks/bulk-complete",
+          auth: true,
+          description: "Set completion on many blocks. body: { ids: [...], completed: boolean }. Returns { updated: number }.",
+        },
+        {
+          method: "POST", path: "/api/tasks/bulk-delete",
+          auth: true,
+          description: "Delete many blocks. body: { ids: [...] }. Returns { deleted: number }.",
+        },
+        {
+          method: "POST", path: "/api/tasks/bulk-update",
+          auth: true,
+          description: "Patch fields on many blocks. body: { ids: [...], fields: { category?, emoji?, completed? } }. Returns { updated: number }.",
+        },
+        {
           method: "PATCH", path: "/api/tasks/:id",
           auth: true,
           description: "Partially update a block. Only send fields to change. Returns full block.",
@@ -120,15 +179,34 @@ http.route({
         {
           method: "DELETE", path: "/api/tasks/:id",
           auth: true,
-          description: "Delete a block.",
+          description: "Delete a block. Query params: ?mode=this|future|all (default: this). For recurring: ?mode=future&futureDays=30 or ?mode=all.",
+          query_params: {
+            mode: "'this' (default) | 'future' | 'all' — for recurring series",
+            futureDays: "number — used with mode=future to limit how many days forward",
+          },
         },
         {
           method: "POST", path: "/api/tasks/:id/complete",
           auth: true,
           description: "Toggle a block's completion status. Returns full block.",
         },
+        {
+          method: "GET", path: "/api/categories",
+          auth: true,
+          description: "List all categories (8 defaults + custom). Returns { categories: [...] }.",
+        },
+        {
+          method: "POST", path: "/api/categories",
+          auth: true,
+          description: "Add a custom category. body: { name, emoji, color }. Returns { ok: true, name }.",
+        },
+        {
+          method: "DELETE", path: "/api/categories/:name",
+          auth: true,
+          description: "Remove a custom category by name. Returns { ok: true }.",
+        },
       ],
-      agent_instructions: "Call GET /api/docs at the start of each session to get this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Confirm destructive actions with the user.",
+      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Confirm destructive actions with the user.",
     });
   }),
 });
@@ -302,10 +380,23 @@ http.route({
   method: "DELETE",
   handler: httpAction(async (ctx, req) => {
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
-    const segments = new URL(req.url).pathname.split("/").filter(Boolean);
+    const url = new URL(req.url);
+    const segments = url.pathname.split("/").filter(Boolean);
     const id = segments[2];
     if (!id) return json({ error: "id required" }, 400);
-    await ctx.runMutation(api.blocks.remove, { id: id as any });
+    const mode = url.searchParams.get("mode") ?? "this";
+    if (mode !== "this") {
+      const futureDays = url.searchParams.has("futureDays")
+        ? parseInt(url.searchParams.get("futureDays")!)
+        : undefined;
+      await ctx.runMutation(api.blocks.deleteRecurring, {
+        id: id as any,
+        mode: mode as "future" | "all",
+        futureDays,
+      });
+    } else {
+      await ctx.runMutation(api.blocks.remove, { id: id as any });
+    }
     return json({ ok: true });
   }),
 });
@@ -325,6 +416,132 @@ http.route({
     const task = await ctx.runQuery(api.blocks.getById, { id: id as any });
     if (!task) return json({ error: "Not found" }, 404);
     return json(task);
+  }),
+});
+
+// ── GET /api/stats ─────────────────────────────────────────────
+http.route({
+  path: "/api/stats",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    const stats = await ctx.runQuery(api.blocks.getStats, {});
+    return json(stats);
+  }),
+});
+
+const DEFAULT_CATEGORIES = [
+  { name: "Work", emoji: "💼", color: "#4f7cff", default: true },
+  { name: "Personal", emoji: "🏠", color: "#10b981", default: true },
+  { name: "Health", emoji: "❤️", color: "#ef4444", default: true },
+  { name: "Learning", emoji: "📚", color: "#f59e0b", default: true },
+  { name: "Creative", emoji: "🎨", color: "#8b5cf6", default: true },
+  { name: "Social", emoji: "👥", color: "#ec4899", default: true },
+  { name: "Finance", emoji: "💰", color: "#06b6d4", default: true },
+  { name: "Other", emoji: "📌", color: "#6b7280", default: true },
+];
+
+// ── GET /api/categories ────────────────────────────────────────
+http.route({
+  path: "/api/categories",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    const custom = await ctx.runQuery(api.settings.getCustomCategories, {});
+    const customList = Object.entries(custom as Record<string, any>).map(([name, v]) => ({
+      name,
+      emoji: v.emoji,
+      color: v.color,
+      default: false,
+    }));
+    return json({ categories: [...DEFAULT_CATEGORIES, ...customList] });
+  }),
+});
+
+// ── POST /api/categories ───────────────────────────────────────
+http.route({
+  path: "/api/categories",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!body?.name || !body?.emoji || !body?.color) return json({ error: "name, emoji, color required" }, 400);
+    await ctx.runMutation(api.settings.addCategory, { name: body.name, emoji: body.emoji, color: body.color });
+    return json({ ok: true, name: body.name }, 201);
+  }),
+});
+
+// ── DELETE /api/categories/:name ───────────────────────────────
+http.route({
+  pathPrefix: "/api/categories/",
+  method: "DELETE",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    const segments = new URL(req.url).pathname.split("/").filter(Boolean);
+    const name = decodeURIComponent(segments[2] ?? "");
+    if (!name) return json({ error: "name required" }, 400);
+    await ctx.runMutation(api.settings.removeCategory, { name });
+    return json({ ok: true });
+  }),
+});
+
+// ── POST /api/tasks/bulk ───────────────────────────────────────
+http.route({
+  path: "/api/tasks/bulk",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!Array.isArray(body?.blocks)) return json({ error: "blocks array required" }, 400);
+    const ids = await ctx.runMutation(api.blocks.bulkCreate, { blocks: body.blocks });
+    return json({ created: ids.length }, 201);
+  }),
+});
+
+// ── POST /api/tasks/bulk-complete ─────────────────────────────
+http.route({
+  path: "/api/tasks/bulk-complete",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!Array.isArray(body?.ids)) return json({ error: "ids array required" }, 400);
+    const count = await ctx.runMutation(api.blocks.bulkComplete, {
+      ids: body.ids,
+      completed: body.completed ?? true,
+    });
+    return json({ updated: count });
+  }),
+});
+
+// ── POST /api/tasks/bulk-delete ───────────────────────────────
+http.route({
+  path: "/api/tasks/bulk-delete",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!Array.isArray(body?.ids)) return json({ error: "ids array required" }, 400);
+    const count = await ctx.runMutation(api.blocks.bulkDelete, { ids: body.ids });
+    return json({ deleted: count });
+  }),
+});
+
+// ── POST /api/tasks/bulk-update ───────────────────────────────
+http.route({
+  path: "/api/tasks/bulk-update",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    let body: any;
+    try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!Array.isArray(body?.ids) || !body?.fields) return json({ error: "ids array and fields object required" }, 400);
+    const count = await ctx.runMutation(api.blocks.bulkUpdate, { ids: body.ids, fields: body.fields });
+    return json({ updated: count });
   }),
 });
 

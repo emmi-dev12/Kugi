@@ -60,6 +60,40 @@ export const setCustomCategories = mutation({
   },
 });
 
+export const addCategory = mutation({
+  args: { name: v.string(), emoji: v.string(), color: v.string() },
+  handler: async (ctx, { name, emoji, color }) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "customCategories"))
+      .first();
+    let cats: Record<string, any> = {};
+    if (row) { try { cats = JSON.parse(row.value); } catch {} }
+    cats[name] = { emoji, color };
+    const value = JSON.stringify(cats);
+    if (row) {
+      await ctx.db.patch(row._id, { value });
+    } else {
+      await ctx.db.insert("settings", { key: "customCategories", value });
+    }
+  },
+});
+
+export const removeCategory = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "customCategories"))
+      .first();
+    if (!row) return;
+    let cats: Record<string, any> = {};
+    try { cats = JSON.parse(row.value); } catch {}
+    delete cats[name];
+    await ctx.db.patch(row._id, { value: JSON.stringify(cats) });
+  },
+});
+
 export const rotateApiKey = mutation({
   args: {},
   handler: async (ctx) => {
