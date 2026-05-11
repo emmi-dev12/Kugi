@@ -22,11 +22,15 @@ export default function CommandPalette({
   onNewBlock,
   onCompleteBlocks,
   onDeleteBlocks,
+  onBulkDelete,
+  onBulkComplete,
   onFilterCategory,
 }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const [confirm, setConfirm] = useState(null);
+  const [checkedIds, setCheckedIds] = useState(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(null); // 'delete' | 'complete'
   const inputRef = useRef(null);
 
   const isCmd = query.startsWith('>');
@@ -34,7 +38,6 @@ export default function CommandPalette({
   const [cmdVerb, ...cmdArgParts] = cmdText.split(/\s+/);
   const cmdArg = cmdArgParts.join(' ');
 
-  // Search mode results
   const searchResults = !isCmd && query.trim().length > 0
     ? blocks.filter(b => {
         const q = query.toLowerCase();
@@ -44,10 +47,9 @@ export default function CommandPalette({
           b.category?.toLowerCase().includes(q) ||
           b.emoji?.includes(q)
         );
-      }).slice(0, 20)
+      }).slice(0, 50)
     : [];
 
-  // Command mode results
   const cmdResults = isCmd
     ? COMMANDS.filter(c =>
         !cmdVerb || c.id.startsWith(cmdVerb.toLowerCase()) || c.label.toLowerCase().includes(cmdVerb.toLowerCase())
@@ -55,9 +57,29 @@ export default function CommandPalette({
     : [];
 
   const totalItems = isCmd ? cmdResults.length : searchResults.length;
+  const allChecked = searchResults.length > 0 && searchResults.every(b => checkedIds.has(b._id || b.id));
+  const someChecked = checkedIds.size > 0;
 
-  useEffect(() => { setSelected(0); }, [query]);
+  useEffect(() => { setSelected(0); setCheckedIds(new Set()); }, [query]);
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function toggleCheck(id, e) {
+    e.stopPropagation();
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll(e) {
+    e.stopPropagation();
+    if (allChecked) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(searchResults.map(b => b._id || b.id)));
+    }
+  }
 
   function executeCommand(cmd) {
     const arg = cmdArg.trim();
@@ -85,11 +107,16 @@ export default function CommandPalette({
     if (e.key === 'Enter') {
       e.preventDefault();
       if (isCmd && cmdResults[selected]) executeCommand(cmdResults[selected]);
-      else if (!isCmd && searchResults[selected]) { onGoToBlock?.(searchResults[selected]); onClose(); }
+      else if (!isCmd && searchResults[selected] && !someChecked) { onGoToBlock?.(searchResults[selected]); onClose(); }
     }
     if (e.key === 'Escape') {
-      if (confirm) setConfirm(null);
-      else onClose();
+      if (bulkConfirm) { setBulkConfirm(null); return; }
+      if (confirm) { setConfirm(null); return; }
+      onClose();
+    }
+    if (e.key === 'a' && (e.metaKey || e.ctrlKey) && !isCmd) {
+      e.preventDefault();
+      setCheckedIds(new Set(searchResults.map(b => b._id || b.id)));
     }
   }
 
@@ -103,6 +130,20 @@ export default function CommandPalette({
     setConfirm(null);
     onClose();
   }
+
+  function doBulkAction(type) {
+    const ids = [...checkedIds];
+    if (type === 'delete') {
+      onBulkDelete?.(ids);
+    } else if (type === 'complete') {
+      onBulkComplete?.(ids);
+    }
+    setBulkConfirm(null);
+    setCheckedIds(new Set());
+    onClose();
+  }
+
+  const checkedCount = checkedIds.size;
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
@@ -127,8 +168,60 @@ export default function CommandPalette({
           <kbd className={styles.esc}>esc</kbd>
         </div>
 
-        {/* Confirm overlay */}
-        {confirm && (
+        {/* Bulk selection toolbar */}
+        {!isCmd && searchResults.length > 0 && (
+          <div className={styles.selectionBar}>
+            <label className={styles.selectAllLabel}>
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={toggleAll}
+                className={styles.checkbox}
+              />
+              {allChecked ? 'Deselect all' : `Select all ${searchResults.length}`}
+            </label>
+            {someChecked && (
+              <div className={styles.bulkActions}>
+                <span className={styles.checkedCount}>{checkedCount} selected</span>
+                <button
+                  className={styles.bulkBtn}
+                  onClick={() => setBulkConfirm('complete')}
+                >
+                  Complete
+                </button>
+                <button
+                  className={`${styles.bulkBtn} ${styles.bulkBtnDelete}`}
+                  onClick={() => setBulkConfirm('delete')}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bulk confirm overlay */}
+        {bulkConfirm && (
+          <div className={styles.confirmBox}>
+            <div className={styles.confirmMsg}>
+              {bulkConfirm === 'delete'
+                ? `Delete ${checkedCount} block(s)? This cannot be undone.`
+                : `Mark ${checkedCount} block(s) as complete?`}
+            </div>
+            <div className={styles.confirmActions}>
+              <button className={styles.confirmCancel} onClick={() => setBulkConfirm(null)}>Cancel</button>
+              <button
+                className={bulkConfirm === 'delete' ? styles.confirmOk : styles.confirmComplete}
+                onClick={() => doBulkAction(bulkConfirm)}
+              >
+                {bulkConfirm === 'delete' ? 'Delete' : 'Complete'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Command confirm overlay */}
+        {confirm && !bulkConfirm && (
           <div className={styles.confirmBox}>
             <div className={styles.confirmMsg}>
               {confirm.type === 'complete'
@@ -151,7 +244,7 @@ export default function CommandPalette({
         )}
 
         {/* Command mode */}
-        {!confirm && isCmd && cmdResults.length > 0 && (
+        {!confirm && !bulkConfirm && isCmd && cmdResults.length > 0 && (
           <div className={styles.results}>
             {cmdResults.map((cmd, i) => (
               <div
@@ -169,37 +262,55 @@ export default function CommandPalette({
         )}
 
         {/* Search mode */}
-        {!confirm && !isCmd && searchResults.length > 0 && (
+        {!confirm && !bulkConfirm && !isCmd && searchResults.length > 0 && (
           <div className={styles.results}>
-            {searchResults.map((b, i) => (
-              <div
-                key={b._id || b.id}
-                className={`${styles.result} ${i === selected ? styles.resultSelected : ''}`}
-                onMouseEnter={() => setSelected(i)}
-                onClick={() => { onGoToBlock?.(b); onClose(); }}
-              >
-                <span className={styles.resultEmoji}>{b.emoji || '📦'}</span>
-                <div className={styles.resultInfo}>
-                  <span className={styles.resultTitle}>{b.title}</span>
-                  {b.notes && (
-                    <span className={styles.resultNotes}>
-                      {b.notes.slice(0, 60)}{b.notes.length > 60 ? '…' : ''}
-                    </span>
-                  )}
+            {searchResults.map((b, i) => {
+              const bid = b._id || b.id;
+              const checked = checkedIds.has(bid);
+              return (
+                <div
+                  key={bid}
+                  className={`${styles.result} ${i === selected ? styles.resultSelected : ''} ${checked ? styles.resultChecked : ''}`}
+                  onMouseEnter={() => setSelected(i)}
+                  onClick={(e) => {
+                    if (someChecked) {
+                      toggleCheck(bid, e);
+                    } else {
+                      onGoToBlock?.(b);
+                      onClose();
+                    }
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className={styles.rowCheckbox}
+                    checked={checked}
+                    onChange={() => {}}
+                    onClick={(e) => toggleCheck(bid, e)}
+                  />
+                  <span className={styles.resultEmoji}>{b.emoji || '📦'}</span>
+                  <div className={styles.resultInfo}>
+                    <span className={styles.resultTitle}>{b.title}</span>
+                    {b.notes && (
+                      <span className={styles.resultNotes}>
+                        {b.notes.slice(0, 60)}{b.notes.length > 60 ? '…' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.resultMeta}>
+                    <span className={styles.resultCat}>{b.category}</span>
+                    <span className={styles.resultDate}>{b.date}</span>
+                  </div>
                 </div>
-                <div className={styles.resultMeta}>
-                  <span className={styles.resultCat}>{b.category}</span>
-                  <span className={styles.resultDate}>{b.date}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {!confirm && query.trim().length > 0 && !isCmd && searchResults.length === 0 && (
+        {!confirm && !bulkConfirm && query.trim().length > 0 && !isCmd && searchResults.length === 0 && (
           <div className={styles.empty}>No blocks found</div>
         )}
-        {!confirm && isCmd && cmdResults.length === 0 && (
+        {!confirm && !bulkConfirm && isCmd && cmdResults.length === 0 && (
           <div className={styles.empty}>No matching command</div>
         )}
 
@@ -210,10 +321,16 @@ export default function CommandPalette({
               <span>↵ run</span>
               <span>esc close</span>
             </>
+          ) : someChecked ? (
+            <>
+              <span>esc deselect</span>
+              <span>⌘A select all</span>
+            </>
           ) : (
             <>
               <span>↑↓ navigate</span>
               <span>↵ open</span>
+              <span>⌘A select all</span>
               <span>esc close</span>
             </>
           )}

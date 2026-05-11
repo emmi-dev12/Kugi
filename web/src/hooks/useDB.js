@@ -19,6 +19,8 @@ const fn = {
     remove:           makeFunctionReference('blocks:remove'),
     toggleComplete:   makeFunctionReference('blocks:toggleComplete'),
     bulkCreate:       makeFunctionReference('blocks:bulkCreate'),
+    bulkDelete:       makeFunctionReference('blocks:bulkDelete'),
+    bulkComplete:     makeFunctionReference('blocks:bulkComplete'),
     createRecurring:  makeFunctionReference('blocks:createRecurring'),
     deleteRecurring:  makeFunctionReference('blocks:deleteRecurring'),
   },
@@ -51,6 +53,8 @@ export function useBlocks() {
   const removeMutation          = useMutation(fn.blocks.remove);
   const toggleMutation          = useMutation(fn.blocks.toggleComplete);
   const bulkMutation            = useMutation(fn.blocks.bulkCreate);
+  const bulkDeleteMutation      = useMutation(fn.blocks.bulkDelete);
+  const bulkCompleteMutation    = useMutation(fn.blocks.bulkComplete);
   const createRecurringMutation = useMutation(fn.blocks.createRecurring);
   const deleteRecurringMutation = useMutation(fn.blocks.deleteRecurring);
 
@@ -66,6 +70,8 @@ export function useBlocks() {
   const deleteBlock  = (id) => removeMutation({ id });
   const toggleComplete = (id) => toggleMutation({ id });
   const bulkCreate   = (blockList) => bulkMutation({ blocks: blockList });
+  const bulkDelete   = (ids) => bulkDeleteMutation({ ids });
+  const bulkComplete = (ids, completed = true) => bulkCompleteMutation({ ids, completed });
   const createRecurring = async (data) => {
     try {
       return await createRecurringMutation({ completed: false, ...stripEmpty(data) });
@@ -76,7 +82,7 @@ export function useBlocks() {
   };
   const deleteRecurring = (args) => deleteRecurringMutation(args);
 
-  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate, createRecurring, deleteRecurring };
+  return { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkCreate, bulkDelete, bulkComplete, createRecurring, deleteRecurring };
 }
 
 export function useComposio() {

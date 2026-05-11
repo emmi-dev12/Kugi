@@ -29,7 +29,7 @@ function changeConvexUrl() {
 }
 
 export default function AppPage() {
-  const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, createRecurring, deleteRecurring } = useBlocks();
+  const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkDelete, bulkComplete, createRecurring, deleteRecurring } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
   const [timezone, setTimezone] = useState(() => getTZ());
@@ -461,6 +461,8 @@ export default function AppPage() {
           onNewBlock={title => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
           onCompleteBlocks={id => toggleComplete(id)}
           onDeleteBlocks={id => handleDelete(id)}
+          onBulkDelete={ids => bulkDelete(ids)}
+          onBulkComplete={ids => bulkComplete(ids)}
           onFilterCategory={cat => setActiveCategory(cat)}
         />
       )}
