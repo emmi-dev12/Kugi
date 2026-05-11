@@ -21,14 +21,19 @@ const fn = {
     bulkCreate:     makeFunctionReference('blocks:bulkCreate'),
   },
   settings: {
-    getApiKey:         makeFunctionReference('settings:getApiKey'),
-    ensureApiKey:      makeFunctionReference('settings:ensureApiKey'),
-    rotateApiKey:      makeFunctionReference('settings:rotateApiKey'),
-    getComposioApiKey: makeFunctionReference('settings:getComposioApiKey'),
-    setComposioApiKey: makeFunctionReference('settings:setComposioApiKey'),
+    getApiKey:              makeFunctionReference('settings:getApiKey'),
+    ensureApiKey:           makeFunctionReference('settings:ensureApiKey'),
+    rotateApiKey:           makeFunctionReference('settings:rotateApiKey'),
+    getComposioApiKey:      makeFunctionReference('settings:getComposioApiKey'),
+    setComposioApiKey:      makeFunctionReference('settings:setComposioApiKey'),
+    getIntegrationEnabled:  makeFunctionReference('settings:getIntegrationEnabled'),
+    setIntegrationEnabled:  makeFunctionReference('settings:setIntegrationEnabled'),
   },
   calendar: {
     triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
+  },
+  notion: {
+    triggerNotionSync: makeFunctionReference('notionSyncActions:triggerNotionSync'),
   },
 };
 
@@ -63,6 +68,30 @@ export function useComposio() {
   const setKey = useMutation(fn.settings.setComposioApiKey);
   const sync = useAction(fn.calendar.triggerSync);
   return { composioKey, setComposioApiKey: setKey, triggerSync: sync };
+}
+
+export function useIntegrations() {
+  const composioKey = useQuery(fn.settings.getComposioApiKey);
+  const setComposioApiKey = useMutation(fn.settings.setComposioApiKey);
+  const gcalEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'googleCalendar' }) ?? true;
+  const notionEnabled = useQuery(fn.settings.getIntegrationEnabled, { integration: 'notion' }) ?? false;
+  const setIntegrationEnabledMutation = useMutation(fn.settings.setIntegrationEnabled);
+  const triggerGcalSync = useAction(fn.calendar.triggerSync);
+  const triggerNotionSync = useAction(fn.notion.triggerNotionSync);
+
+  const setGcalEnabled = (val) => setIntegrationEnabledMutation({ integration: 'googleCalendar', enabled: val });
+  const setNotionEnabled = (val) => setIntegrationEnabledMutation({ integration: 'notion', enabled: val });
+
+  return {
+    composioKey,
+    setComposioApiKey,
+    gcalEnabled,
+    notionEnabled,
+    setGcalEnabled,
+    setNotionEnabled,
+    triggerGcalSync,
+    triggerNotionSync,
+  };
 }
 
 export function useApiKey() {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useComposio } from '../../hooks/useDB';
+import { useIntegrations } from '../../hooks/useDB';
 import { allTimezones } from '../../utils/timezone';
 import styles from './SettingsModal.module.css';
 
@@ -36,10 +36,20 @@ export default function SettingsModal({
   onRemoveCategory,
   onEditCategory,
 }) {
-  const { composioKey, setComposioApiKey, triggerSync } = useComposio();
+  const {
+    composioKey,
+    setComposioApiKey,
+    gcalEnabled,
+    notionEnabled,
+    setGcalEnabled,
+    setNotionEnabled,
+    triggerGcalSync,
+    triggerNotionSync,
+  } = useIntegrations();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [gcalSyncing, setGcalSyncing] = useState(false);
+  const [notionSyncing, setNotionSyncing] = useState(false);
   const [tab, setTab] = useState('general');
 
   if (!open) return null;
@@ -200,64 +210,123 @@ export default function SettingsModal({
           {/* ── Integrations ── */}
           {tab === 'integrations' && (
             <div className={styles.section}>
-              <div className={styles.integrationHeader}>
-                <span className={styles.rowTitle}>Google Calendar</span>
-                <span className={styles.rowHint}>
-                  Powered by{' '}
-                  <a href="https://composio.dev" target="_blank" rel="noreferrer" className={styles.link}>
-                    Composio
-                  </a>
-                  . Create a free account, connect Google Calendar in their dashboard, then paste your API key here.
-                </span>
-              </div>
-              {composioKey ? (
-                <div className={styles.connectedBox}>
+
+              {/* Composio API key — shared for all integrations */}
+              <div className={styles.composioSection}>
+                <div className={styles.rowLabel} style={{ marginBottom: 8 }}>
+                  <span className={styles.rowTitle}>Composio</span>
+                  <span className={styles.rowHint}>
+                    Powered by{' '}
+                    <a href="https://composio.dev" target="_blank" rel="noreferrer" className={styles.link}>
+                      Composio
+                    </a>
+                    . Create a free account, then paste your API key to enable integrations.
+                  </span>
+                </div>
+                {composioKey ? (
                   <div className={styles.connectedRow}>
                     <span className={styles.connectedDot} />
-                    <span className={styles.connectedLabel}>Connected</span>
-                    <button
-                      className={styles.syncBtn}
-                      disabled={syncing}
-                      onClick={async () => {
-                        setSyncing(true);
-                        try { await triggerSync(); } catch (e) { alert('Sync failed: ' + e.message); }
-                        setSyncing(false);
-                      }}
-                    >
-                      {syncing ? 'Syncing…' : '↺ Sync now'}
-                    </button>
+                    <span className={styles.connectedLabel}>Connected to Composio</span>
                     <button
                       className={styles.disconnectBtn}
-                      onClick={() => { if (confirm('Disconnect Google Calendar?')) setComposioApiKey({ value: '' }); }}
+                      onClick={() => { if (confirm('Disconnect Composio? This will disable all integrations.')) setComposioApiKey({ value: '' }); }}
                     >
                       Disconnect
                     </button>
                   </div>
+                ) : (
+                  <form
+                    className={styles.keyForm}
+                    onSubmit={async e => {
+                      e.preventDefault();
+                      if (!composioInput.trim()) return;
+                      setComposioSaving(true);
+                      try { await setComposioApiKey({ value: composioInput.trim() }); setComposioInput(''); }
+                      catch (err) { alert('Failed to save: ' + err.message); }
+                      setComposioSaving(false);
+                    }}
+                  >
+                    <input
+                      className={styles.keyInput}
+                      type="password"
+                      placeholder="Paste your Composio API key…"
+                      value={composioInput}
+                      onChange={e => setComposioInput(e.target.value)}
+                    />
+                    <button type="submit" className={styles.saveBtn} disabled={composioSaving}>
+                      {composioSaving ? 'Saving…' : 'Connect'}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* Integration cards — only shown when Composio is connected */}
+              {composioKey && (
+                <div className={styles.integrationsList}>
+
+                  {/* Google Calendar card */}
+                  <div className={styles.integrationCard}>
+                    <div className={styles.integrationCardHeader}>
+                      <div className={styles.rowLabel}>
+                        <span className={styles.rowTitle}>Google Calendar</span>
+                        <span className={styles.rowHint}>Sync blocks with your Google Calendar.</span>
+                      </div>
+                      <button
+                        className={`${styles.toggle} ${gcalEnabled ? styles.toggleOn : ''}`}
+                        onClick={() => setGcalEnabled(!gcalEnabled)}
+                        title={gcalEnabled ? 'Disable' : 'Enable'}
+                      >
+                        <span className={styles.toggleThumb} />
+                      </button>
+                    </div>
+                    {gcalEnabled && (
+                      <button
+                        className={styles.syncBtn}
+                        disabled={gcalSyncing}
+                        onClick={async () => {
+                          setGcalSyncing(true);
+                          try { await triggerGcalSync(); } catch (e) { alert('Sync failed: ' + e.message); }
+                          setGcalSyncing(false);
+                        }}
+                      >
+                        {gcalSyncing ? 'Syncing…' : '↺ Sync now'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notion card */}
+                  <div className={styles.integrationCard}>
+                    <div className={styles.integrationCardHeader}>
+                      <div className={styles.rowLabel}>
+                        <span className={styles.rowTitle}>Notion</span>
+                        <span className={styles.rowHint}>Push upcoming blocks to a Notion database named "Kugi". Connect Notion in your Composio dashboard first.</span>
+                      </div>
+                      <button
+                        className={`${styles.toggle} ${notionEnabled ? styles.toggleOn : ''}`}
+                        onClick={() => setNotionEnabled(!notionEnabled)}
+                        title={notionEnabled ? 'Disable' : 'Enable'}
+                      >
+                        <span className={styles.toggleThumb} />
+                      </button>
+                    </div>
+                    {notionEnabled && (
+                      <button
+                        className={styles.syncBtn}
+                        disabled={notionSyncing}
+                        onClick={async () => {
+                          setNotionSyncing(true);
+                          try { await triggerNotionSync(); } catch (e) { alert('Sync failed: ' + e.message); }
+                          setNotionSyncing(false);
+                        }}
+                      >
+                        {notionSyncing ? 'Syncing…' : '↺ Sync now'}
+                      </button>
+                    )}
+                  </div>
+
                 </div>
-              ) : (
-                <form
-                  className={styles.keyForm}
-                  onSubmit={async e => {
-                    e.preventDefault();
-                    if (!composioInput.trim()) return;
-                    setComposioSaving(true);
-                    try { await setComposioApiKey({ value: composioInput.trim() }); setComposioInput(''); }
-                    catch (err) { alert('Failed to save: ' + err.message); }
-                    setComposioSaving(false);
-                  }}
-                >
-                  <input
-                    className={styles.keyInput}
-                    type="password"
-                    placeholder="Paste your Composio API key…"
-                    value={composioInput}
-                    onChange={e => setComposioInput(e.target.value)}
-                  />
-                  <button type="submit" className={styles.saveBtn} disabled={composioSaving}>
-                    {composioSaving ? 'Saving…' : 'Connect'}
-                  </button>
-                </form>
               )}
+
             </div>
           )}
 

@@ -288,6 +288,51 @@
 }
 .changeUrlBtn:hover { color: var(--text-muted); border-color: var(--border2); background: var(--surface2); }
 
+/* Integrations redesign */
+.composioSection {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px;
+}
+
+.integrationsList {
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.integrationCard {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.integrationCardHeader {
+  display: flex; align-items: flex-start; gap: 12px;
+}
+
+/* Toggle switch */
+.toggle {
+  flex-shrink: 0;
+  width: 40px; height: 22px;
+  border-radius: 11px;
+  background: var(--border2);
+  border: none; cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  padding: 0;
+}
+.toggle.toggleOn { background: #10b981; }
+
+.toggleThumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  display: block;
+}
+.toggle.toggleOn .toggleThumb { transform: translateX(18px); }
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
   .overlay { padding: 0; align-items: flex-end; }

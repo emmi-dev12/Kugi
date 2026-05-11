@@ -157,3 +157,36 @@ export const setComposioApiKey = mutation({
     }
   },
 });
+
+// ── Per-integration enable/disable toggles ─────────────────────
+
+export const getIntegrationEnabled = query({
+  args: { integration: v.string() },
+  handler: async (ctx, { integration }) => {
+    const key = `integration_${integration}`;
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .first();
+    // Default true so existing users don't lose Google Calendar
+    if (!row) return true;
+    return row.value !== "false";
+  },
+});
+
+export const setIntegrationEnabled = mutation({
+  args: { integration: v.string(), enabled: v.boolean() },
+  handler: async (ctx, { integration, enabled }) => {
+    const key = `integration_${integration}`;
+    const value = enabled ? "true" : "false";
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value });
+    } else {
+      await ctx.db.insert("settings", { key, value });
+    }
+  },
+});

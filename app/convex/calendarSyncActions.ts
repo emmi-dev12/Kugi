@@ -97,6 +97,15 @@ export const syncCalendar = internalAction({
 export const triggerSync = action({
   args: {},
   handler: async (ctx) => {
+    const enabledRaw = await ctx.runQuery(internal.settings.getSettingValue, {
+      key: "integration_googleCalendar",
+    });
+    // null means not set → default enabled; "false" means explicitly disabled
+    if (enabledRaw === "false") {
+      throw new Error(
+        "Google Calendar sync is disabled. Enable it in Settings → Integrations.",
+      );
+    }
     const apiKey = await ctx.runQuery(internal.settings.getSettingValue, {
       key: "composioApiKey",
     });
