@@ -43,6 +43,9 @@ function PreSetupApp() {
       <Route path="/setup" element={
         <Setup onComplete={() => { window.location.href = window.location.protocol === 'file:' ? '#/app' : '/app'; }} />
       } />
+      <Route path="/landing" element={
+        <Landing onGetStarted={() => { localStorage.setItem('kugiVisited', '1'); navigate('/setup'); }} />
+      } />
       {/* Unknown paths (e.g. Electron loading /app before setup) → setup, not landing */}
       <Route path="*" element={<Navigate to="/setup" replace />} />
     </Routes>
@@ -50,9 +53,13 @@ function PreSetupApp() {
 }
 
 function MainApp() {
+  const navigate = useNavigate();
   return (
     <Routes>
       <Route path="/app" element={<AppPage />} />
+      <Route path="/landing" element={
+        <Landing onGetStarted={() => navigate('/app')} />
+      } />
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>
   );
