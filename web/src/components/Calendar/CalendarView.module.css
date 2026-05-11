@@ -21,12 +21,12 @@
 .todayBtn {
   align-self: flex-start; margin-bottom: 20px;
   padding: 6px 14px; font-size: 12px; font-weight: 600;
-  color: #4f7cff; background: rgba(79,124,255,0.1);
-  border: 1px solid rgba(79,124,255,0.25); border-radius: 8px;
+  color: #5d8a6a; background: rgba(93,138,106,0.10);
+  border: 1px solid rgba(93,138,106,0.25); border-radius: 8px;
   font-family: inherit; cursor: pointer; transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
-.todayBtn:hover { background: rgba(79,124,255,0.18); }
+.todayBtn:hover { background: rgba(93,138,106,0.18); }
 
 .weekLabels {
   display: grid; grid-template-columns: repeat(7, 1fr);
@@ -55,7 +55,7 @@
 .cell:active:not(.outside) { background: var(--surface3); }
 .outside { opacity: 0.18; cursor: default; }
 
-.today { background: rgba(79,124,255,0.18) !important; }
+.today { background: rgba(93,138,106,0.18) !important; }
 .today .dayNum { color: #7a9fff; font-weight: 800; }
 
 .dayNum { font-size: 15px; font-weight: 600; color: var(--text-muted); line-height: 1; }

@@ -100,7 +100,7 @@
 }
 .notifyMode:hover { color: var(--text); }
 .notifyModeActive {
-  background: rgba(79,124,255,0.15); border-color: rgba(79,124,255,0.4);
+  background: rgba(93,138,106,0.15); border-color: rgba(93,138,106,0.40);
   color: #7a9fff;
 }
 .notifySelect {

@@ -36,7 +36,7 @@
 .cmdIcon {
   font-size: 15px;
   font-weight: 700;
-  color: var(--accent, #4f7cff);
+  color: var(--accent, #5d8a6a);
   flex-shrink: 0;
   line-height: 1;
 }
@@ -190,7 +190,7 @@
 .checkbox {
   width: 14px;
   height: 14px;
-  accent-color: var(--accent, #4f7cff);
+  accent-color: var(--accent, #5d8a6a);
   cursor: pointer;
 }
 
@@ -235,7 +235,7 @@
 .rowCheckbox {
   width: 14px;
   height: 14px;
-  accent-color: var(--accent, #4f7cff);
+  accent-color: var(--accent, #5d8a6a);
   cursor: pointer;
   flex-shrink: 0;
   opacity: 0.4;

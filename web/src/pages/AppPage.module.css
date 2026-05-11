@@ -22,7 +22,7 @@
 }
 .logoIcon {
   width: 28px; height: 28px;
-  background: linear-gradient(135deg, #4f7cff 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #5d8a6a 0%, #3d5c47 100%);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
 }
@@ -138,8 +138,8 @@
 .miniCalDay:hover { background: var(--surface2); }
 .miniCalDay.otherMonth { color: var(--text-dim); opacity: 0.4; }
 .miniCalDay.todayDot { color: var(--text); font-weight: 800; }
-.miniCalDay.inWeek { background: rgba(79,124,255,0.12); color: #7a9fff; }
-.miniCalDay.selectedDay { background: rgba(79,124,255,0.2); color: #7a9fff; font-weight: 700; }
+.miniCalDay.inWeek { background: rgba(93,138,106,0.14); color: #7aad8a; }
+.miniCalDay.selectedDay { background: rgba(93,138,106,0.24); color: #7aad8a; font-weight: 700; }
 
 /* Categories */
 .catList { display: flex; flex-direction: column; gap: 2px; }
@@ -174,10 +174,10 @@
 
 .notifEnableBtn {
   width: 100%; padding: 8px 12px; font-size: 12px; font-weight: 600;
-  color: #4f7cff; background: rgba(79,124,255,0.1); border: 1px solid rgba(79,124,255,0.25);
+  color: #5d8a6a; background: rgba(93,138,106,0.10); border: 1px solid rgba(93,138,106,0.25);
   border-radius: 8px; cursor: pointer; font-family: inherit; transition: all 0.15s;
 }
-.notifEnableBtn:hover { background: rgba(79,124,255,0.18); }
+.notifEnableBtn:hover { background: rgba(93,138,106,0.18); }
 
 /* Change URL button */
 .changeUrlBtn {
@@ -258,7 +258,7 @@
   -webkit-tap-highlight-color: transparent;
   min-height: 44px;
 }
-.bottomNavItem.navActive { color: #4f7cff; }
+.bottomNavItem.navActive { color: #5d8a6a; }
 .bottomNavIcon { line-height: 1; display: flex; }
 .bottomNavLabel { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
 
@@ -272,9 +272,9 @@
 }
 .bottomNavAddInner {
   width: 50px; height: 50px; border-radius: 18px;
-  background: linear-gradient(135deg, #5a84ff 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #5d8a6a 0%, #3d5c47 100%);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 20px rgba(79,124,255,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  box-shadow: 0 4px 20px rgba(93,138,106,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
 }
 
 /* Mobile */
@@ -286,8 +286,8 @@
   /* Colorful gradient background so glass blur has something to work with */
   .app {
     background:
-      radial-gradient(ellipse at 18% 0%, rgba(79,124,255,0.28) 0%, transparent 48%),
-      radial-gradient(ellipse at 82% 95%, rgba(139,92,246,0.22) 0%, transparent 48%),
+      radial-gradient(ellipse at 18% 0%, rgba(93,138,106,0.20) 0%, transparent 48%),
+      radial-gradient(ellipse at 82% 95%, rgba(61,92,71,0.18) 0%, transparent 48%),
       var(--bg);
   }
 
@@ -574,7 +574,7 @@
 }
 .pushLink {
   background: none; border: none; padding: 0;
-  color: #4f7cff; font-size: 11px; font-weight: 600;
+  color: #5d8a6a; font-size: 11px; font-weight: 600;
   cursor: pointer; font-family: inherit;
   text-decoration: underline;
 }
