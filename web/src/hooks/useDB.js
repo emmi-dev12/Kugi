@@ -28,6 +28,8 @@ const fn = {
     setComposioApiKey:      makeFunctionReference('settings:setComposioApiKey'),
     getIntegrationEnabled:  makeFunctionReference('settings:getIntegrationEnabled'),
     setIntegrationEnabled:  makeFunctionReference('settings:setIntegrationEnabled'),
+    getTelegramConfig:      makeFunctionReference('settings:getTelegramConfig'),
+    setTelegramConfig:      makeFunctionReference('settings:setTelegramConfig'),
   },
   calendar: {
     triggerSync: makeFunctionReference('calendarSyncActions:triggerSync'),
@@ -92,6 +94,12 @@ export function useIntegrations() {
     triggerGcalSync,
     triggerNotionSync,
   };
+}
+
+export function useTelegram() {
+  const config = useQuery(fn.settings.getTelegramConfig);
+  const setConfig = useMutation(fn.settings.setTelegramConfig);
+  return { config, setConfig };
 }
 
 export function useApiKey() {

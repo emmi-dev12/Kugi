@@ -14,6 +14,7 @@ export default defineSchema({
     localId: v.optional(v.string()),
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
+    telegramJobId: v.optional(v.id("_scheduled_functions")),
   }).index("by_date", ["date"]),
 
   settings: defineTable({

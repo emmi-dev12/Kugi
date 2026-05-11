@@ -174,6 +174,26 @@ export const getIntegrationEnabled = query({
   },
 });
 
+export const getTelegramConfig = query({
+  args: {},
+  handler: async (ctx) => {
+    const botTokenRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramBotToken")).first();
+    const chatIdRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramChatId")).first();
+    return { botToken: botTokenRow?.value ?? null, chatId: chatIdRow?.value ?? null };
+  },
+});
+
+export const setTelegramConfig = mutation({
+  args: { botToken: v.string(), chatId: v.string() },
+  handler: async (ctx, { botToken, chatId }) => {
+    for (const [key, value] of [["telegramBotToken", botToken], ["telegramChatId", chatId]] as const) {
+      const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
+      if (existing) await ctx.db.patch(existing._id, { value });
+      else await ctx.db.insert("settings", { key, value });
+    }
+  },
+});
+
 export const setIntegrationEnabled = mutation({
   args: { integration: v.string(), enabled: v.boolean() },
   handler: async (ctx, { integration, enabled }) => {

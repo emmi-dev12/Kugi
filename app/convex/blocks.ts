@@ -1,5 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+
+function reminderTimestamp(date: string, startTime: string): number {
+  const dt = new Date(`${date}T${startTime}:00`);
+  return dt.getTime() - 15 * 60 * 1000;
+}
 
 export const list = query({
   args: {},
@@ -40,7 +46,15 @@ export const create = mutation({
     end_date: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("blocks", args);
+    const id = await ctx.db.insert("blocks", args);
+    if (args.start_time && args.date) {
+      const ts = reminderTimestamp(args.date, args.start_time);
+      if (ts > Date.now()) {
+        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
+        await ctx.db.patch(id, { telegramJobId: jobId });
+      }
+    }
+    return id;
   },
 });
 
@@ -59,13 +73,33 @@ export const update = mutation({
     end_date: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
+    const block = await ctx.db.get(id);
+    if (block?.telegramJobId) {
+      await ctx.scheduler.cancel(block.telegramJobId as any);
+    }
     await ctx.db.patch(id, fields);
+    const updated = await ctx.db.get(id);
+    if (updated?.start_time && updated?.date) {
+      const ts = reminderTimestamp(updated.date, updated.start_time);
+      if (ts > Date.now()) {
+        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
+        await ctx.db.patch(id, { telegramJobId: jobId });
+      } else {
+        await ctx.db.patch(id, { telegramJobId: undefined });
+      }
+    } else {
+      await ctx.db.patch(id, { telegramJobId: undefined });
+    }
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("blocks") },
   handler: async (ctx, { id }) => {
+    const block = await ctx.db.get(id);
+    if (block?.telegramJobId) {
+      await ctx.scheduler.cancel(block.telegramJobId as any);
+    }
     await ctx.db.delete(id);
   },
 });
@@ -75,7 +109,18 @@ export const toggleComplete = mutation({
   handler: async (ctx, { id }) => {
     const block = await ctx.db.get(id);
     if (!block) return;
-    await ctx.db.patch(id, { completed: !block.completed });
+    const nowCompleted = !block.completed;
+    await ctx.db.patch(id, { completed: nowCompleted });
+    if (nowCompleted && block.telegramJobId) {
+      await ctx.scheduler.cancel(block.telegramJobId as any);
+      await ctx.db.patch(id, { telegramJobId: undefined });
+    } else if (!nowCompleted && block.start_time && block.date) {
+      const ts = reminderTimestamp(block.date, block.start_time);
+      if (ts > Date.now()) {
+        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
+        await ctx.db.patch(id, { telegramJobId: jobId });
+      }
+    }
   },
 });
 

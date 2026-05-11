@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useIntegrations } from '../../hooks/useDB';
+import { useIntegrations, useTelegram } from '../../hooks/useDB';
 import { allTimezones } from '../../utils/timezone';
 import styles from './SettingsModal.module.css';
 
@@ -46,10 +46,12 @@ export default function SettingsModal({
     triggerGcalSync,
     triggerNotionSync,
   } = useIntegrations();
+  const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
   const [gcalSyncing, setGcalSyncing] = useState(false);
   const [notionSyncing, setNotionSyncing] = useState(false);
+  const [telegramInput, setTelegramInput] = useState({ botToken: '', chatId: '' });
   const [tab, setTab] = useState('general');
 
   if (!open) return null;
@@ -321,6 +323,61 @@ export default function SettingsModal({
                       >
                         {notionSyncing ? 'Syncing…' : '↺ Sync now'}
                       </button>
+                    )}
+                  </div>
+
+                  {/* Telegram card */}
+                  <div className={styles.integrationCard}>
+                    <div className={styles.integrationCardHeader}>
+                      <div className={styles.rowLabel}>
+                        <span className={styles.rowTitle}>Telegram</span>
+                        <span className={styles.rowHint}>Send block reminders 15 min before start via Telegram bot.</span>
+                      </div>
+                    </div>
+                    {telegramConfig?.botToken && telegramConfig?.chatId ? (
+                      <div className={styles.connectedRow}>
+                        <span className={styles.connectedDot} />
+                        <span className={styles.connectedLabel}>Connected</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                          {telegramConfig.botToken.slice(0, 8)}…
+                        </span>
+                        <button
+                          className={styles.disconnectBtn}
+                          onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '' }); }}
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                    ) : (
+                      <form
+                        className={styles.telegramForm}
+                        onSubmit={async e => {
+                          e.preventDefault();
+                          if (!telegramInput.botToken.trim() || !telegramInput.chatId.trim()) return;
+                          try {
+                            await setTelegramConfig({ botToken: telegramInput.botToken.trim(), chatId: telegramInput.chatId.trim() });
+                            setTelegramInput({ botToken: '', chatId: '' });
+                          } catch (err) { alert('Failed to save: ' + err.message); }
+                        }}
+                      >
+                        <div className={styles.telegramInputGroup}>
+                          <input
+                            className={styles.keyInput}
+                            type="password"
+                            placeholder="Bot token from @BotFather"
+                            value={telegramInput.botToken}
+                            onChange={e => setTelegramInput(p => ({ ...p, botToken: e.target.value }))}
+                          />
+                          <input
+                            className={styles.keyInput}
+                            type="text"
+                            placeholder="Chat ID from @userinfobot"
+                            value={telegramInput.chatId}
+                            onChange={e => setTelegramInput(p => ({ ...p, chatId: e.target.value }))}
+                          />
+                        </div>
+                        <button type="submit" className={styles.saveBtn}>Connect</button>
+                      </form>
                     )}
                   </div>
 

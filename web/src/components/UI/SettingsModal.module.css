@@ -333,6 +333,13 @@
 }
 .toggle.toggleOn .toggleThumb { transform: translateX(18px); }
 
+.telegramForm {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.telegramInputGroup {
+  display: flex; flex-direction: column; gap: 6px;
+}
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
   .overlay { padding: 0; align-items: flex-end; }
