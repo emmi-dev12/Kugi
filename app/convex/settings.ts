@@ -215,14 +215,43 @@ export const getTelegramConfig = query({
     const chatIdRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramChatId")).first();
     const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
     const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
-    return { botToken: botTokenRow?.value ?? null, chatId: chatIdRow?.value ?? null, offsetMinutes };
+    const reminderOffsetsRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramReminderOffsets")).first();
+    let reminderOffsets: number[] | null = null;
+    if (reminderOffsetsRow?.value) {
+      try { reminderOffsets = JSON.parse(reminderOffsetsRow.value); } catch {}
+    }
+    const webhookUrlRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "webhookUrl")).first();
+    return {
+      botToken: botTokenRow?.value ?? null,
+      chatId: chatIdRow?.value ?? null,
+      offsetMinutes,
+      reminderOffsets,
+      webhookUrl: webhookUrlRow?.value ?? null,
+    };
   },
 });
 
 export const setTelegramConfig = mutation({
-  args: { botToken: v.string(), chatId: v.string(), offsetMinutes: v.number() },
-  handler: async (ctx, { botToken, chatId, offsetMinutes }) => {
-    for (const [key, value] of [["telegramBotToken", botToken], ["telegramChatId", chatId], ["telegramOffsetMinutes", String(offsetMinutes)]] as const) {
+  args: {
+    botToken: v.string(),
+    chatId: v.string(),
+    offsetMinutes: v.number(),
+    reminderOffsets: v.optional(v.array(v.number())),
+    webhookUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, { botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl }) => {
+    const pairs: [string, string][] = [
+      ["telegramBotToken", botToken],
+      ["telegramChatId", chatId],
+      ["telegramOffsetMinutes", String(offsetMinutes)],
+    ];
+    if (reminderOffsets !== undefined) {
+      pairs.push(["telegramReminderOffsets", JSON.stringify(reminderOffsets)]);
+    }
+    if (webhookUrl !== undefined) {
+      pairs.push(["webhookUrl", webhookUrl]);
+    }
+    for (const [key, value] of pairs) {
       const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
       if (existing) await ctx.db.patch(existing._id, { value });
       else await ctx.db.insert("settings", { key, value });

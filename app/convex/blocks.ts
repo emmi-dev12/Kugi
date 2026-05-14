@@ -2,9 +2,77 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
-function reminderTimestamp(date: string, startTime: string, offsetMinutes: number): number {
-  const dt = new Date(`${date}T${startTime}:00`);
-  return dt.getTime() - offsetMinutes * 60 * 1000;
+// Convert local "YYYY-MM-DD HH:MM" to UTC using IANA timezone.
+// Iterative Intl correction — same approach as pushActions.ts.
+function localToUTC(dateStr: string, timeStr: string, tz: string): number {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [h, m] = timeStr.split(":").map(Number);
+  let utcMs = Date.UTC(year, month - 1, day, h, m);
+  for (let i = 0; i < 4; i++) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(new Date(utcMs));
+    const localH = parseInt(parts.find(p => p.type === "hour")!.value) % 24;
+    const localM = parseInt(parts.find(p => p.type === "minute")!.value);
+    const diffMs = ((h - localH) * 60 + (m - localM)) * 60_000;
+    if (Math.abs(diffMs) < 60_000) break;
+    utcMs += diffMs;
+  }
+  return utcMs;
+}
+
+// Schedule Telegram reminders for a block. Returns job ID strings.
+async function scheduleTelegramJobs(
+  ctx: any,
+  blockId: any,
+  date: string,
+  startTime: string,
+  offsets: number[],
+  tz: string,
+): Promise<string[]> {
+  const now = Date.now();
+  const eventMs = localToUTC(date, startTime, tz);
+  const ids: string[] = [];
+  for (const offset of offsets) {
+    const fireMs = eventMs - offset * 60_000;
+    if (fireMs > now) {
+      const jobId = await ctx.scheduler.runAt(fireMs, internal.telegram.sendReminder, { blockId });
+      ids.push(String(jobId));
+    }
+  }
+  return ids;
+}
+
+async function cancelTelegramJobs(ctx: any, block: any) {
+  // Cancel new-style array
+  if (block.telegramJobIds?.length) {
+    for (const jid of block.telegramJobIds) {
+      try { await ctx.scheduler.cancel(jid as any); } catch {}
+    }
+  }
+  // Cancel legacy single job
+  if (block.telegramJobId) {
+    try { await ctx.scheduler.cancel(block.telegramJobId as any); } catch {}
+  }
+}
+
+async function getTelegramOffsets(ctx: any): Promise<number[]> {
+  const row = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", "telegramReminderOffsets")).first();
+  if (row?.value) {
+    try {
+      const parsed = JSON.parse(row.value);
+      if (Array.isArray(parsed) && parsed.length) return parsed.map(Number).filter(Boolean);
+    } catch {}
+  }
+  // Fall back to legacy single offset
+  const legacyRow = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", "telegramOffsetMinutes")).first();
+  const legacy = legacyRow ? (parseInt(legacyRow.value) || 15) : 15;
+  return [legacy];
+}
+
+async function getTZ(ctx: any): Promise<string> {
+  const row = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", "timezone")).first();
+  return row?.value || "UTC";
 }
 
 export const list = query({
@@ -50,13 +118,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("blocks", args);
     if (args.start_time && args.date) {
-      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
-      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
-      const ts = reminderTimestamp(args.date, args.start_time, offsetMinutes);
-      if (ts > Date.now()) {
-        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
-        await ctx.db.patch(id, { telegramJobId: jobId });
-      }
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const jobIds = await scheduleTelegramJobs(ctx, id, args.date, args.start_time, offsets, tz);
+      if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
     return id;
   },
@@ -80,23 +144,13 @@ export const update = mutation({
   },
   handler: async (ctx, { id, ...fields }) => {
     const block = await ctx.db.get(id);
-    if (block?.telegramJobId) {
-      await ctx.scheduler.cancel(block.telegramJobId as any);
-    }
-    await ctx.db.patch(id, fields);
+    if (block) await cancelTelegramJobs(ctx, block);
+    await ctx.db.patch(id, { ...fields, telegramJobIds: undefined, telegramJobId: undefined });
     const updated = await ctx.db.get(id);
     if (updated?.start_time && updated?.date) {
-      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
-      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
-      const ts = reminderTimestamp(updated.date, updated.start_time, offsetMinutes);
-      if (ts > Date.now()) {
-        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
-        await ctx.db.patch(id, { telegramJobId: jobId });
-      } else {
-        await ctx.db.patch(id, { telegramJobId: undefined });
-      }
-    } else {
-      await ctx.db.patch(id, { telegramJobId: undefined });
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const jobIds = await scheduleTelegramJobs(ctx, id, updated.date, updated.start_time, offsets, tz);
+      if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
   },
 });
@@ -105,9 +159,7 @@ export const remove = mutation({
   args: { id: v.id("blocks") },
   handler: async (ctx, { id }) => {
     const block = await ctx.db.get(id);
-    if (block?.telegramJobId) {
-      await ctx.scheduler.cancel(block.telegramJobId as any);
-    }
+    if (block) await cancelTelegramJobs(ctx, block);
     await ctx.db.delete(id);
   },
 });
@@ -119,17 +171,13 @@ export const toggleComplete = mutation({
     if (!block) return;
     const nowCompleted = !block.completed;
     await ctx.db.patch(id, { completed: nowCompleted });
-    if (nowCompleted && block.telegramJobId) {
-      await ctx.scheduler.cancel(block.telegramJobId as any);
-      await ctx.db.patch(id, { telegramJobId: undefined });
-    } else if (!nowCompleted && block.start_time && block.date) {
-      const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
-      const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
-      const ts = reminderTimestamp(block.date, block.start_time, offsetMinutes);
-      if (ts > Date.now()) {
-        const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
-        await ctx.db.patch(id, { telegramJobId: jobId });
-      }
+    if (nowCompleted) {
+      await cancelTelegramJobs(ctx, block);
+      await ctx.db.patch(id, { telegramJobIds: undefined, telegramJobId: undefined });
+    } else if (block.start_time && block.date) {
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const jobIds = await scheduleTelegramJobs(ctx, id, block.date, block.start_time, offsets, tz);
+      if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
   },
 });
@@ -172,46 +220,24 @@ export const createRecurring = mutation({
     const recurrenceGroupId = `rg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const { recurrence, ...blockFields } = args;
 
-    // Generate all dates for this recurrence
     const dates: string[] = [];
     if (recurrence === "hourly") {
-      // Same time every day for 30 days
-      for (let i = 0; i < 30; i++) {
-        dates.push(addDays(args.date, i));
-      }
+      for (let i = 0; i < 30; i++) dates.push(addDays(args.date, i));
     } else if (recurrence === "daily") {
-      // Same time every day for 2 years (730 days)
-      for (let i = 0; i < 730; i++) {
-        dates.push(addDays(args.date, i));
-      }
+      for (let i = 0; i < 730; i++) dates.push(addDays(args.date, i));
     } else if (recurrence === "monthly") {
-      // Same day of month for 5 years (60 months)
-      for (let i = 0; i < 60; i++) {
-        dates.push(addMonths(args.date, i));
-      }
+      for (let i = 0; i < 60; i++) dates.push(addMonths(args.date, i));
     } else if (recurrence === "yearly") {
-      // Same date for 10 years
-      for (let i = 0; i < 10; i++) {
-        dates.push(addYears(args.date, i));
-      }
+      for (let i = 0; i < 10; i++) dates.push(addYears(args.date, i));
     }
 
-    const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
-    const offsetMinutes = args.notify_before ?? (offsetRow ? (parseInt(offsetRow.value) || 15) : 15);
+    const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
 
     for (const date of dates) {
-      const id = await ctx.db.insert("blocks", {
-        ...blockFields,
-        date,
-        recurrence,
-        recurrenceGroupId,
-      });
+      const id = await ctx.db.insert("blocks", { ...blockFields, date, recurrence, recurrenceGroupId });
       if (args.start_time) {
-        const ts = reminderTimestamp(date, args.start_time, offsetMinutes);
-        if (ts > Date.now()) {
-          const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
-          await ctx.db.patch(id, { telegramJobId: jobId });
-        }
+        const jobIds = await scheduleTelegramJobs(ctx, id, date, args.start_time, offsets, tz);
+        if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
       }
     }
 
@@ -232,14 +258,13 @@ export const deleteRecurring = mutation({
     const { recurrenceGroupId, date } = block;
 
     if (mode === "this") {
-      if (block.telegramJobId) await ctx.scheduler.cancel(block.telegramJobId as any);
+      await cancelTelegramJobs(ctx, block);
       await ctx.db.delete(id);
       return;
     }
 
     if (!recurrenceGroupId) {
-      // No group, just delete this block
-      if (block.telegramJobId) await ctx.scheduler.cancel(block.telegramJobId as any);
+      await cancelTelegramJobs(ctx, block);
       await ctx.db.delete(id);
       return;
     }
@@ -261,12 +286,11 @@ export const deleteRecurring = mutation({
         return true;
       });
     } else {
-      // "all" — delete all from today forward
       toDelete = allInGroup.filter(b => b.date >= today);
     }
 
     for (const b of toDelete) {
-      if (b.telegramJobId) await ctx.scheduler.cancel(b.telegramJobId as any);
+      await cancelTelegramJobs(ctx, b);
       await ctx.db.delete(b._id);
     }
   },
@@ -275,22 +299,18 @@ export const deleteRecurring = mutation({
 export const bulkComplete = mutation({
   args: { ids: v.array(v.id("blocks")), completed: v.boolean() },
   handler: async (ctx, { ids, completed }) => {
+    const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
     let count = 0;
     for (const id of ids) {
       const block = await ctx.db.get(id);
       if (!block) continue;
       await ctx.db.patch(id, { completed });
-      if (completed && block.telegramJobId) {
-        await ctx.scheduler.cancel(block.telegramJobId as any);
-        await ctx.db.patch(id, { telegramJobId: undefined });
-      } else if (!completed && block.start_time && block.date) {
-        const offsetRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "telegramOffsetMinutes")).first();
-        const offsetMinutes = offsetRow ? (parseInt(offsetRow.value) || 15) : 15;
-        const ts = reminderTimestamp(block.date, block.start_time, offsetMinutes);
-        if (ts > Date.now()) {
-          const jobId = await ctx.scheduler.runAt(ts, internal.telegram.sendReminder, { blockId: id });
-          await ctx.db.patch(id, { telegramJobId: jobId });
-        }
+      if (completed) {
+        await cancelTelegramJobs(ctx, block);
+        await ctx.db.patch(id, { telegramJobIds: undefined, telegramJobId: undefined });
+      } else if (block.start_time && block.date) {
+        const jobIds = await scheduleTelegramJobs(ctx, id, block.date, block.start_time, offsets, tz);
+        if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
       }
       count++;
     }
@@ -305,9 +325,7 @@ export const bulkDelete = mutation({
     for (const id of ids) {
       const block = await ctx.db.get(id);
       if (!block) continue;
-      if (block.telegramJobId) {
-        await ctx.scheduler.cancel(block.telegramJobId as any);
-      }
+      await cancelTelegramJobs(ctx, block);
       await ctx.db.delete(id);
       count++;
     }
@@ -342,9 +360,8 @@ export const getStats = query({
     const all = await ctx.db.query("blocks").collect();
     const today = new Date().toISOString().slice(0, 10);
     const todayDate = new Date(today);
-    // Get Monday of this week
-    const dow = todayDate.getDay(); // 0=Sun
-    const diffToMon = (dow + 6) % 7; // days since Monday
+    const dow = todayDate.getDay();
+    const diffToMon = (dow + 6) % 7;
     const mon = new Date(todayDate);
     mon.setDate(todayDate.getDate() - diffToMon);
     const sun = new Date(mon);
@@ -374,16 +391,7 @@ export const getStats = query({
       if (!b.completed && b.date > today && b.date <= next7Str) upcoming7Days++;
     }
 
-    return {
-      today: todayCount,
-      todayCompleted,
-      thisWeek,
-      thisWeekCompleted,
-      overdue,
-      total,
-      totalCompleted,
-      upcoming7Days,
-    };
+    return { today: todayCount, todayCompleted, thisWeek, thisWeekCompleted, overdue, total, totalCompleted, upcoming7Days };
   },
 });
 

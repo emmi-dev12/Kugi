@@ -37,5 +37,29 @@ export const sendReminder = internalAction({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
     });
+
+    // Fire webhook if configured
+    const webhookUrl = await ctx.runQuery(internal.settings.getSettingValue, { key: "webhookUrl" });
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "reminder",
+            blockId,
+            title: block.title,
+            emoji: block.emoji ?? null,
+            date: block.date,
+            start_time: block.start_time ?? null,
+            end_time: block.end_time ?? null,
+            category: block.category,
+            notes: block.notes ?? null,
+            notify_message: block.notify_message ?? null,
+            fired_at: new Date().toISOString(),
+          }),
+        });
+      } catch {}
+    }
   },
 });
