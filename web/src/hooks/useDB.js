@@ -25,17 +25,21 @@ const fn = {
     deleteRecurring:  makeFunctionReference('blocks:deleteRecurring'),
   },
   settings: {
-    getApiKey:              makeFunctionReference('settings:getApiKey'),
-    ensureApiKey:           makeFunctionReference('settings:ensureApiKey'),
-    rotateApiKey:           makeFunctionReference('settings:rotateApiKey'),
-    getComposioApiKey:      makeFunctionReference('settings:getComposioApiKey'),
-    setComposioApiKey:      makeFunctionReference('settings:setComposioApiKey'),
-    getIntegrationEnabled:  makeFunctionReference('settings:getIntegrationEnabled'),
-    setIntegrationEnabled:  makeFunctionReference('settings:setIntegrationEnabled'),
-    getTelegramConfig:      makeFunctionReference('settings:getTelegramConfig'),
-    setTelegramConfig:      makeFunctionReference('settings:setTelegramConfig'),
-    getPushEnabled:         makeFunctionReference('settings:getPushEnabled'),
-    setPushEnabled:         makeFunctionReference('settings:setPushEnabled'),
+    getApiKey:                  makeFunctionReference('settings:getApiKey'),
+    ensureApiKey:               makeFunctionReference('settings:ensureApiKey'),
+    rotateApiKey:               makeFunctionReference('settings:rotateApiKey'),
+    getComposioApiKey:          makeFunctionReference('settings:getComposioApiKey'),
+    setComposioApiKey:          makeFunctionReference('settings:setComposioApiKey'),
+    getIntegrationEnabled:      makeFunctionReference('settings:getIntegrationEnabled'),
+    setIntegrationEnabled:      makeFunctionReference('settings:setIntegrationEnabled'),
+    getTelegramConfig:          makeFunctionReference('settings:getTelegramConfig'),
+    setTelegramConfig:          makeFunctionReference('settings:setTelegramConfig'),
+    getPushEnabled:             makeFunctionReference('settings:getPushEnabled'),
+    setPushEnabled:             makeFunctionReference('settings:setPushEnabled'),
+    getSendblueConfig:          makeFunctionReference('settings:getSendblueConfig'),
+    setSendblueConfig:          makeFunctionReference('settings:setSendblueConfig'),
+    getTelegramChannelEnabled:  makeFunctionReference('settings:getTelegramChannelEnabled'),
+    setChannelEnabled:          makeFunctionReference('settings:setChannelEnabled'),
   },
   calendar: {
     triggerSync:       makeFunctionReference('calendarSyncActions:triggerSync'),
@@ -130,6 +134,19 @@ export function usePushEnabled() {
   const pushEnabled = useQuery(fn.settings.getPushEnabled);
   const setPushEnabled = useMutation(fn.settings.setPushEnabled);
   return { pushEnabled: pushEnabled ?? true, setPushEnabled };
+}
+
+export function useSendblue() {
+  const config = useQuery(fn.settings.getSendblueConfig);
+  const setConfig = useMutation(fn.settings.setSendblueConfig);
+  return { config, setConfig };
+}
+
+export function useTelegramChannelEnabled() {
+  const enabled = useQuery(fn.settings.getTelegramChannelEnabled);
+  const setEnabled = useMutation(fn.settings.setChannelEnabled);
+  const setTelegramEnabled = (val) => setEnabled({ channel: 'telegram', enabled: val });
+  return { telegramChannelEnabled: enabled ?? true, setTelegramChannelEnabled: setTelegramEnabled };
 }
 
 export function useApiKey() {

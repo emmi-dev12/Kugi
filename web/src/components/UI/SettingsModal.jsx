@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useIntegrations, useTelegram, usePushEnabled } from '../../hooks/useDB';
+import { useIntegrations, useTelegram, usePushEnabled, useSendblue, useTelegramChannelEnabled } from '../../hooks/useDB';
 import { allTimezones } from '../../utils/timezone';
 import styles from './SettingsModal.module.css';
 
@@ -45,6 +45,8 @@ export default function SettingsModal({
     deleteGcalEvents,
   } = useIntegrations();
   const { config: telegramConfig, setConfig: setTelegramConfig } = useTelegram();
+  const { telegramChannelEnabled, setTelegramChannelEnabled } = useTelegramChannelEnabled();
+  const { config: sendblueConfig, setConfig: setSendblueConfig } = useSendblue();
   const { pushEnabled, setPushEnabled } = usePushEnabled();
   const [composioInput, setComposioInput] = useState('');
   const [composioSaving, setComposioSaving] = useState(false);
@@ -59,6 +61,8 @@ export default function SettingsModal({
   const [telegramOffset, setTelegramOffset] = useState('15');
   const [reminderOffsets, setReminderOffsets] = useState(null); // null = use server value
   const [webhookUrlInput, setWebhookUrlInput] = useState('');
+  const [sendblueInput, setSendblueInput] = useState({ apiKey: '', apiSecret: '', recipient: '' });
+  const [sendblueReminderOffsets, setSendblueReminderOffsets] = useState(null); // null = use server value
   const [tab, setTab] = useState('general');
 
   if (!open) return null;
@@ -431,6 +435,15 @@ export default function SettingsModal({
                         <span className={styles.rowTitle}>Telegram</span>
                         <span className={styles.rowHint}>Send block reminders via Telegram bot before start time.</span>
                       </div>
+                      {telegramConfig?.botToken && telegramConfig?.chatId && (
+                        <button
+                          className={`${styles.toggle} ${telegramChannelEnabled ? styles.toggleOn : ''}`}
+                          onClick={() => setTelegramChannelEnabled(!telegramChannelEnabled)}
+                          title={telegramChannelEnabled ? 'Disable Telegram reminders' : 'Enable Telegram reminders'}
+                        >
+                          <span className={styles.toggleThumb} />
+                        </button>
+                      )}
                     </div>
                     {telegramConfig?.botToken && telegramConfig?.chatId ? (
                       <>
@@ -552,6 +565,139 @@ export default function SettingsModal({
                               <option key={v} value={v}>{label}</option>
                             ))}
                           </select>
+                        </div>
+                        <button type="submit" className={styles.saveBtn}>Connect</button>
+                      </form>
+                    )}
+                  </div>
+
+                  {/* iMessage (SendBlue) card */}
+                  <div className={styles.integrationCard}>
+                    <div className={styles.integrationCardHeader}>
+                      <div className={styles.rowLabel}>
+                        <span className={styles.rowTitle}>iMessage</span>
+                        <span className={styles.rowHint}>
+                          Send reminders via iMessage using{' '}
+                          <a href="https://sendblue.co" target="_blank" rel="noreferrer" className={styles.link}>SendBlue</a>.
+                          Sign up for a SendBlue account to get your API credentials.
+                        </span>
+                      </div>
+                      {sendblueConfig?.apiKey && sendblueConfig?.recipient && (
+                        <button
+                          className={`${styles.toggle} ${sendblueConfig.channelEnabled ? styles.toggleOn : ''}`}
+                          onClick={() => setSendblueConfig({
+                            apiKey: sendblueConfig.apiKey,
+                            apiSecret: sendblueConfig.apiSecret,
+                            recipient: sendblueConfig.recipient,
+                            channelEnabled: !sendblueConfig.channelEnabled,
+                          })}
+                          title={sendblueConfig.channelEnabled ? 'Disable iMessage reminders' : 'Enable iMessage reminders'}
+                        >
+                          <span className={styles.toggleThumb} />
+                        </button>
+                      )}
+                    </div>
+                    {sendblueConfig?.apiKey && sendblueConfig?.recipient ? (
+                      <>
+                        <div className={styles.connectedRow}>
+                          <span className={styles.connectedDot} />
+                          <span className={styles.connectedLabel}>Connected</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                            {sendblueConfig.recipient}
+                          </span>
+                          <button
+                            className={styles.disconnectBtn}
+                            onClick={() => { if (confirm('Disconnect iMessage (SendBlue)?')) setSendblueConfig({ apiKey: '', apiSecret: '', recipient: '' }); }}
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+                        {/* Multi-reminder offsets */}
+                        <div style={{ marginTop: 10 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                            Remind me (up to 4 times per event)
+                          </span>
+                          {(() => {
+                            const active = sendblueReminderOffsets ?? sendblueConfig.reminderOffsets ?? [15];
+                            const OPTS = [[5,'5 min'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hr'],[90,'1.5 hr'],[120,'2 hr'],[180,'3 hr']];
+                            const save = (next) => {
+                              setSendblueReminderOffsets(next);
+                              setSendblueConfig({
+                                apiKey: sendblueConfig.apiKey,
+                                apiSecret: sendblueConfig.apiSecret,
+                                recipient: sendblueConfig.recipient,
+                                reminderOffsets: next,
+                              });
+                            };
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {active.map((val, i) => (
+                                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <select
+                                      className={styles.select}
+                                      style={{ flex: 1 }}
+                                      value={val}
+                                      onChange={e => {
+                                        const next = [...active];
+                                        next[i] = Number(e.target.value);
+                                        save(next);
+                                      }}
+                                    >
+                                      {OPTS.map(([v, label]) => <option key={v} value={v}>{label} before</option>)}
+                                    </select>
+                                    <button
+                                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                                      onClick={() => save(active.filter((_, j) => j !== i))}
+                                    >×</button>
+                                  </div>
+                                ))}
+                                {active.length < 4 && (
+                                  <button
+                                    className={styles.disconnectBtn}
+                                    style={{ alignSelf: 'flex-start', marginTop: 2 }}
+                                    onClick={() => save([...active, 15])}
+                                  >+ Add reminder</button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </>
+                    ) : (
+                      <form
+                        className={styles.telegramForm}
+                        onSubmit={async e => {
+                          e.preventDefault();
+                          const { apiKey, apiSecret, recipient } = sendblueInput;
+                          if (!apiKey.trim() || !apiSecret.trim() || !recipient.trim()) return;
+                          try {
+                            await setSendblueConfig({ apiKey: apiKey.trim(), apiSecret: apiSecret.trim(), recipient: recipient.trim(), channelEnabled: true });
+                            setSendblueInput({ apiKey: '', apiSecret: '', recipient: '' });
+                          } catch (err) { alert('Failed to save: ' + err.message); }
+                        }}
+                      >
+                        <div className={styles.telegramInputGroup}>
+                          <input
+                            className={styles.keyInput}
+                            type="password"
+                            placeholder="SendBlue API key (sb-api-key-id)"
+                            value={sendblueInput.apiKey}
+                            onChange={e => setSendblueInput(p => ({ ...p, apiKey: e.target.value }))}
+                          />
+                          <input
+                            className={styles.keyInput}
+                            type="password"
+                            placeholder="SendBlue API secret (sb-api-secret-key)"
+                            value={sendblueInput.apiSecret}
+                            onChange={e => setSendblueInput(p => ({ ...p, apiSecret: e.target.value }))}
+                          />
+                          <input
+                            className={styles.keyInput}
+                            type="tel"
+                            placeholder="Your phone number (+12345678900)"
+                            value={sendblueInput.recipient}
+                            onChange={e => setSendblueInput(p => ({ ...p, recipient: e.target.value }))}
+                          />
                         </div>
                         <button type="submit" className={styles.saveBtn}>Connect</button>
                       </form>
