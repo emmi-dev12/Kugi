@@ -44,14 +44,14 @@ function isValidTime(s: any): boolean {
   return typeof s === "string" && /^\d{2}:\d{2}$/.test(s);
 }
 
-// Validate blockReminders: array of {offsetMinutes, message?}, max 6 entries
+// Validate blockReminders: array of {atTime: "HH:MM", message?}, max 6 entries
 function validateBlockReminders(v: any): string | null {
   if (!Array.isArray(v)) return "blockReminders must be an array";
   if (v.length > 6) return "blockReminders max length is 6";
   for (let i = 0; i < v.length; i++) {
     const r = v[i];
     if (typeof r !== "object" || r === null) return `blockReminders[${i}] must be an object`;
-    if (typeof r.offsetMinutes !== "number" || r.offsetMinutes < 0) return `blockReminders[${i}].offsetMinutes must be a non-negative number`;
+    if (!isValidTime(r.atTime)) return `blockReminders[${i}].atTime must be a valid HH:MM string (e.g. "09:00")`;
     if (r.message !== undefined && typeof r.message !== "string") return `blockReminders[${i}].message must be a string`;
   }
   return null;
@@ -91,7 +91,7 @@ http.route({
         step2: "GET /api/tasks?date=YYYY-MM-DD — inspect a specific day",
         step3: "Search before creating: GET /api/tasks?search=keyword to avoid duplicates",
         step4: "For reminders: PATCH /api/settings with { telegram: { webhookUrl: 'https://your-endpoint' } } to receive real-time POSTs instead of polling",
-        step5: "For per-block reminders: include blockReminders:[{offsetMinutes:15,message:'Start packing!'},{offsetMinutes:5,message:'Almost time!'}] when creating/updating a task",
+        step5: "For per-block reminders: include blockReminders:[{atTime:'08:45',message:'Start packing!'},{atTime:'08:55',message:'Almost time!'}] when creating/updating a task. atTime is HH:MM local time on the block's date.",
         rule_confirm_destructive: "ALWAYS confirm with the user before bulk-delete, bulk-complete, or deleting recurring series",
         rule_ids: "Task IDs come from the 'id' field in responses. Use them for PATCH/DELETE/complete.",
         rule_dates: "All dates are YYYY-MM-DD. All times are HH:MM (24h). Timezone is set by the user in Settings.",
@@ -124,7 +124,7 @@ http.route({
         completed: "boolean (default: false)",
         notify_before: "number|null (optional) — push notification offset in minutes. null = off.",
         notify_message: "string (optional) — custom text sent verbatim via Telegram + push, overriding the global template",
-        blockReminders: "{ offsetMinutes: number, message?: string }[] (optional, max 6) — per-block Telegram reminder schedule. Each entry fires one reminder. message is sent verbatim if set, otherwise falls back to block notify_message, then global template. Examples: [] = silence this block; [{offsetMinutes:15}] = one reminder, default message; [{offsetMinutes:60,message:'Start packing!'},{offsetMinutes:15,message:'Almost time!'},{offsetMinutes:5,message:'Go go go!'}] = three reminders with custom text. undefined/omitted = use global setting.",
+        blockReminders: "{ atTime: string (HH:MM), message?: string }[] (optional, max 6) — per-block Telegram reminder schedule. Each entry fires at an exact local time on the block's date. message is sent verbatim if set, otherwise falls back to block notify_message, then global template. Examples: [] = silence this block; [{atTime:'08:45'}] = one reminder at 08:45, default message; [{atTime:'07:00',message:'Start packing!'},{atTime:'08:30',message:'Almost time!'},{atTime:'08:55',message:'Go go go!'}] = three reminders with custom text. undefined/omitted = use global setting.",
         recurrence: "'hourly'|'daily'|'monthly'|'yearly' (optional, write-only on POST) — auto-generates all future occurrences",
         recurrenceGroupId: "string (read-only) — shared ID for a recurring series",
       },
@@ -132,7 +132,7 @@ http.route({
       // ── REMINDERS EXPLAINED ────────────────────────────────────
       reminders_explained: {
         telegram_global: "Global Telegram reminder schedule lives in Settings (GET/PATCH /api/settings). Applied to all blocks that don't have blockReminders set.",
-        telegram_per_block: "Set blockReminders on a task to override the global schedule for that block. [] = silence this block. [{offsetMinutes:5,message:'Go!'},{offsetMinutes:30}] = two reminders, first with custom text, second uses default template.",
+        telegram_per_block: "Set blockReminders on a task to override the global schedule for that block. [] = silence this block. [{atTime:'08:55',message:'Go!'},{atTime:'08:30'}] = two reminders at exact local times, first with custom text, second uses default template.",
         push_global: "Push notification rules live in Settings as push.reminders array. Applied to blocks by offset from start_time.",
         notify_message: "Set notify_message on a task to override the Telegram message template for that specific reminder. Sent verbatim.",
         webhook: "Set telegram.webhookUrl in Settings to receive a POST every time a Telegram reminder fires — no polling needed.",
@@ -173,13 +173,13 @@ http.route({
           required: ["title", "date"],
           optional: ["emoji", "category", "start_time", "end_time", "notes", "completed", "end_date", "notify_before", "notify_message", "blockReminders", "recurrence"],
           response: "Task object (201), or { created: number } if recurrence was set",
-          example: { title: "Flight to NYC", date: "2026-05-15", start_time: "14:00", emoji: "✈️", category: "Travel", blockReminders: [{ offsetMinutes: 120, message: "Start packing!" }, { offsetMinutes: 30, message: "Head to the airport." }, { offsetMinutes: 5, message: "Last call — go!" }] },
+          example: { title: "Flight to NYC", date: "2026-05-15", start_time: "14:00", emoji: "✈️", category: "Travel", blockReminders: [{ atTime: "12:00", message: "Start packing!" }, { atTime: "13:30", message: "Head to the airport." }, { atTime: "13:55", message: "Last call — go!" }] },
         },
         {
           method: "PATCH", path: "/api/tasks/:id", auth: true,
           description: "Partially update a task. Only send fields to change. Rescheduled reminders fire automatically.",
           patchable_fields: ["title", "emoji", "category", "date", "start_time", "end_time", "notes", "completed", "notify_before", "end_date", "notify_message", "blockReminders"],
-          note_offsets: "To silence Telegram for this block: PATCH with blockReminders: []. To revert to global setting: omit blockReminders or send null. To update messages: send the full new blockReminders array.",
+          note_offsets: "To silence Telegram for this block: PATCH with blockReminders: []. To revert to global setting: omit blockReminders or send null. To update: send the full new blockReminders array with atTime strings.",
           response: "Updated task object",
         },
         {
@@ -291,7 +291,7 @@ http.route({
       // ── COMMON MISTAKES ────────────────────────────────────────
       common_mistakes: [
         "Reminders only fire if start_time is set on the block. A block with only a date gets no Telegram/push reminders.",
-        "blockReminders overrides the global setting entirely for that block. Set [] to silence all Telegram reminders, omit the field to inherit global setting.",
+        "blockReminders overrides the global setting entirely for that block. Set [] to silence all Telegram reminders, omit the field to inherit global setting. Each entry uses atTime (HH:MM local time on the block's date), not an offset.",
         "bulk-complete and bulk-delete with 'search' match ALL dates. Always confirm scope with the user.",
         "Use 'id' field from responses (not '_id') for all operations.",
         "Date format is YYYY-MM-DD. Time format is HH:MM (24h). Wrong formats are rejected with 400.",
