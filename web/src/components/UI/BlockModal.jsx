@@ -3,7 +3,8 @@ import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
 
-const NOTIFY_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180];
+const NOTIFY_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360];
+const MAX_REMINDERS = 6;
 
 export default function BlockModal({ open, block, defaultDate, onSave, onClose, categories }) {
   const cats = categories || CATEGORIES;
@@ -20,8 +21,8 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   // notifyMode: 'global' | 'custom' | 'off'
   const [notifyMode, setNotifyMode] = useState('global');
   const [notifyMins, setNotifyMins] = useState(15);
-  // per-block reminder offsets (custom mode): [] = off, [n,...] = specific offsets
-  const [blockOffsets, setBlockOffsets] = useState([15]);
+  // per-block reminders (custom mode): [] = off, [{offsetMinutes, message},...] = custom
+  const [blockReminders, setBlockReminders] = useState([{ offsetMinutes: 15, message: '' }]);
   const [recurrence, setRecurrence] = useState('');
 
   useEffect(() => {
@@ -41,15 +42,15 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         notify_before: block.notify_before,
         notify_message: block.notify_message || '',
       });
-      if (block.blockReminderOffsets !== undefined) {
-        if (block.blockReminderOffsets.length === 0) { setNotifyMode('off'); setBlockOffsets([]); }
-        else { setNotifyMode('custom'); setBlockOffsets(block.blockReminderOffsets); }
+      if (block.blockReminders !== undefined) {
+        if (block.blockReminders.length === 0) { setNotifyMode('off'); setBlockReminders([]); }
+        else { setNotifyMode('custom'); setBlockReminders(block.blockReminders.map(r => ({ offsetMinutes: r.offsetMinutes, message: r.message ?? '' }))); }
       } else if (block.notify_before === null) {
-        setNotifyMode('off'); setBlockOffsets([]);
+        setNotifyMode('off'); setBlockReminders([]);
       } else if (block.notify_before !== undefined) {
-        setNotifyMode('custom'); setBlockOffsets([block.notify_before]); setNotifyMins(block.notify_before);
+        setNotifyMode('custom'); setBlockReminders([{ offsetMinutes: block.notify_before, message: '' }]); setNotifyMins(block.notify_before);
       } else {
-        setNotifyMode('global'); setBlockOffsets([15]);
+        setNotifyMode('global'); setBlockReminders([{ offsetMinutes: 15, message: '' }]);
       }
       setRecurrence(block.recurrence ?? '');
     } else {
@@ -61,7 +62,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
       });
       setNotifyMode('global');
       setNotifyMins(15);
-      setBlockOffsets([15]);
+      setBlockReminders([{ offsetMinutes: 15, message: '' }]);
       setRecurrence('');
     }
     setTimeout(() => titleRef.current?.focus(), 80);
@@ -84,14 +85,19 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
   function handleSave() {
     if (!form.title.trim()) { titleRef.current?.focus(); return; }
-    const blockReminderOffsets = notifyMode === 'off' ? []
-      : notifyMode === 'custom' ? blockOffsets
-      : undefined; // undefined = use global setting
-    // keep notify_before for backward compat (push notifications still use it)
-    const notify_before = notifyMode === 'off' ? null
-      : notifyMode === 'custom' ? (blockOffsets[0] ?? 15)
+    // blockReminders: [] = off, [{offsetMinutes,message},...] = custom, undefined = global
+    const blockRemindersOut = notifyMode === 'off' ? []
+      : notifyMode === 'custom' ? blockReminders.map(r => ({
+          offsetMinutes: r.offsetMinutes,
+          // omit message if empty string so it doesn't override global template needlessly
+          ...(r.message?.trim() ? { message: r.message.trim() } : {}),
+        }))
       : undefined;
-    onSave({ ...form, notify_before, blockReminderOffsets, recurrence: recurrence || undefined });
+    // keep notify_before for push notification compat
+    const notify_before = notifyMode === 'off' ? null
+      : notifyMode === 'custom' ? (blockReminders[0]?.offsetMinutes ?? 15)
+      : undefined;
+    onSave({ ...form, notify_before, blockReminders: blockRemindersOut, recurrence: recurrence || undefined });
     onClose();
   }
 
@@ -217,31 +223,46 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
         {notifyMode === 'custom' && (
           <div className={styles.group}>
-            <label className="form-label">Reminder times <span style={{fontWeight:400,opacity:.55}}>(up to 4)</span></label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {blockOffsets.map((val, i) => (
-                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <select className="form-select" style={{ flex: 1 }} value={val}
+            <label className="form-label">
+              Reminder times <span style={{fontWeight:400,opacity:.55}}>(up to {MAX_REMINDERS})</span>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {blockReminders.map((r, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select className="form-select" style={{ flex: 1 }} value={r.offsetMinutes}
+                      onChange={e => {
+                        const next = [...blockReminders];
+                        next[i] = { ...next[i], offsetMinutes: Number(e.target.value) };
+                        setBlockReminders(next);
+                      }}>
+                      {NOTIFY_OPTIONS.map(m => (
+                        <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60} hr`} before</option>
+                      ))}
+                    </select>
+                    <button type="button"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px', flexShrink: 0 }}
+                      onClick={() => setBlockReminders(blockReminders.filter((_, j) => j !== i))}>
+                      ×
+                    </button>
+                  </div>
+                  <input
+                    className="form-input"
+                    style={{ fontSize: 12 }}
+                    placeholder={`Message ${i + 1} (optional — leave blank to use default)`}
+                    value={r.message ?? ''}
                     onChange={e => {
-                      const next = [...blockOffsets];
-                      next[i] = Number(e.target.value);
-                      setBlockOffsets(next);
-                    }}>
-                    {NOTIFY_OPTIONS.map(m => (
-                      <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60 % 1 === 0 ? m/60 : m/60} hr`} before</option>
-                    ))}
-                  </select>
-                  <button type="button"
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}
-                    onClick={() => setBlockOffsets(blockOffsets.filter((_, j) => j !== i))}>
-                    ×
-                  </button>
+                      const next = [...blockReminders];
+                      next[i] = { ...next[i], message: e.target.value };
+                      setBlockReminders(next);
+                    }}
+                  />
                 </div>
               ))}
-              {blockOffsets.length < 4 && (
+              {blockReminders.length < MAX_REMINDERS && (
                 <button type="button" className="btn-secondary"
                   style={{ alignSelf: 'flex-start', fontSize: 12, padding: '4px 10px' }}
-                  onClick={() => setBlockOffsets([...blockOffsets, 15])}>
+                  onClick={() => setBlockReminders([...blockReminders, { offsetMinutes: 15, message: '' }])}>
                   + Add reminder
                 </button>
               )}
