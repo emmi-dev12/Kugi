@@ -57,6 +57,8 @@ export default function SettingsModal({
   const [selectedGcalDeletes, setSelectedGcalDeletes] = useState(new Set());
   const [telegramInput, setTelegramInput] = useState({ botToken: '', chatId: '' });
   const [telegramOffset, setTelegramOffset] = useState('15');
+  const [reminderOffsets, setReminderOffsets] = useState(null); // null = use server value
+  const [webhookUrlInput, setWebhookUrlInput] = useState('');
   const [tab, setTab] = useState('general');
 
   if (!open) return null;
@@ -440,22 +442,75 @@ export default function SettingsModal({
                           </span>
                           <button
                             className={styles.disconnectBtn}
-                            onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '', offsetMinutes: 15 }); }}
+                            onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '', offsetMinutes: 15, reminderOffsets: [], webhookUrl: '' }); }}
                           >
                             Disconnect
                           </button>
                         </div>
-                        <div className={styles.row} style={{ marginTop: 8 }}>
-                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>Remind me</span>
-                          <select
-                            className={styles.select}
-                            value={telegramConfig.offsetMinutes ?? 15}
-                            onChange={e => setTelegramConfig({ botToken: telegramConfig.botToken, chatId: telegramConfig.chatId, offsetMinutes: Number(e.target.value) })}
-                          >
-                            {[[5,'5 min before'],[10,'10 min before'],[15,'15 min before'],[20,'20 min before'],[30,'30 min before'],[45,'45 min before'],[60,'1 hour before'],[120,'2 hours before']].map(([v, label]) => (
-                              <option key={v} value={v}>{label}</option>
-                            ))}
-                          </select>
+                        {/* Multi-reminder offsets */}
+                        <div style={{ marginTop: 10 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                            Remind me (up to 4 times per event)
+                          </span>
+                          {(() => {
+                            const active = reminderOffsets ?? telegramConfig.reminderOffsets ?? [telegramConfig.offsetMinutes ?? 15];
+                            const OPTS = [[5,'5 min'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hr'],[90,'1.5 hr'],[120,'2 hr'],[180,'3 hr']];
+                            const save = (next) => {
+                              setReminderOffsets(next);
+                              setTelegramConfig({ botToken: telegramConfig.botToken, chatId: telegramConfig.chatId, offsetMinutes: next[0] ?? 15, reminderOffsets: next, webhookUrl: telegramConfig.webhookUrl ?? '' });
+                            };
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {active.map((val, i) => (
+                                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <select
+                                      className={styles.select}
+                                      style={{ flex: 1 }}
+                                      value={val}
+                                      onChange={e => {
+                                        const next = [...active];
+                                        next[i] = Number(e.target.value);
+                                        save(next);
+                                      }}
+                                    >
+                                      {OPTS.map(([v, label]) => <option key={v} value={v}>{label} before</option>)}
+                                    </select>
+                                    <button
+                                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                                      onClick={() => save(active.filter((_, j) => j !== i))}
+                                    >×</button>
+                                  </div>
+                                ))}
+                                {active.length < 4 && (
+                                  <button
+                                    className={styles.disconnectBtn}
+                                    style={{ alignSelf: 'flex-start', marginTop: 2 }}
+                                    onClick={() => save([...active, 15])}
+                                  >+ Add reminder</button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        {/* Webhook URL */}
+                        <div style={{ marginTop: 10 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                            Webhook URL <span style={{ opacity: 0.6 }}>(optional — POSTed when reminder fires)</span>
+                          </span>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input
+                              className={styles.keyInput}
+                              style={{ flex: 1 }}
+                              type="url"
+                              placeholder="https://your-agent.example.com/webhook"
+                              value={webhookUrlInput || telegramConfig.webhookUrl || ''}
+                              onChange={e => setWebhookUrlInput(e.target.value)}
+                              onBlur={e => {
+                                const url = e.target.value.trim();
+                                setTelegramConfig({ botToken: telegramConfig.botToken, chatId: telegramConfig.chatId, offsetMinutes: telegramConfig.offsetMinutes ?? 15, reminderOffsets: reminderOffsets ?? telegramConfig.reminderOffsets ?? undefined, webhookUrl: url });
+                              }}
+                            />
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -487,7 +542,7 @@ export default function SettingsModal({
                           />
                         </div>
                         <div className={styles.row} style={{ marginBottom: 8 }}>
-                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>Remind me</span>
+                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>First reminder</span>
                           <select
                             className={styles.select}
                             value={telegramOffset}

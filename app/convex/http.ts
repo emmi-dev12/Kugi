@@ -209,7 +209,7 @@ http.route({
         {
           method: "GET", path: "/api/settings",
           auth: true,
-          description: "Read all configurable settings. Returns telegram config (including messageTemplate and templateVariables), push notification reminders array, and Google Calendar integration state.",
+          description: "Read all configurable settings. Returns telegram config (botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl, messageTemplate), push notification reminders array, and Google Calendar integration state.",
         },
         {
           method: "PATCH", path: "/api/settings",
@@ -218,7 +218,9 @@ http.route({
           body_schema: {
             "telegram.botToken": "string — Telegram bot token",
             "telegram.chatId": "string — Telegram chat/user ID",
-            "telegram.offsetMinutes": "number — minutes before event to send Telegram reminder",
+            "telegram.offsetMinutes": "number — fallback single offset (minutes before event). Ignored when reminderOffsets is set.",
+            "telegram.reminderOffsets": "number[] (max 4) — list of offsets in minutes before the event. Each entry schedules a separate Telegram reminder. Example: [5, 15, 60] fires at 5 min, 15 min, and 1 hour before. Replaces the legacy offsetMinutes for all new/updated blocks.",
+            "telegram.webhookUrl": "string (optional) — URL to POST when any Telegram reminder fires. Payload: { event: 'reminder', blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }. Use this to receive real-time push to your AI agent instead of polling.",
             "telegram.messageTemplate": "string — Telegram message template. Variables: {emoji} {title} {time} {date} {notes} {category}. {time} expands to ' starts at HH:MM' or ' is coming up'. {notes} expands to newline+notes or empty.",
             "push.enabled": "boolean — enable/disable browser push notifications",
             "push.reminders": "array — push notification schedule. Each item: { id: string, offsetMinutes: number, atTime?: string (HH:MM, for day-before reminders use offsetMinutes=1440+), message?: string (custom body text) }",
@@ -226,14 +228,33 @@ http.route({
             "googleCalendar.composioApiKey": "string",
           },
           example_bodies: {
-            set_telegram_template: '{ "telegram": { "messageTemplate": "🔔 {emoji}{title} at {time}", "offsetMinutes": 10 } }',
+            set_multi_reminders: '{ "telegram": { "reminderOffsets": [5, 15, 60, 120] } }',
+            set_webhook: '{ "telegram": { "webhookUrl": "https://your-agent.example.com/kugi-reminder" } }',
+            set_telegram_template: '{ "telegram": { "messageTemplate": "🔔 {emoji}{title} at {time}" } }',
             set_push_reminders: '{ "push": { "reminders": [{ "id": "r1", "offsetMinutes": 15 }, { "id": "r2", "offsetMinutes": 60, "message": "1 hour to go!" }] } }',
             disable_push: '{ "push": { "enabled": false } }',
             toggle_gcal: '{ "googleCalendar": { "enabled": true } }',
           },
         },
       ],
-      agent_instructions: "Use GET /api/stats at session start for a quick orientation. Call GET /api/docs at the start of each session for this reference. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set the 'recurrence' field on POST — the API will create all future occurrences automatically. Use bulk endpoints for efficiency — always prefer bulk-create over multiple POSTs. Use ?mode=future|all on DELETE for recurring blocks. Use GET /api/settings to read all notification and integration config. Use PATCH /api/settings to update: Telegram bot token/chatId/offset/messageTemplate, push notification reminders list, or Google Calendar integration. The Telegram messageTemplate supports variables: {emoji} {title} {time} {date} {notes} {category}. Push reminders is an array — replace it entirely when updating. Confirm destructive actions with the user.",
+      webhook_integration: {
+        description: "Register a webhook URL via PATCH /api/settings to receive real-time POSTs when Telegram reminders fire. Your agent receives block details and can proactively message you, ask questions, or take action — no polling needed.",
+        payload_example: {
+          event: "reminder",
+          blockId: "jd7abc123...",
+          title: "Leave for airport",
+          emoji: "✈️",
+          date: "2026-05-14",
+          start_time: "17:45",
+          end_time: null,
+          category: "Travel",
+          notes: "Terminal 2, check-in closes 45 min before",
+          notify_message: null,
+          fired_at: "2026-05-14T15:45:00.000Z",
+        },
+        setup: "PATCH /api/settings with body { \"telegram\": { \"webhookUrl\": \"https://your-agent/webhook\" } }. The webhook is called for every reminder offset that fires — if you have [5, 15, 60] configured, your agent gets 3 calls for each event.",
+      },
+      agent_instructions: "Use GET /api/stats at session start for orientation. Call GET /api/docs at the start of each session. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set 'recurrence' on POST. Use bulk endpoints for efficiency. Use ?mode=future|all on DELETE for recurring series. WEBHOOK: the most reliable way to receive reminders is via webhook — PATCH /api/settings with telegram.webhookUrl pointing to your endpoint; you'll get a POST for each reminder offset that fires, no polling needed. MULTI-REMINDER: use telegram.reminderOffsets (array, max 4) to schedule multiple reminders per event, e.g. [5,15,60,120]. Confirm destructive actions with the user.",
     });
   }),
 });
@@ -654,6 +675,8 @@ http.route({
         botToken: body.telegram.botToken ?? current.botToken ?? "",
         chatId: body.telegram.chatId ?? current.chatId ?? "",
         offsetMinutes: body.telegram.offsetMinutes ?? current.offsetMinutes ?? 15,
+        reminderOffsets: body.telegram.reminderOffsets ?? current.reminderOffsets ?? undefined,
+        webhookUrl: body.telegram.webhookUrl ?? current.webhookUrl ?? undefined,
       });
       if (body.telegram.messageTemplate !== undefined) {
         await ctx.runMutation(api.settings.setTelegramTemplate, { template: body.telegram.messageTemplate });
