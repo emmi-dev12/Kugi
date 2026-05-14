@@ -64,8 +64,8 @@ The frontend is a **static site with no server**. Users supply their own Convex 
 title, emoji, category, date (YYYY-MM-DD), start_time (HH:MM), end_time,
 notes, completed, localId, notify_before (minutes, null=off, undefined=global default),
 notify_message (string, optional — sent verbatim to push + Telegram, overrides global template),
-end_date, telegramJobId, recurrence (hourly|daily|monthly|yearly),
-recurrenceGroupId, googleEventId
+end_date, telegramJobId (legacy single job, kept for cancel compat), telegramJobIds (string[], up to 4 scheduled jobs),
+recurrence (hourly|daily|monthly|yearly), recurrenceGroupId, googleEventId
 ```
 Index: `by_date`
 
@@ -78,8 +78,10 @@ Index: `by_date`
 | `timezone` | IANA timezone string |
 | `telegramBotToken` | Telegram bot token |
 | `telegramChatId` | Telegram chat/user ID |
-| `telegramOffsetMinutes` | Minutes before event to send Telegram reminder |
+| `telegramOffsetMinutes` | Legacy single offset (minutes); used as fallback when `telegramReminderOffsets` not set |
+| `telegramReminderOffsets` | JSON array of up to 4 offset values in minutes — drives multi-reminder scheduling |
 | `telegramTemplate` | Message template with `{emoji}` `{title}` `{time}` `{date}` `{notes}` `{category}` variables |
+| `webhookUrl` | URL POSTed (JSON) whenever a Telegram reminder fires — for AI agent integration |
 | `composioApiKey` | Composio API key for Google Calendar |
 | `integration_googleCalendar` | `"true"` / `"false"` |
 | `pushEnabled` | `"true"` / `"false"` |
@@ -154,7 +156,7 @@ components/UI/
 |---------|-------|
 | Recurring blocks | `blocks.ts:createRecurring`, `deleteRecurring`; `BlockModal` Repeat dropdown; `DeleteRecurringModal` |
 | Per-block custom notification message | `notify_message` field in schema + BlockModal; used in `telegram.ts` + `pushActions.ts` |
-| Telegram reminders | `telegram.ts:sendReminder` (internalAction); scheduled via `ctx.scheduler.runAt` in blocks mutations; template in `telegramTemplate` setting |
+| Telegram reminders | `telegram.ts:sendReminder` (internalAction); scheduled via `ctx.scheduler.runAt` in `blocks.ts`; up to 4 jobs per block stored in `telegramJobIds`; timezone-correct using `localToUTC` in `blocks.ts`; template in `telegramTemplate` setting; fires `webhookUrl` POST on each reminder |
 | Push notifications | `pushActions.ts:checkAndNotify` (cron every 1 min); rules in `reminders` setting |
 | GCal sync with orphan confirmation | `calendarSyncActions.ts`: `getSyncDiff`, `fetchFromGoogle({deleteKugiIds})`, `pushToGoogle`, `deleteGcalEvents`; UI in `SettingsModal` |
 | Multi-select bulk delete in search | `CommandPalette.jsx` — checkboxes + Select All + bulk toolbar |
@@ -176,3 +178,7 @@ components/UI/
 - **`fetchFromGoogle` now takes `deleteKugiIds?`** — when called from the GCal sync UI, pass the user-selected IDs; omit for legacy auto-delete behaviour.
 - **Telegram template variables** — `{time}` expands to `" starts at HH:MM"` or `" is coming up"` (not the raw time). `{notes}` expands to `"\n\n<notes>"` or `""`. Don't treat them as raw substitutions.
 - **bulk-delete/bulk-complete accept `search`** — the HTTP API accepts either `ids` array or `search` string (selects all matching blocks). Never need two calls.
+- **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
+- **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
+- **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
+- **sw.js cache name** — currently `kugi-v8`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
