@@ -22,7 +22,7 @@ export default defineSchema({
     notify_message: v.optional(v.string()),
     blockReminderOffsets: v.optional(v.array(v.number())), // legacy — kept for compat
     blockReminders: v.optional(v.array(v.object({
-      offsetMinutes: v.number(),
+      atTime: v.string(),           // HH:MM — exact local time to fire on the block's date
       message: v.optional(v.string()),
     }))),
   }).index("by_date", ["date"]),
