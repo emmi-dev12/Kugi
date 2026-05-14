@@ -5,15 +5,18 @@
   "description": "AI-ready block calendar",
   "start_url": "/app",
   "display": "standalone",
-  "background_color": "#080808",
-  "theme_color": "#080808",
+  "background_color": "#0c110e",
+  "theme_color": "#0c110e",
   "icons": [
+    { "src": "/icons/icon-16.png",  "sizes": "16x16",   "type": "image/png" },
+    { "src": "/icons/icon-32.png",  "sizes": "32x32",   "type": "image/png" },
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg",        "sizes": "any",      "type": "image/svg+xml" }
   ],
   "screenshots": [
-    { "src": "/screenshots/wide.png", "sizes": "1280x800", "type": "image/png", "form_factor": "wide", "label": "Kugi week view on desktop" },
-    { "src": "/screenshots/narrow.png", "sizes": "390x844", "type": "image/png", "label": "Kugi day view on mobile" }
+    { "src": "/screenshots/wide.png",   "sizes": "1280x800", "type": "image/png", "form_factor": "wide",   "label": "Kugi week view on desktop" },
+    { "src": "/screenshots/narrow.png", "sizes": "390x844",  "type": "image/png", "form_factor": "narrow", "label": "Kugi day view on mobile" }
   ]
 }
