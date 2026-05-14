@@ -89,8 +89,9 @@ http.route({
         end_time: "string (optional) — HH:MM",
         notes: "string (optional)",
         completed: "boolean (optional, default: false)",
-        notify_before: "number (optional) — minutes before start_time to send reminders. null = off.",
+        notify_before: "number (optional) — minutes before start_time to send reminders. null = off. Used by push notifications.",
         notify_message: "string (optional) — custom notification text sent verbatim via push and Telegram, overriding the global template. Leave unset to use the default.",
+        blockReminderOffsets: "number[] (optional) — per-block Telegram reminder schedule. Overrides the global telegramReminderOffsets setting for this block. [] = no Telegram reminders for this block. [5,15,60] = three reminders at 5 min, 15 min, 1 hr before. undefined = use global setting.",
         recurrence: "string (optional) — 'hourly' | 'daily' | 'monthly' | 'yearly'. When set on POST, generates all future occurrences automatically.",
         recurrenceGroupId: "string (optional, read-only) — shared ID linking all blocks in a recurring series",
       },
@@ -342,7 +343,7 @@ http.route({
 });
 
 // ── POST /api/tasks ────────────────────────────────────────────
-// Body: { title, date, emoji?, category?, start_time?, end_time?, notes?, completed?, end_date?, recurrence?, notify_before?, notify_message? }
+// Body: { title, date, emoji?, category?, start_time?, end_time?, notes?, completed?, end_date?, recurrence?, notify_before?, notify_message?, blockReminderOffsets? }
 // Returns: full task object, or { created: number } if recurrence is set
 http.route({
   path: "/api/tasks",
@@ -365,6 +366,7 @@ http.route({
       end_date: body.end_date ?? undefined,
       notify_before: body.notify_before ?? undefined,
       notify_message: body.notify_message ?? undefined,
+      blockReminderOffsets: Array.isArray(body.blockReminderOffsets) ? body.blockReminderOffsets : undefined,
     };
 
     if (body.recurrence) {

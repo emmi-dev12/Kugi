@@ -3,7 +3,7 @@ import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
 
-const NOTIFY_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 120];
+const NOTIFY_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180];
 
 export default function BlockModal({ open, block, defaultDate, onSave, onClose, categories }) {
   const cats = categories || CATEGORIES;
@@ -17,8 +17,11 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiDraft, setEmojiDraft] = useState('');
   // 'global' | 'custom' | 'off'
+  // notifyMode: 'global' | 'custom' | 'off'
   const [notifyMode, setNotifyMode] = useState('global');
   const [notifyMins, setNotifyMins] = useState(15);
+  // per-block reminder offsets (custom mode): [] = off, [n,...] = specific offsets
+  const [blockOffsets, setBlockOffsets] = useState([15]);
   const [recurrence, setRecurrence] = useState('');
 
   useEffect(() => {
@@ -38,9 +41,16 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         notify_before: block.notify_before,
         notify_message: block.notify_message || '',
       });
-      if (block.notify_before === null) { setNotifyMode('off'); setNotifyMins(15); }
-      else if (block.notify_before !== undefined) { setNotifyMode('custom'); setNotifyMins(block.notify_before); }
-      else { setNotifyMode('global'); setNotifyMins(15); }
+      if (block.blockReminderOffsets !== undefined) {
+        if (block.blockReminderOffsets.length === 0) { setNotifyMode('off'); setBlockOffsets([]); }
+        else { setNotifyMode('custom'); setBlockOffsets(block.blockReminderOffsets); }
+      } else if (block.notify_before === null) {
+        setNotifyMode('off'); setBlockOffsets([]);
+      } else if (block.notify_before !== undefined) {
+        setNotifyMode('custom'); setBlockOffsets([block.notify_before]); setNotifyMins(block.notify_before);
+      } else {
+        setNotifyMode('global'); setBlockOffsets([15]);
+      }
       setRecurrence(block.recurrence ?? '');
     } else {
       setForm({
@@ -51,6 +61,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
       });
       setNotifyMode('global');
       setNotifyMins(15);
+      setBlockOffsets([15]);
       setRecurrence('');
     }
     setTimeout(() => titleRef.current?.focus(), 80);
@@ -73,10 +84,14 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
   function handleSave() {
     if (!form.title.trim()) { titleRef.current?.focus(); return; }
+    const blockReminderOffsets = notifyMode === 'off' ? []
+      : notifyMode === 'custom' ? blockOffsets
+      : undefined; // undefined = use global setting
+    // keep notify_before for backward compat (push notifications still use it)
     const notify_before = notifyMode === 'off' ? null
-      : notifyMode === 'custom' ? notifyMins
+      : notifyMode === 'custom' ? (blockOffsets[0] ?? 15)
       : undefined;
-    onSave({ ...form, notify_before, recurrence: recurrence || undefined });
+    onSave({ ...form, notify_before, blockReminderOffsets, recurrence: recurrence || undefined });
     onClose();
   }
 
@@ -187,23 +202,52 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
           </div>
           <div className={styles.group}>
             <label className="form-label">Remind me</label>
-            <div className={styles.notifyRow}>
-              <select className={styles.notifySelect} value={notifyMode === 'off' ? 'off' : notifyMode === 'global' ? 'global' : String(notifyMins)}
-                onChange={e => {
-                  const v = e.target.value;
-                  if (v === 'off') { setNotifyMode('off'); }
-                  else if (v === 'global') { setNotifyMode('global'); }
-                  else { setNotifyMode('custom'); setNotifyMins(Number(v)); }
-                }}>
-                <option value='global'>Default</option>
-                {NOTIFY_OPTIONS.map(m => (
-                  <option key={m} value={String(m)}>{m < 60 ? `${m} min` : `${m/60} hr`} before</option>
-                ))}
-                <option value='off'>Off</option>
-              </select>
-            </div>
+            <select className={styles.notifySelect} value={notifyMode}
+              onChange={e => {
+                const v = e.target.value;
+                setNotifyMode(v);
+                if (v === 'custom' && blockOffsets.length === 0) setBlockOffsets([15]);
+              }}>
+              <option value='global'>Default (global setting)</option>
+              <option value='custom'>Custom</option>
+              <option value='off'>Off</option>
+            </select>
           </div>
         </div>
+
+        {notifyMode === 'custom' && (
+          <div className={styles.group}>
+            <label className="form-label">Reminder times <span style={{fontWeight:400,opacity:.55}}>(up to 4)</span></label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {blockOffsets.map((val, i) => (
+                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <select className="form-select" style={{ flex: 1 }} value={val}
+                    onChange={e => {
+                      const next = [...blockOffsets];
+                      next[i] = Number(e.target.value);
+                      setBlockOffsets(next);
+                    }}>
+                    {NOTIFY_OPTIONS.map(m => (
+                      <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60 % 1 === 0 ? m/60 : m/60} hr`} before</option>
+                    ))}
+                  </select>
+                  <button type="button"
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px' }}
+                    onClick={() => setBlockOffsets(blockOffsets.filter((_, j) => j !== i))}>
+                    ×
+                  </button>
+                </div>
+              ))}
+              {blockOffsets.length < 4 && (
+                <button type="button" className="btn-secondary"
+                  style={{ alignSelf: 'flex-start', fontSize: 12, padding: '4px 10px' }}
+                  onClick={() => setBlockOffsets([...blockOffsets, 15])}>
+                  + Add reminder
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {notifyMode !== 'off' && (
           <div className={styles.group}>
