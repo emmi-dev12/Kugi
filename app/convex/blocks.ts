@@ -56,7 +56,10 @@ async function cancelTelegramJobs(ctx: any, block: any) {
   }
 }
 
-async function getTelegramOffsets(ctx: any): Promise<number[]> {
+// Returns offsets for a specific block: per-block overrides global setting.
+// blockOffsets === undefined → use global; [] → no reminders; [n,...] → use those.
+async function getTelegramOffsets(ctx: any, blockOffsets?: number[]): Promise<number[]> {
+  if (blockOffsets !== undefined) return blockOffsets; // [] means off, [n] means custom
   const row = await ctx.db.query("settings").withIndex("by_key", (q: any) => q.eq("key", "telegramReminderOffsets")).first();
   if (row?.value) {
     try {
@@ -114,11 +117,12 @@ export const create = mutation({
     end_date: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     notify_message: v.optional(v.string()),
+    blockReminderOffsets: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("blocks", args);
     if (args.start_time && args.date) {
-      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx, args.blockReminderOffsets), getTZ(ctx)]);
       const jobIds = await scheduleTelegramJobs(ctx, id, args.date, args.start_time, offsets, tz);
       if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
@@ -141,6 +145,7 @@ export const update = mutation({
     end_date: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     notify_message: v.optional(v.string()),
+    blockReminderOffsets: v.optional(v.array(v.number())),
   },
   handler: async (ctx, { id, ...fields }) => {
     const block = await ctx.db.get(id);
@@ -148,7 +153,7 @@ export const update = mutation({
     await ctx.db.patch(id, { ...fields, telegramJobIds: undefined, telegramJobId: undefined });
     const updated = await ctx.db.get(id);
     if (updated?.start_time && updated?.date) {
-      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx, updated.blockReminderOffsets), getTZ(ctx)]);
       const jobIds = await scheduleTelegramJobs(ctx, id, updated.date, updated.start_time, offsets, tz);
       if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
@@ -175,7 +180,7 @@ export const toggleComplete = mutation({
       await cancelTelegramJobs(ctx, block);
       await ctx.db.patch(id, { telegramJobIds: undefined, telegramJobId: undefined });
     } else if (block.start_time && block.date) {
-      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+      const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx, block.blockReminderOffsets), getTZ(ctx)]);
       const jobIds = await scheduleTelegramJobs(ctx, id, block.date, block.start_time, offsets, tz);
       if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
     }
@@ -214,6 +219,7 @@ export const createRecurring = mutation({
     notify_before: v.optional(v.number()),
     end_date: v.optional(v.string()),
     notify_message: v.optional(v.string()),
+    blockReminderOffsets: v.optional(v.array(v.number())),
     recurrence: v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
@@ -231,7 +237,7 @@ export const createRecurring = mutation({
       for (let i = 0; i < 10; i++) dates.push(addYears(args.date, i));
     }
 
-    const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+    const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx, args.blockReminderOffsets), getTZ(ctx)]);
 
     for (const date of dates) {
       const id = await ctx.db.insert("blocks", { ...blockFields, date, recurrence, recurrenceGroupId });
@@ -299,7 +305,7 @@ export const deleteRecurring = mutation({
 export const bulkComplete = mutation({
   args: { ids: v.array(v.id("blocks")), completed: v.boolean() },
   handler: async (ctx, { ids, completed }) => {
-    const [offsets, tz] = await Promise.all([getTelegramOffsets(ctx), getTZ(ctx)]);
+    const tz = await getTZ(ctx);
     let count = 0;
     for (const id of ids) {
       const block = await ctx.db.get(id);
@@ -309,6 +315,7 @@ export const bulkComplete = mutation({
         await cancelTelegramJobs(ctx, block);
         await ctx.db.patch(id, { telegramJobIds: undefined, telegramJobId: undefined });
       } else if (block.start_time && block.date) {
+        const offsets = await getTelegramOffsets(ctx, block.blockReminderOffsets);
         const jobIds = await scheduleTelegramJobs(ctx, id, block.date, block.start_time, offsets, tz);
         if (jobIds.length) await ctx.db.patch(id, { telegramJobIds: jobIds });
       }

@@ -20,6 +20,7 @@ export default defineSchema({
     recurrenceGroupId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),
     notify_message: v.optional(v.string()),
+    blockReminderOffsets: v.optional(v.array(v.number())),
   }).index("by_date", ["date"]),
 
   settings: defineTable({
