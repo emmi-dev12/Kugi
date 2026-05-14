@@ -25,283 +25,299 @@ async function authenticate(ctx: any, req: Request): Promise<boolean> {
   return storedKey !== null && storedKey === token;
 }
 
+// Normalize a raw Convex block for API consumers:
+// - exposes `id` (not `_id`)
+// - strips internal scheduling fields
+function normalizeTask(t: any) {
+  if (!t) return t;
+  const { _id, _creationTime, telegramJobId, telegramJobIds, ...rest } = t;
+  return { id: _id, ...rest };
+}
+
+// Validate YYYY-MM-DD
+function isValidDate(s: any): boolean {
+  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+// Validate HH:MM
+function isValidTime(s: any): boolean {
+  return typeof s === "string" && /^\d{2}:\d{2}$/.test(s);
+}
+
+// Validate blockReminderOffsets: must be an array of 0–4 positive numbers
+function validateOffsets(v: any): string | null {
+  if (!Array.isArray(v)) return "blockReminderOffsets must be an array";
+  if (v.length > 4) return "blockReminderOffsets max length is 4";
+  if (!v.every((x: any) => typeof x === "number" && x >= 0)) return "blockReminderOffsets values must be non-negative numbers";
+  return null;
+}
+
 // ── OPTIONS preflight ──────────────────────────────────────────
-http.route({
-  path: "/api/tasks",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  pathPrefix: "/api/tasks/",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  path: "/api/info",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  path: "/api/docs",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  path: "/api/stats",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  path: "/api/categories",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
-http.route({
-  pathPrefix: "/api/categories/",
-  method: "OPTIONS",
-  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
-});
+const PREFLIGHT_PATHS = [
+  { path: "/api/tasks", type: "path" },
+  { path: "/api/tasks/", type: "prefix" },
+  { path: "/api/docs", type: "path" },
+  { path: "/api/info", type: "path" },
+  { path: "/api/stats", type: "path" },
+  { path: "/api/settings", type: "path" },
+  { path: "/api/categories", type: "path" },
+  { path: "/api/categories/", type: "prefix" },
+];
+
+for (const { path, type } of PREFLIGHT_PATHS) {
+  http.route({
+    ...(type === "path" ? { path } : { pathPrefix: path }),
+    method: "OPTIONS",
+    handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+  } as any);
+}
 
 // ── GET /api/docs ──────────────────────────────────────────────
-// Comprehensive self-documenting endpoint — no auth required
+// Full self-documenting reference — no auth required
 http.route({
   path: "/api/docs",
   method: "GET",
   handler: httpAction(async () => {
+    const now = new Date();
     return json({
+      // ── AGENT: READ THIS FIRST ─────────────────────────────────
+      agent_quickstart: {
+        step1: "GET /api/stats — orient yourself (today's count, overdue, upcoming)",
+        step2: "GET /api/tasks?date=YYYY-MM-DD — inspect a specific day",
+        step3: "Search before creating: GET /api/tasks?search=keyword to avoid duplicates",
+        step4: "For reminders: PATCH /api/settings with { telegram: { webhookUrl: 'https://your-endpoint' } } to receive real-time POSTs instead of polling",
+        step5: "For per-block reminders: include blockReminderOffsets:[5,15,60] when creating/updating a task",
+        rule_confirm_destructive: "ALWAYS confirm with the user before bulk-delete, bulk-complete, or deleting recurring series",
+        rule_ids: "Task IDs come from the 'id' field in responses. Use them for PATCH/DELETE/complete.",
+        rule_dates: "All dates are YYYY-MM-DD. All times are HH:MM (24h). Timezone is set by the user in Settings.",
+      },
+
       name: "Kugi Block Calendar API",
-      version: "2.0",
-      description: "Personal block calendar API. Blocks are time-boxed tasks with optional recurrence and reminders.",
+      version: "2.1",
+      base_url: "https://<deployment>.convex.site",
+      current_date: now.toISOString().slice(0, 10),
+      current_time_utc: now.toISOString(),
+
       authentication: {
         type: "Bearer token",
         header: "Authorization: Bearer <token>",
-        note: "Get your API token from Settings → Developer in the Kugi app",
+        how_to_get: "Settings → Developer tab in the Kugi app",
+        error_401: "Invalid or missing token",
       },
-      current_date: new Date().toISOString().slice(0, 10),
-      block_schema: {
-        id: "string — Convex document ID",
-        title: "string (required)",
-        date: "string (required) — YYYY-MM-DD",
-        end_date: "string (optional) — YYYY-MM-DD, makes block span multiple days",
+
+      // ── TASK SCHEMA ────────────────────────────────────────────
+      task_schema: {
+        id: "string — use this for all PATCH/DELETE/complete calls",
+        title: "string (required on create)",
+        date: "string YYYY-MM-DD (required on create)",
+        end_date: "string YYYY-MM-DD (optional) — makes block span multiple days",
         emoji: "string (optional)",
-        category: "string (optional, default: 'Work')",
-        start_time: "string (optional) — HH:MM",
-        end_time: "string (optional) — HH:MM",
+        category: "string (optional, default: 'Work') — see GET /api/categories",
+        start_time: "string HH:MM (optional) — required for reminders to fire",
+        end_time: "string HH:MM (optional)",
         notes: "string (optional)",
-        completed: "boolean (optional, default: false)",
-        notify_before: "number (optional) — minutes before start_time to send reminders. null = off. Used by push notifications.",
-        notify_message: "string (optional) — custom notification text sent verbatim via push and Telegram, overriding the global template. Leave unset to use the default.",
-        blockReminderOffsets: "number[] (optional) — per-block Telegram reminder schedule. Overrides the global telegramReminderOffsets setting for this block. [] = no Telegram reminders for this block. [5,15,60] = three reminders at 5 min, 15 min, 1 hr before. undefined = use global setting.",
-        recurrence: "string (optional) — 'hourly' | 'daily' | 'monthly' | 'yearly'. When set on POST, generates all future occurrences automatically.",
-        recurrenceGroupId: "string (optional, read-only) — shared ID linking all blocks in a recurring series",
+        completed: "boolean (default: false)",
+        notify_before: "number|null (optional) — push notification offset in minutes. null = off.",
+        notify_message: "string (optional) — custom text sent verbatim via Telegram + push, overriding the global template",
+        blockReminderOffsets: "number[] (optional, max 4) — per-block Telegram reminder schedule in minutes before start_time. Examples: [] = no Telegram reminders for this block; [15] = one reminder 15 min before; [5,15,60,120] = four reminders. undefined/omitted = use global setting from Settings.",
+        recurrence: "'hourly'|'daily'|'monthly'|'yearly' (optional, write-only on POST) — auto-generates all future occurrences",
+        recurrenceGroupId: "string (read-only) — shared ID for a recurring series",
       },
-      stats_schema: {
-        today: "number — blocks dated today",
-        todayCompleted: "number",
-        thisWeek: "number — blocks this Mon–Sun",
-        thisWeekCompleted: "number",
-        overdue: "number — incomplete blocks with date < today",
-        total: "number",
-        totalCompleted: "number",
-        upcoming7Days: "number — incomplete blocks in next 7 days",
+
+      // ── REMINDERS EXPLAINED ────────────────────────────────────
+      reminders_explained: {
+        telegram_global: "Global Telegram reminder schedule lives in Settings (GET/PATCH /api/settings). Applied to all blocks that don't have blockReminderOffsets set.",
+        telegram_per_block: "Set blockReminderOffsets on a task to override the global schedule for that block. [] = silence this block. [5,30] = remind at 5 and 30 min before.",
+        push_global: "Push notification rules live in Settings as push.reminders array. Applied to blocks by offset from start_time.",
+        notify_message: "Set notify_message on a task to override the Telegram message template for that specific reminder. Sent verbatim.",
+        webhook: "Set telegram.webhookUrl in Settings to receive a POST every time a Telegram reminder fires — no polling needed.",
+        timezone: "All scheduling is in the user's IANA timezone (stored in Settings as 'timezone'). Always set start_time when you need reminders.",
       },
-      bulk_operations: {
-        description: "Use bulk endpoints for efficiency — always prefer bulk-create over multiple single POSTs.",
-        endpoints: [
-          "POST /api/tasks/bulk — body: { blocks: [...] } — create many blocks at once. Returns { created: number }.",
-          "POST /api/tasks/bulk-complete — body: { ids?: [...], search?: string, completed?: boolean } — set completion on many blocks. Use 'search' to match by text instead of listing ids. Returns { updated: number }.",
-          "POST /api/tasks/bulk-delete — body: { ids?: [...], search?: string } — delete many blocks. Use 'search' to select all matching blocks in one call. Returns { deleted: number }.",
-          "POST /api/tasks/bulk-update — body: { ids: [...], fields: { category?, emoji?, completed? } } — patch fields on many blocks. Returns { updated: number }.",
-        ],
-      },
+
+      // ── ENDPOINTS ─────────────────────────────────────────────
       endpoints: [
         {
-          method: "GET", path: "/api/docs",
-          auth: false,
-          description: "This documentation. No auth required.",
+          method: "GET", path: "/api/docs", auth: false,
+          description: "This documentation. Call at the start of every session.",
         },
         {
-          method: "GET", path: "/api/info",
-          auth: true,
-          description: "Schema + today's date. Deprecated in favour of /api/docs.",
+          method: "GET", path: "/api/stats", auth: true,
+          description: "Usage counts. Good for orientation.",
+          response: "{ today, todayCompleted, thisWeek, thisWeekCompleted, overdue, total, totalCompleted, upcoming7Days }",
         },
         {
-          method: "GET", path: "/api/stats",
-          auth: true,
-          description: "Quick usage stats. Use at session start for orientation.",
-        },
-        {
-          method: "GET", path: "/api/tasks",
-          auth: true,
-          description: "List blocks.",
+          method: "GET", path: "/api/tasks", auth: true,
+          description: "List tasks. At least one filter recommended on large calendars.",
           query_params: {
-            date: "YYYY-MM-DD — filter to one day",
-            from: "YYYY-MM-DD — range start (use with 'to')",
-            to: "YYYY-MM-DD — range end (use with 'from')",
-            search: "text — full-text search across title, notes, category",
-            completed: "true | false — filter by completion status",
+            date: "YYYY-MM-DD — single day",
+            from: "YYYY-MM-DD — range start (pair with 'to')",
+            to: "YYYY-MM-DD — range end",
+            search: "free text — searches title, notes, category, emoji",
+            completed: "'true' | 'false'",
           },
+          response: "Array of task objects",
         },
         {
-          method: "GET", path: "/api/tasks/:id",
-          auth: true,
-          description: "Get a single block by ID.",
+          method: "GET", path: "/api/tasks/:id", auth: true,
+          description: "Fetch a single task by ID.",
+          response: "Task object or 404",
         },
         {
-          method: "POST", path: "/api/tasks",
-          auth: true,
-          description: "Create a block. If 'recurrence' is set, generates all future occurrences and returns { created: number }. Otherwise returns the full block object.",
-          required_fields: ["title", "date"],
+          method: "POST", path: "/api/tasks", auth: true,
+          description: "Create a task. Include blockReminderOffsets to set per-block reminders. If recurrence is set, creates all future occurrences.",
+          required: ["title", "date"],
+          optional: ["emoji", "category", "start_time", "end_time", "notes", "completed", "end_date", "notify_before", "notify_message", "blockReminderOffsets", "recurrence"],
+          response: "Task object (201), or { created: number } if recurrence was set",
+          example: { title: "Doctor appointment", date: "2026-05-15", start_time: "10:00", emoji: "🏥", category: "Health", blockReminderOffsets: [15, 60] },
         },
         {
-          method: "POST", path: "/api/tasks/bulk",
-          auth: true,
-          description: "Bulk-create blocks. body: { blocks: [...] }. Returns { created: number }.",
+          method: "PATCH", path: "/api/tasks/:id", auth: true,
+          description: "Partially update a task. Only send fields to change. Rescheduled reminders fire automatically.",
+          patchable_fields: ["title", "emoji", "category", "date", "start_time", "end_time", "notes", "completed", "notify_before", "end_date", "notify_message", "blockReminderOffsets"],
+          note_offsets: "To silence Telegram for a block: PATCH with blockReminderOffsets: []. To use global setting: PATCH with blockReminderOffsets: null (omit the field).",
+          response: "Updated task object",
         },
         {
-          method: "POST", path: "/api/tasks/bulk-complete",
-          auth: true,
-          description: "Set completion on many blocks. body: { ids?: [...], search?: string, completed?: boolean }. Pass 'search' to select all matching blocks in one call instead of listing ids. Returns { updated: number }.",
-        },
-        {
-          method: "POST", path: "/api/tasks/bulk-delete",
-          auth: true,
-          description: "Delete many blocks. body: { ids?: [...], search?: string }. Pass 'search' to select-all-matching and delete in one call. Returns { deleted: number }.",
-        },
-        {
-          method: "POST", path: "/api/tasks/bulk-update",
-          auth: true,
-          description: "Patch fields on many blocks. body: { ids: [...], fields: { category?, emoji?, completed? } }. Returns { updated: number }.",
-        },
-        {
-          method: "PATCH", path: "/api/tasks/:id",
-          auth: true,
-          description: "Partially update a block. Only send fields to change. Returns full block.",
-        },
-        {
-          method: "DELETE", path: "/api/tasks/:id",
-          auth: true,
-          description: "Delete a block. Query params: ?mode=this|future|all (default: this). For recurring: ?mode=future&futureDays=30 or ?mode=all.",
+          method: "DELETE", path: "/api/tasks/:id", auth: true,
+          description: "Delete a task.",
           query_params: {
             mode: "'this' (default) | 'future' | 'all' — for recurring series",
-            futureDays: "number — used with mode=future to limit how many days forward",
+            futureDays: "number — with mode=future, limits how many days forward to delete",
           },
+          response: "{ ok: true }",
         },
         {
-          method: "POST", path: "/api/tasks/:id/complete",
-          auth: true,
-          description: "Toggle a block's completion status. Returns full block.",
+          method: "POST", path: "/api/tasks/:id/complete", auth: true,
+          description: "Toggle completion. Cancels pending reminders when completing.",
+          response: "Updated task object",
         },
         {
-          method: "GET", path: "/api/categories",
-          auth: true,
-          description: "List all categories (8 defaults + custom). Returns { categories: [...] }.",
+          method: "POST", path: "/api/tasks/bulk", auth: true,
+          description: "Create many tasks at once.",
+          body: "{ blocks: [ ...task fields... ] }",
+          response: "{ created: number }",
         },
         {
-          method: "POST", path: "/api/categories",
-          auth: true,
-          description: "Add a custom category. body: { name, emoji, color }. Returns { ok: true, name }.",
+          method: "POST", path: "/api/tasks/bulk-complete", auth: true,
+          description: "Mark many tasks complete/incomplete. Use 'search' OR 'ids', not both.",
+          body: "{ ids?: string[], search?: string, completed?: boolean (default true) }",
+          warning: "With 'search', matches ALL blocks across ALL dates. Confirm with user first.",
+          response: "{ updated: number }",
         },
         {
-          method: "DELETE", path: "/api/categories/:name",
-          auth: true,
-          description: "Remove a custom category by name. Returns { ok: true }.",
+          method: "POST", path: "/api/tasks/bulk-delete", auth: true,
+          description: "Delete many tasks.",
+          body: "{ ids?: string[], search?: string }",
+          warning: "With 'search', deletes ALL matching blocks across ALL dates. Irreversible. Confirm with user first.",
+          response: "{ deleted: number }",
         },
         {
-          method: "GET", path: "/api/settings",
-          auth: true,
-          description: "Read all configurable settings. Returns telegram config (botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl, messageTemplate), push notification reminders array, and Google Calendar integration state.",
+          method: "POST", path: "/api/tasks/bulk-update", auth: true,
+          description: "Patch one field across many tasks.",
+          body: "{ ids: string[], fields: { category?, emoji?, completed? } }",
+          response: "{ updated: number }",
         },
         {
-          method: "PATCH", path: "/api/settings",
-          auth: true,
-          description: "Update any subset of settings. All fields optional.",
+          method: "GET", path: "/api/categories", auth: true,
+          description: "List all categories (8 built-in + custom).",
+          response: "{ categories: [{ name, emoji, color, default }] }",
+        },
+        {
+          method: "POST", path: "/api/categories", auth: true,
+          description: "Add a custom category.",
+          body: "{ name: string, emoji: string, color: string (hex) }",
+          response: "{ ok: true, name }",
+        },
+        {
+          method: "DELETE", path: "/api/categories/:name", auth: true,
+          description: "Remove a custom category by name (URL-encode spaces).",
+          response: "{ ok: true }",
+        },
+        {
+          method: "GET", path: "/api/settings", auth: true,
+          description: "Read all configurable settings including Telegram config, webhookUrl, reminderOffsets, push rules.",
+          response: "{ telegram: { botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl, messageTemplate, templateVariables }, push: { enabled, reminders }, googleCalendar: { enabled, composioApiKey } }",
+        },
+        {
+          method: "PATCH", path: "/api/settings", auth: true,
+          description: "Update any subset of settings. Returns updated settings.",
           body_schema: {
-            "telegram.botToken": "string — Telegram bot token",
-            "telegram.chatId": "string — Telegram chat/user ID",
-            "telegram.offsetMinutes": "number — fallback single offset (minutes before event). Ignored when reminderOffsets is set.",
-            "telegram.reminderOffsets": "number[] (max 4) — list of offsets in minutes before the event. Each entry schedules a separate Telegram reminder. Example: [5, 15, 60] fires at 5 min, 15 min, and 1 hour before. Replaces the legacy offsetMinutes for all new/updated blocks.",
-            "telegram.webhookUrl": "string (optional) — URL to POST when any Telegram reminder fires. Payload: { event: 'reminder', blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }. Use this to receive real-time push to your AI agent instead of polling.",
-            "telegram.messageTemplate": "string — Telegram message template. Variables: {emoji} {title} {time} {date} {notes} {category}. {time} expands to ' starts at HH:MM' or ' is coming up'. {notes} expands to newline+notes or empty.",
-            "push.enabled": "boolean — enable/disable browser push notifications",
-            "push.reminders": "array — push notification schedule. Each item: { id: string, offsetMinutes: number, atTime?: string (HH:MM, for day-before reminders use offsetMinutes=1440+), message?: string (custom body text) }",
+            "telegram.botToken": "string",
+            "telegram.chatId": "string",
+            "telegram.offsetMinutes": "number — legacy single offset, used as fallback",
+            "telegram.reminderOffsets": "number[] (max 4) — global default reminder schedule, e.g. [5,15,60]",
+            "telegram.webhookUrl": "string — URL POSTed on every reminder fire. Set this for real-time agent integration.",
+            "telegram.messageTemplate": "string — template with {emoji} {title} {time} {date} {notes} {category}",
+            "push.enabled": "boolean",
+            "push.reminders": "array of { id: string, offsetMinutes: number, atTime?: HH:MM, message?: string }",
             "googleCalendar.enabled": "boolean",
             "googleCalendar.composioApiKey": "string",
           },
-          example_bodies: {
-            set_multi_reminders: '{ "telegram": { "reminderOffsets": [5, 15, 60, 120] } }',
-            set_webhook: '{ "telegram": { "webhookUrl": "https://your-agent.example.com/kugi-reminder" } }',
-            set_telegram_template: '{ "telegram": { "messageTemplate": "🔔 {emoji}{title} at {time}" } }',
-            set_push_reminders: '{ "push": { "reminders": [{ "id": "r1", "offsetMinutes": 15 }, { "id": "r2", "offsetMinutes": 60, "message": "1 hour to go!" }] } }',
-            disable_push: '{ "push": { "enabled": false } }',
-            toggle_gcal: '{ "googleCalendar": { "enabled": true } }',
+          examples: {
+            set_webhook: { telegram: { webhookUrl: "https://your-agent.example.com/kugi-webhook" } },
+            set_global_reminders: { telegram: { reminderOffsets: [5, 15, 60] } },
+            set_template: { telegram: { messageTemplate: "🔔 {emoji}{title}{time}" } },
+            set_push_reminders: { push: { reminders: [{ id: "r1", offsetMinutes: 15 }, { id: "r2", offsetMinutes: 60, message: "1 hour to go!" }] } },
           },
         },
       ],
-      webhook_integration: {
-        description: "Register a webhook URL via PATCH /api/settings to receive real-time POSTs when Telegram reminders fire. Your agent receives block details and can proactively message you, ask questions, or take action — no polling needed.",
-        payload_example: {
+
+      // ── WEBHOOK ────────────────────────────────────────────────
+      webhook: {
+        how_to_enable: "PATCH /api/settings with { \"telegram\": { \"webhookUrl\": \"https://your-endpoint\" } }",
+        trigger: "Fires once per scheduled reminder offset. If blockReminderOffsets=[5,15,60], your endpoint receives 3 POSTs per event.",
+        payload: {
           event: "reminder",
-          blockId: "jd7abc123...",
+          blockId: "<task id>",
           title: "Leave for airport",
           emoji: "✈️",
           date: "2026-05-14",
           start_time: "17:45",
           end_time: null,
           category: "Travel",
-          notes: "Terminal 2, check-in closes 45 min before",
+          notes: "Terminal 2",
           notify_message: null,
           fired_at: "2026-05-14T15:45:00.000Z",
         },
-        setup: "PATCH /api/settings with body { \"telegram\": { \"webhookUrl\": \"https://your-agent/webhook\" } }. The webhook is called for every reminder offset that fires — if you have [5, 15, 60] configured, your agent gets 3 calls for each event.",
+        idempotency: "fired_at is the UTC ISO timestamp of when the reminder fired. Use blockId + fired_at as a dedup key if needed.",
+        errors: "Webhook errors are silently swallowed — Telegram delivery is never blocked by a failing webhook.",
       },
-      agent_instructions: "Use GET /api/stats at session start for orientation. Call GET /api/docs at the start of each session. Use GET /api/tasks?date=YYYY-MM-DD to check a specific day. Search before creating to avoid duplicates. For recurring events, set 'recurrence' on POST. Use bulk endpoints for efficiency. Use ?mode=future|all on DELETE for recurring series. WEBHOOK: the most reliable way to receive reminders is via webhook — PATCH /api/settings with telegram.webhookUrl pointing to your endpoint; you'll get a POST for each reminder offset that fires, no polling needed. MULTI-REMINDER: use telegram.reminderOffsets (array, max 4) to schedule multiple reminders per event, e.g. [5,15,60,120]. Confirm destructive actions with the user.",
+
+      // ── COMMON MISTAKES ────────────────────────────────────────
+      common_mistakes: [
+        "Reminders only fire if start_time is set on the block. A block with only a date gets no Telegram/push reminders.",
+        "blockReminderOffsets overrides the global setting entirely for that block. Set [] to silence, omit to inherit.",
+        "bulk-complete and bulk-delete with 'search' match ALL dates. Always confirm scope with the user.",
+        "Use 'id' field from responses (not '_id') for all operations.",
+        "Date format is YYYY-MM-DD. Time format is HH:MM (24h). Wrong formats are rejected with 400.",
+        "recurrence is write-only on POST. You cannot change a block's recurrence via PATCH — delete and recreate the series.",
+      ],
     });
   }),
 });
 
-// ── GET /api/info ──────────────────────────────────────────────
-// Returns schema, available routes, and current date — useful for AI agents
-// Deprecated: use /api/docs instead
+// ── GET /api/info (deprecated) ─────────────────────────────────
 http.route({
   path: "/api/info",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
-    return json({
-      description: "Kugi personal block calendar API. Deprecated — use GET /api/docs for full documentation (no auth required).",
-      current_date: new Date().toISOString().slice(0, 10),
-      schema: {
-        title: "string (required)",
-        date: "YYYY-MM-DD (required)",
-        emoji: "string (optional)",
-        category: "string (optional, default: Work)",
-        start_time: "HH:MM (optional)",
-        end_time: "HH:MM (optional)",
-        notes: "string (optional)",
-        completed: "boolean (optional, default: false)",
-        end_date: "YYYY-MM-DD (optional, for multi-day blocks)",
-        notify_before: "number (optional) — minutes before start_time to send reminders. null = off.",
-        notify_message: "string (optional) — custom notification text, overrides global template",
-        recurrence: "\"hourly\" | \"daily\" | \"monthly\" | \"yearly\" (optional)",
-        recurrenceGroupId: "string (optional, auto-set for recurring blocks)",
-      },
-      endpoints: {
-        "GET /api/docs": "Full API documentation — no auth required (preferred)",
-        "GET /api/info": "This endpoint — schema and route reference (deprecated)",
-        "GET /api/tasks": "List tasks. Query params: ?date=YYYY-MM-DD | ?from=YYYY-MM-DD&to=YYYY-MM-DD | ?search=text | ?completed=true|false",
-        "GET /api/tasks/:id": "Get a single task by ID",
-        "POST /api/tasks": "Create a task. If recurrence is set, creates all occurrences and returns { created: number }. Otherwise returns full task object.",
-        "PATCH /api/tasks/:id": "Update a task (partial). Returns full task object.",
-        "DELETE /api/tasks/:id": "Delete a task.",
-        "POST /api/tasks/:id/complete": "Toggle task completion. Returns full task object.",
-      },
-    });
+    return json({ deprecated: true, message: "Use GET /api/docs instead (no auth required)" });
+  }),
+});
+
+// ── GET /api/stats ─────────────────────────────────────────────
+http.route({
+  path: "/api/stats",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    const stats = await ctx.runQuery(api.blocks.getStats, {});
+    return json(stats);
   }),
 });
 
 // ── GET /api/tasks ─────────────────────────────────────────────
-// Query params: ?date= | ?from=&to= | ?search= | ?completed=
 http.route({
   path: "/api/tasks",
   method: "GET",
@@ -314,20 +330,23 @@ http.route({
     const search = url.searchParams.get("search")?.toLowerCase();
     const completedFilter = url.searchParams.get("completed");
 
-    let tasks = date
+    if (date && !isValidDate(date)) return json({ error: "date must be YYYY-MM-DD" }, 400);
+    if (from && !isValidDate(from)) return json({ error: "from must be YYYY-MM-DD" }, 400);
+    if (to && !isValidDate(to)) return json({ error: "to must be YYYY-MM-DD" }, 400);
+
+    let tasks: any[] = date
       ? await ctx.runQuery(api.blocks.listByDate, { date })
       : await ctx.runQuery(api.blocks.list, {});
 
     if (from || to) {
-      tasks = tasks.filter((t: any) => {
-        const taskDate = t.date;
-        if (from && taskDate < from) return false;
-        if (to && taskDate > to) return false;
+      tasks = tasks.filter(t => {
+        if (from && t.date < from) return false;
+        if (to && t.date > to) return false;
         return true;
       });
     }
     if (search) {
-      tasks = tasks.filter((t: any) =>
+      tasks = tasks.filter(t =>
         t.title?.toLowerCase().includes(search) ||
         t.notes?.toLowerCase().includes(search) ||
         t.category?.toLowerCase().includes(search) ||
@@ -336,15 +355,13 @@ http.route({
     }
     if (completedFilter !== null) {
       const want = completedFilter === "true";
-      tasks = tasks.filter((t: any) => t.completed === want);
+      tasks = tasks.filter(t => t.completed === want);
     }
-    return json(tasks);
+    return json(tasks.map(normalizeTask));
   }),
 });
 
 // ── POST /api/tasks ────────────────────────────────────────────
-// Body: { title, date, emoji?, category?, start_time?, end_time?, notes?, completed?, end_date?, recurrence?, notify_before?, notify_message?, blockReminderOffsets? }
-// Returns: full task object, or { created: number } if recurrence is set
 http.route({
   path: "/api/tasks",
   method: "POST",
@@ -352,10 +369,19 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!body?.title || !body?.date) return json({ error: "title and date are required" }, 400);
+    if (!body?.title?.trim()) return json({ error: "'title' is required" }, 400);
+    if (!body?.date) return json({ error: "'date' is required (YYYY-MM-DD)" }, 400);
+    if (!isValidDate(body.date)) return json({ error: "date must be YYYY-MM-DD" }, 400);
+    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
+    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
+    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
+    if (body.blockReminderOffsets !== undefined) {
+      const err = validateOffsets(body.blockReminderOffsets);
+      if (err) return json({ error: err }, 400);
+    }
 
     const commonFields = {
-      title: body.title,
+      title: String(body.title).trim(),
       emoji: body.emoji ?? undefined,
       category: body.category ?? "Work",
       date: body.date,
@@ -370,9 +396,9 @@ http.route({
     };
 
     if (body.recurrence) {
-      const validRecurrences = ["hourly", "daily", "monthly", "yearly"];
-      if (!validRecurrences.includes(body.recurrence)) {
-        return json({ error: "recurrence must be one of: hourly, daily, monthly, yearly" }, 400);
+      const valid = ["hourly", "daily", "monthly", "yearly"];
+      if (!valid.includes(body.recurrence)) {
+        return json({ error: `recurrence must be one of: ${valid.join(", ")}` }, 400);
       }
       const count = await ctx.runMutation(api.blocks.createRecurring, {
         ...commonFields,
@@ -383,7 +409,7 @@ http.route({
 
     const id = await ctx.runMutation(api.blocks.create, commonFields);
     const task = await ctx.runQuery(api.blocks.getById, { id });
-    return json(task, 201);
+    return json(normalizeTask(task), 201);
   }),
 });
 
@@ -396,18 +422,16 @@ http.route({
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const id = segments[2];
     if (!id) return json({ error: "id required" }, 400);
-
-    // Handle /api/tasks/:id/complete (shouldn't be GET but guard anyway)
-    if (segments[3] === "complete") return json({ error: "Use POST for complete" }, 405);
-
+    if (segments[3] === "complete") return json({ error: "Use POST for /complete" }, 405);
     const task = await ctx.runQuery(api.blocks.getById, { id: id as any });
     if (!task) return json({ error: "Not found" }, 404);
-    return json(task);
+    return json(normalizeTask(task));
   }),
 });
 
 // ── PATCH /api/tasks/:id ───────────────────────────────────────
-// Body: partial block fields. Returns full updated task.
+const PATCHABLE = new Set(["title","emoji","category","date","start_time","end_time","notes","completed","notify_before","end_date","notify_message","blockReminderOffsets"]);
+
 http.route({
   pathPrefix: "/api/tasks/",
   method: "PATCH",
@@ -418,11 +442,33 @@ http.route({
     if (!id) return json({ error: "id required" }, 400);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    const { recurrence, recurrenceGroupId, ...updateFields } = body;
-    await ctx.runMutation(api.blocks.update, { id: id as any, ...updateFields });
-    const task = await ctx.runQuery(api.blocks.getById, { id: id as any });
-    if (!task) return json({ error: "Not found" }, 404);
-    return json(task);
+
+    // Validate
+    if (body.date && !isValidDate(body.date)) return json({ error: "date must be YYYY-MM-DD" }, 400);
+    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
+    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
+    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
+    if (body.blockReminderOffsets !== undefined && body.blockReminderOffsets !== null) {
+      const err = validateOffsets(body.blockReminderOffsets);
+      if (err) return json({ error: err }, 400);
+    }
+
+    // Whitelist fields
+    const fields: any = {};
+    for (const key of Object.keys(body)) {
+      if (PATCHABLE.has(key)) fields[key] = body[key];
+    }
+    // null blockReminderOffsets means "revert to global" — send undefined
+    if (fields.blockReminderOffsets === null) fields.blockReminderOffsets = undefined;
+
+    if (Object.keys(fields).length === 0) return json({ error: "No patchable fields provided. Allowed: " + [...PATCHABLE].join(", ") }, 400);
+
+    const existing = await ctx.runQuery(api.blocks.getById, { id: id as any });
+    if (!existing) return json({ error: "Not found" }, 404);
+
+    await ctx.runMutation(api.blocks.update, { id: id as any, ...fields });
+    const updated = await ctx.runQuery(api.blocks.getById, { id: id as any });
+    return json(normalizeTask(updated));
   }),
 });
 
@@ -437,15 +483,16 @@ http.route({
     const id = segments[2];
     if (!id) return json({ error: "id required" }, 400);
     const mode = url.searchParams.get("mode") ?? "this";
+    if (!["this", "future", "all"].includes(mode)) return json({ error: "mode must be 'this', 'future', or 'all'" }, 400);
+
+    const existing = await ctx.runQuery(api.blocks.getById, { id: id as any });
+    if (!existing) return json({ error: "Not found" }, 404);
+
     if (mode !== "this") {
       const futureDays = url.searchParams.has("futureDays")
         ? parseInt(url.searchParams.get("futureDays")!)
         : undefined;
-      await ctx.runMutation(api.blocks.deleteRecurring, {
-        id: id as any,
-        mode: mode as "future" | "all",
-        futureDays,
-      });
+      await ctx.runMutation(api.blocks.deleteRecurring, { id: id as any, mode: mode as "future" | "all", futureDays });
     } else {
       await ctx.runMutation(api.blocks.remove, { id: id as any });
     }
@@ -463,25 +510,18 @@ http.route({
     const id = segments[2];
     const action = segments[3];
     if (!id) return json({ error: "id required" }, 400);
-    if (action !== "complete") return json({ error: "Unknown action. Use POST /api/tasks/:id/complete" }, 400);
+    if (action !== "complete") return json({ error: "Unknown action. Only POST /api/tasks/:id/complete is supported." }, 400);
+
+    const existing = await ctx.runQuery(api.blocks.getById, { id: id as any });
+    if (!existing) return json({ error: "Not found" }, 404);
+
     await ctx.runMutation(api.blocks.toggleComplete, { id: id as any });
     const task = await ctx.runQuery(api.blocks.getById, { id: id as any });
-    if (!task) return json({ error: "Not found" }, 404);
-    return json(task);
+    return json(normalizeTask(task));
   }),
 });
 
-// ── GET /api/stats ─────────────────────────────────────────────
-http.route({
-  path: "/api/stats",
-  method: "GET",
-  handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
-    const stats = await ctx.runQuery(api.blocks.getStats, {});
-    return json(stats);
-  }),
-});
-
+// ── GET /api/categories ────────────────────────────────────────
 const DEFAULT_CATEGORIES = [
   { name: "Work", emoji: "💼", color: "#4f7cff", default: true },
   { name: "Personal", emoji: "🏠", color: "#10b981", default: true },
@@ -493,7 +533,6 @@ const DEFAULT_CATEGORIES = [
   { name: "Other", emoji: "📌", color: "#6b7280", default: true },
 ];
 
-// ── GET /api/categories ────────────────────────────────────────
 http.route({
   path: "/api/categories",
   method: "GET",
@@ -501,10 +540,7 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     const custom = await ctx.runQuery(api.settings.getCustomCategories, {});
     const customList = Object.entries(custom as Record<string, any>).map(([name, v]) => ({
-      name,
-      emoji: v.emoji,
-      color: v.color,
-      default: false,
+      name, emoji: v.emoji, color: v.color, default: false,
     }));
     return json({ categories: [...DEFAULT_CATEGORIES, ...customList] });
   }),
@@ -518,9 +554,11 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!body?.name || !body?.emoji || !body?.color) return json({ error: "name, emoji, color required" }, 400);
-    await ctx.runMutation(api.settings.addCategory, { name: body.name, emoji: body.emoji, color: body.color });
-    return json({ ok: true, name: body.name }, 201);
+    if (!body?.name?.trim()) return json({ error: "name required" }, 400);
+    if (!body?.emoji) return json({ error: "emoji required" }, 400);
+    if (!body?.color) return json({ error: "color required (hex string, e.g. '#4f7cff')" }, 400);
+    await ctx.runMutation(api.settings.addCategory, { name: body.name.trim(), emoji: body.emoji, color: body.color });
+    return json({ ok: true, name: body.name.trim() }, 201);
   }),
 });
 
@@ -532,7 +570,7 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const name = decodeURIComponent(segments[2] ?? "");
-    if (!name) return json({ error: "name required" }, 400);
+    if (!name) return json({ error: "name required in path" }, 400);
     await ctx.runMutation(api.settings.removeCategory, { name });
     return json({ ok: true });
   }),
@@ -546,7 +584,15 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!Array.isArray(body?.blocks)) return json({ error: "blocks array required" }, 400);
+    if (!Array.isArray(body?.blocks)) return json({ error: "body.blocks must be an array" }, 400);
+    if (body.blocks.length === 0) return json({ created: 0 });
+    // Validate each block minimally
+    for (let i = 0; i < body.blocks.length; i++) {
+      const b = body.blocks[i];
+      if (!b?.title?.trim()) return json({ error: `blocks[${i}].title is required` }, 400);
+      if (!b?.date || !isValidDate(b.date)) return json({ error: `blocks[${i}].date must be YYYY-MM-DD` }, 400);
+      if (b.start_time && !isValidTime(b.start_time)) return json({ error: `blocks[${i}].start_time must be HH:MM` }, 400);
+    }
     const ids = await ctx.runMutation(api.blocks.bulkCreate, { blocks: body.blocks });
     return json({ created: ids.length }, 201);
   }),
@@ -560,24 +606,21 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
+
     let ids: string[] = body?.ids ?? [];
     if (body?.search) {
       const all: any[] = await ctx.runQuery(api.blocks.list);
       const q = (body.search as string).toLowerCase();
-      ids = all
-        .filter(b =>
-          b.title?.toLowerCase().includes(q) ||
-          b.notes?.toLowerCase().includes(q) ||
-          b.category?.toLowerCase().includes(q) ||
-          b.emoji?.includes(q)
-        )
-        .map(b => b._id);
+      ids = all.filter(b =>
+        b.title?.toLowerCase().includes(q) ||
+        b.notes?.toLowerCase().includes(q) ||
+        b.category?.toLowerCase().includes(q) ||
+        b.emoji?.includes(q)
+      ).map(b => b._id);
     }
-    if (!Array.isArray(ids) || ids.length === 0) return json({ updated: 0 });
-    const count = await ctx.runMutation(api.blocks.bulkComplete, {
-      ids,
-      completed: body.completed ?? true,
-    });
+    if (ids.length === 0) return json({ updated: 0 });
+    const count = await ctx.runMutation(api.blocks.bulkComplete, { ids, completed: body.completed ?? true });
     return json({ updated: count });
   }),
 });
@@ -590,20 +633,20 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+    if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
+
     let ids: string[] = body?.ids ?? [];
     if (body?.search) {
       const all: any[] = await ctx.runQuery(api.blocks.list);
       const q = (body.search as string).toLowerCase();
-      ids = all
-        .filter(b =>
-          b.title?.toLowerCase().includes(q) ||
-          b.notes?.toLowerCase().includes(q) ||
-          b.category?.toLowerCase().includes(q) ||
-          b.emoji?.includes(q)
-        )
-        .map(b => b._id);
+      ids = all.filter(b =>
+        b.title?.toLowerCase().includes(q) ||
+        b.notes?.toLowerCase().includes(q) ||
+        b.category?.toLowerCase().includes(q) ||
+        b.emoji?.includes(q)
+      ).map(b => b._id);
     }
-    if (!Array.isArray(ids) || ids.length === 0) return json({ deleted: 0 });
+    if (ids.length === 0) return json({ deleted: 0 });
     const count = await ctx.runMutation(api.blocks.bulkDelete, { ids });
     return json({ deleted: count });
   }),
@@ -617,14 +660,14 @@ http.route({
     if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-    if (!Array.isArray(body?.ids) || !body?.fields) return json({ error: "ids array and fields object required" }, 400);
+    if (!Array.isArray(body?.ids) || body.ids.length === 0) return json({ error: "body.ids must be a non-empty array" }, 400);
+    if (!body?.fields || typeof body.fields !== "object") return json({ error: "body.fields object required" }, 400);
     const count = await ctx.runMutation(api.blocks.bulkUpdate, { ids: body.ids, fields: body.fields });
     return json({ updated: count });
   }),
 });
 
 // ── GET /api/settings ─────────────────────────────────────────
-// Returns all configurable settings in one call.
 http.route({
   path: "/api/settings",
   method: "GET",
@@ -641,8 +684,11 @@ http.route({
         botToken: telegram.botToken,
         chatId: telegram.chatId,
         offsetMinutes: telegram.offsetMinutes,
+        reminderOffsets: telegram.reminderOffsets ?? null,
+        webhookUrl: telegram.webhookUrl ?? null,
         messageTemplate: telegramTemplate ?? "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}",
         templateVariables: ["{emoji}", "{title}", "{time}", "{date}", "{notes}", "{category}"],
+        note: "reminderOffsets overrides offsetMinutes when set. null reminderOffsets = fall back to [offsetMinutes].",
       },
       push: {
         enabled: pushEnabled,
@@ -657,12 +703,6 @@ http.route({
 });
 
 // ── PATCH /api/settings ────────────────────────────────────────
-// Update any subset of settings. All fields optional.
-// Body: {
-//   telegram?: { botToken?: string, chatId?: string, offsetMinutes?: number },
-//   push?: { enabled?: boolean },
-//   googleCalendar?: { enabled?: boolean, composioApiKey?: string },
-// }
 http.route({
   path: "/api/settings",
   method: "PATCH",
@@ -672,13 +712,17 @@ http.route({
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
     if (body?.telegram) {
+      if (body.telegram.reminderOffsets !== undefined) {
+        const err = validateOffsets(body.telegram.reminderOffsets);
+        if (err) return json({ error: `telegram.reminderOffsets: ${err}` }, 400);
+      }
       const current = await ctx.runQuery(api.settings.getTelegramConfig, {});
       await ctx.runMutation(api.settings.setTelegramConfig, {
         botToken: body.telegram.botToken ?? current.botToken ?? "",
         chatId: body.telegram.chatId ?? current.chatId ?? "",
         offsetMinutes: body.telegram.offsetMinutes ?? current.offsetMinutes ?? 15,
-        reminderOffsets: body.telegram.reminderOffsets ?? current.reminderOffsets ?? undefined,
-        webhookUrl: body.telegram.webhookUrl ?? current.webhookUrl ?? undefined,
+        reminderOffsets: body.telegram.reminderOffsets !== undefined ? body.telegram.reminderOffsets : (current.reminderOffsets ?? undefined),
+        webhookUrl: body.telegram.webhookUrl !== undefined ? body.telegram.webhookUrl : (current.webhookUrl ?? undefined),
       });
       if (body.telegram.messageTemplate !== undefined) {
         await ctx.runMutation(api.settings.setTelegramTemplate, { template: body.telegram.messageTemplate });
@@ -705,7 +749,27 @@ http.route({
       await ctx.runMutation(api.settings.setComposioApiKey, { value: body.googleCalendar.composioApiKey });
     }
 
-    return json({ ok: true });
+    // Return updated settings so caller can confirm
+    const telegram = await ctx.runQuery(api.settings.getTelegramConfig, {});
+    const telegramTemplate = await ctx.runQuery(api.settings.getTelegramTemplate, {});
+    const pushEnabled = await ctx.runQuery(api.settings.getPushEnabled, {});
+    const gcalEnabled = await ctx.runQuery(api.settings.getIntegrationEnabled, { integration: "googleCalendar" });
+    const remindersJson = await ctx.runQuery(api.settings.getReminders, {});
+    return json({
+      ok: true,
+      updated: {
+        telegram: {
+          botToken: telegram.botToken,
+          chatId: telegram.chatId,
+          offsetMinutes: telegram.offsetMinutes,
+          reminderOffsets: telegram.reminderOffsets ?? null,
+          webhookUrl: telegram.webhookUrl ?? null,
+          messageTemplate: telegramTemplate ?? "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}",
+        },
+        push: { enabled: pushEnabled, reminders: remindersJson ?? [] },
+        googleCalendar: { enabled: gcalEnabled },
+      },
+    });
   }),
 });
 
