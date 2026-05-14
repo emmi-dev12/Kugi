@@ -12,18 +12,20 @@ sync Google Calendar, and help me plan the week.
 Always call /api/docs at the start of every session.`;
 
 const WEEK_BLOCKS = [
-  { day: 0, title: 'Deep Work',  time: '09–11', color: '#5d8a6a', emoji: '💻' },
-  { day: 0, title: 'Standup',    time: '11–12', color: '#7a8a5d', emoji: '🗣️' },
-  { day: 1, title: 'Planning',   time: '10–11', color: '#7a8a5d', emoji: '🗂️' },
-  { day: 1, title: 'Call',       time: '14–15', color: '#a05a5a', emoji: '📞' },
-  { day: 2, title: 'Research',   time: '09–12', color: '#5d7a8a', emoji: '🔬' },
-  { day: 3, title: 'Writing',    time: '10–12', color: '#a08a5d', emoji: '✍️' },
-  { day: 3, title: 'Walk',       time: '17–18', color: '#6b8a7a', emoji: '🚶' },
-  { day: 4, title: 'Review',     time: '11–12', color: '#7a6a8a', emoji: '👁️' },
-  { day: 4, title: 'Deploy',     time: '15–16', color: '#5d8a6a', emoji: '🚀' },
+  { id: 1, day: 0, title: 'Deep Work',   time: '09–11', color: '#5d8a6a', emoji: '💻', notes: 'Focus session — auth module refactor.' },
+  { id: 2, day: 0, title: 'Standup',     time: '11–12', color: '#7a8a5d', emoji: '🗣️', notes: 'Daily sync. Keep it short.' },
+  { id: 3, day: 0, title: 'Lunch',       time: '12–13', color: '#6b8a7a', emoji: '🥗', notes: null },
+  { id: 4, day: 1, title: 'Planning',    time: '10–11', color: '#7a8a5d', emoji: '🗂️', notes: 'Sprint planning session.' },
+  { id: 5, day: 1, title: 'Client Call', time: '14–15', color: '#a05a5a', emoji: '📞', notes: 'Prepare the live demo beforehand.' },
+  { id: 6, day: 2, title: 'Research',    time: '09–12', color: '#5d7a8a', emoji: '🔬', notes: 'New rendering approach investigation.' },
+  { id: 7, day: 2, title: 'Code Review', time: '14–15', color: '#5d8a6a', emoji: '👁️', notes: 'Review open PRs from the team.' },
+  { id: 8, day: 3, title: 'Writing',     time: '10–12', color: '#a08a5d', emoji: '✍️', notes: 'Draft the technical spec doc.' },
+  { id: 9, day: 3, title: 'Walk',        time: '17–18', color: '#6b8a7a', emoji: '🚶', notes: null },
+  { id: 10, day: 4, title: 'Review',     time: '11–12', color: '#7a6a8a', emoji: '👁️', notes: 'Weekly retro and review.' },
+  { id: 11, day: 4, title: 'Deploy',     time: '15–16', color: '#5d8a6a', emoji: '🚀', notes: 'Ship the v1.2 release.' },
 ];
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const DATES = ['5', '6', '7', '8', '9'];
 
 /* ─── utilities ─── */
@@ -64,11 +66,17 @@ export default function Landing({ onGetStarted }) {
   const os = detectOS();
   const canPrompt = !!installPrompt;
 
-  const previewRef = useRef(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const heroRef = useRef(null);
+  const isMobileDevice = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  const [previewMode, setPreviewMode] = useState(isMobileDevice ? 'mobile' : 'desktop');
+  const [previewDay, setPreviewDay] = useState(0);
+  const [selectedBlock, setSelectedBlock] = useState(null);
+
+  const handleBlockClick = useCallback((block) => {
+    setSelectedBlock(prev => prev?.id === block.id ? null : block);
+  }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (window.__pwaInstallPrompt) { setInstallPrompt(window.__pwaInstallPrompt); window.__pwaInstallPrompt = null; }
     const h = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', h);
@@ -76,14 +84,6 @@ export default function Landing({ onGetStarted }) {
     if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
     return () => window.removeEventListener('beforeinstallprompt', h);
   }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    const el = heroRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -6, y: ((e.clientX - r.left) / r.width - 0.5) * 5 });
-  }, []);
-  const handleMouseLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
 
   function handleOpen() {
     if (localStorage.getItem('kugiConvexUrl')) navigate('/app');
@@ -129,7 +129,7 @@ export default function Landing({ onGetStarted }) {
       </nav>
 
       {/* ── HERO ── */}
-      <section className={styles.hero} ref={heroRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <section className={styles.hero}>
         <div className={styles.heroStripe} aria-hidden />
 
         {/* Left: copy */}
@@ -172,58 +172,128 @@ export default function Landing({ onGetStarted }) {
           </div>
         </div>
 
-        {/* Right: bento preview */}
+        {/* Right: interactive preview */}
         <div className={styles.heroRight}>
-          <div
-            ref={previewRef}
-            className={styles.preview}
-            style={{
-              transform: `perspective(1100px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-              transition: tilt.x === 0 ? 'transform 0.9s cubic-bezier(0.23,1,0.32,1)' : 'transform 0.08s linear',
-            }}
-          >
+          <div className={styles.preview}>
+
+            {/* Title bar */}
             <div className={styles.previewBar}>
               <span className={styles.dot} style={{ background: '#ff5f57' }} />
               <span className={styles.dot} style={{ background: '#febc2e' }} />
               <span className={styles.dot} style={{ background: '#28c840' }} />
               <span className={styles.previewLabel}>kugi — week of may 5</span>
+              {/* View toggle */}
+              <div className={styles.previewToggle}>
+                <button
+                  className={`${styles.previewToggleBtn} ${previewMode === 'desktop' ? styles.previewToggleActive : ''}`}
+                  onClick={() => { setPreviewMode('desktop'); setSelectedBlock(null); }}
+                  title="Desktop view"
+                >
+                  <DesktopIcon />
+                </button>
+                <button
+                  className={`${styles.previewToggleBtn} ${previewMode === 'mobile' ? styles.previewToggleActive : ''}`}
+                  onClick={() => { setPreviewMode('mobile'); setSelectedBlock(null); }}
+                  title="Mobile view"
+                >
+                  <MobileIcon />
+                </button>
+              </div>
               <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />live</div>
             </div>
 
-            <div className={styles.previewBody}>
-              {/* Day headers */}
-              <div className={styles.previewDayRow}>
-                {DAYS.map((d, i) => (
-                  <div key={i} className={`${styles.previewDayCell} ${i === 2 ? styles.previewDayToday : ''}`}>
-                    <span className={styles.previewDayName}>{d}</span>
-                    <span className={`${styles.previewDayNum} ${i === 2 ? styles.previewDayNumToday : ''}`}>{DATES[i]}</span>
-                  </div>
-                ))}
+            {previewMode === 'desktop' ? (
+              /* ── Desktop view ── */
+              <div className={styles.previewBody}>
+                <div className={styles.previewDayRow}>
+                  {DAYS.map((d, i) => (
+                    <div key={i} className={`${styles.previewDayCell} ${i === 2 ? styles.previewDayToday : ''}`}>
+                      <span className={styles.previewDayName}>{d}</span>
+                      <span className={`${styles.previewDayNum} ${i === 2 ? styles.previewDayNumToday : ''}`}>{DATES[i]}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.previewGrid}>
+                  {DAYS.map((_, dayIdx) => (
+                    <div key={dayIdx} className={styles.previewCol}>
+                      {WEEK_BLOCKS.filter(b => b.day === dayIdx).map((b) => (
+                        <button
+                          key={b.id}
+                          className={`${styles.previewBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
+                          style={{ borderLeftColor: b.color, background: selectedBlock?.id === b.id ? `${b.color}30` : `${b.color}18` }}
+                          onClick={() => handleBlockClick(b)}
+                        >
+                          <div className={styles.previewBlockEmoji}>{b.emoji}</div>
+                          <div>
+                            <div className={styles.previewBlockTitle}>{b.title}</div>
+                            <div className={styles.previewBlockTime}>{b.time}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
-
-              {/* Block columns */}
-              <div className={styles.previewGrid}>
-                {DAYS.map((_, dayIdx) => (
-                  <div key={dayIdx} className={styles.previewCol}>
-                    {WEEK_BLOCKS.filter(b => b.day === dayIdx).map((b, bi) => (
-                      <div key={bi} className={styles.previewBlock} style={{ borderLeftColor: b.color, background: `${b.color}18` }}>
-                        <div className={styles.previewBlockEmoji}>{b.emoji}</div>
-                        <div>
+            ) : (
+              /* ── Mobile view ── */
+              <div className={styles.previewMobileBody}>
+                <div className={styles.previewMobileNav}>
+                  <button
+                    className={styles.previewNavBtn}
+                    onClick={() => { setPreviewDay(d => Math.max(0, d - 1)); setSelectedBlock(null); }}
+                    disabled={previewDay === 0}
+                  >‹</button>
+                  <div className={styles.previewMobileDay}>
+                    <span className={styles.previewMobileDayName}>{DAYS[previewDay]}</span>
+                    <span className={`${styles.previewMobileDayNum} ${previewDay === 2 ? styles.previewDayNumToday : ''}`}>{DATES[previewDay]}</span>
+                  </div>
+                  <button
+                    className={styles.previewNavBtn}
+                    onClick={() => { setPreviewDay(d => Math.min(4, d + 1)); setSelectedBlock(null); }}
+                    disabled={previewDay === 4}
+                  >›</button>
+                </div>
+                <div className={styles.previewMobileCol}>
+                  {WEEK_BLOCKS.filter(b => b.day === previewDay).length === 0 ? (
+                    <div className={styles.previewEmpty}>No blocks today</div>
+                  ) : (
+                    WEEK_BLOCKS.filter(b => b.day === previewDay).map((b) => (
+                      <button
+                        key={b.id}
+                        className={`${styles.previewMobileBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
+                        style={{ borderLeftColor: b.color, background: selectedBlock?.id === b.id ? `${b.color}30` : `${b.color}18` }}
+                        onClick={() => handleBlockClick(b)}
+                      >
+                        <span className={styles.previewMobileBlockEmoji}>{b.emoji}</span>
+                        <div className={styles.previewMobileBlockInfo}>
                           <div className={styles.previewBlockTitle}>{b.title}</div>
                           <div className={styles.previewBlockTime}>{b.time}</div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                        {selectedBlock?.id === b.id && <span className={styles.previewBlockCheck}>✓</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Floating AI badge */}
-            <div className={styles.floatBadge} style={{ bottom: 24, right: 20 }}>
-              <span className={styles.floatBadgeIcon}>🤖</span>
-              <span>AI connected</span>
-            </div>
+            {/* Block detail panel */}
+            {selectedBlock && (
+              <div className={styles.previewDetail}>
+                <div className={styles.previewDetailBar}>
+                  <span className={styles.previewDetailEmoji}>{selectedBlock.emoji}</span>
+                  <div className={styles.previewDetailInfo}>
+                    <div className={styles.previewDetailTitle}>{selectedBlock.title}</div>
+                    <div className={styles.previewDetailTime}>{selectedBlock.time}</div>
+                  </div>
+                  <button className={styles.previewDetailClose} onClick={() => setSelectedBlock(null)}>×</button>
+                </div>
+                {selectedBlock.notes && (
+                  <div className={styles.previewDetailNotes}>{selectedBlock.notes}</div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </section>
@@ -523,6 +593,24 @@ function LockIcon() {
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
       <rect x="2.5" y="5.5" width="8" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M4 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function DesktopIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="1" y="1.5" width="10" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M4 10.5h4M6 8.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function MobileIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="3" y="0.75" width="6" height="10.5" rx="1.3" stroke="currentColor" strokeWidth="1.2"/>
+      <circle cx="6" cy="9.5" r="0.65" fill="currentColor"/>
     </svg>
   );
 }
