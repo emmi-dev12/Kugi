@@ -44,11 +44,16 @@ function isValidTime(s: any): boolean {
   return typeof s === "string" && /^\d{2}:\d{2}$/.test(s);
 }
 
-// Validate blockReminderOffsets: must be an array of 0–4 positive numbers
-function validateOffsets(v: any): string | null {
-  if (!Array.isArray(v)) return "blockReminderOffsets must be an array";
-  if (v.length > 4) return "blockReminderOffsets max length is 4";
-  if (!v.every((x: any) => typeof x === "number" && x >= 0)) return "blockReminderOffsets values must be non-negative numbers";
+// Validate blockReminders: array of {offsetMinutes, message?}, max 6 entries
+function validateBlockReminders(v: any): string | null {
+  if (!Array.isArray(v)) return "blockReminders must be an array";
+  if (v.length > 6) return "blockReminders max length is 6";
+  for (let i = 0; i < v.length; i++) {
+    const r = v[i];
+    if (typeof r !== "object" || r === null) return `blockReminders[${i}] must be an object`;
+    if (typeof r.offsetMinutes !== "number" || r.offsetMinutes < 0) return `blockReminders[${i}].offsetMinutes must be a non-negative number`;
+    if (r.message !== undefined && typeof r.message !== "string") return `blockReminders[${i}].message must be a string`;
+  }
   return null;
 }
 
@@ -86,7 +91,7 @@ http.route({
         step2: "GET /api/tasks?date=YYYY-MM-DD — inspect a specific day",
         step3: "Search before creating: GET /api/tasks?search=keyword to avoid duplicates",
         step4: "For reminders: PATCH /api/settings with { telegram: { webhookUrl: 'https://your-endpoint' } } to receive real-time POSTs instead of polling",
-        step5: "For per-block reminders: include blockReminderOffsets:[5,15,60] when creating/updating a task",
+        step5: "For per-block reminders: include blockReminders:[{offsetMinutes:15,message:'Start packing!'},{offsetMinutes:5,message:'Almost time!'}] when creating/updating a task",
         rule_confirm_destructive: "ALWAYS confirm with the user before bulk-delete, bulk-complete, or deleting recurring series",
         rule_ids: "Task IDs come from the 'id' field in responses. Use them for PATCH/DELETE/complete.",
         rule_dates: "All dates are YYYY-MM-DD. All times are HH:MM (24h). Timezone is set by the user in Settings.",
@@ -119,15 +124,15 @@ http.route({
         completed: "boolean (default: false)",
         notify_before: "number|null (optional) — push notification offset in minutes. null = off.",
         notify_message: "string (optional) — custom text sent verbatim via Telegram + push, overriding the global template",
-        blockReminderOffsets: "number[] (optional, max 4) — per-block Telegram reminder schedule in minutes before start_time. Examples: [] = no Telegram reminders for this block; [15] = one reminder 15 min before; [5,15,60,120] = four reminders. undefined/omitted = use global setting from Settings.",
+        blockReminders: "{ offsetMinutes: number, message?: string }[] (optional, max 6) — per-block Telegram reminder schedule. Each entry fires one reminder. message is sent verbatim if set, otherwise falls back to block notify_message, then global template. Examples: [] = silence this block; [{offsetMinutes:15}] = one reminder, default message; [{offsetMinutes:60,message:'Start packing!'},{offsetMinutes:15,message:'Almost time!'},{offsetMinutes:5,message:'Go go go!'}] = three reminders with custom text. undefined/omitted = use global setting.",
         recurrence: "'hourly'|'daily'|'monthly'|'yearly' (optional, write-only on POST) — auto-generates all future occurrences",
         recurrenceGroupId: "string (read-only) — shared ID for a recurring series",
       },
 
       // ── REMINDERS EXPLAINED ────────────────────────────────────
       reminders_explained: {
-        telegram_global: "Global Telegram reminder schedule lives in Settings (GET/PATCH /api/settings). Applied to all blocks that don't have blockReminderOffsets set.",
-        telegram_per_block: "Set blockReminderOffsets on a task to override the global schedule for that block. [] = silence this block. [5,30] = remind at 5 and 30 min before.",
+        telegram_global: "Global Telegram reminder schedule lives in Settings (GET/PATCH /api/settings). Applied to all blocks that don't have blockReminders set.",
+        telegram_per_block: "Set blockReminders on a task to override the global schedule for that block. [] = silence this block. [{offsetMinutes:5,message:'Go!'},{offsetMinutes:30}] = two reminders, first with custom text, second uses default template.",
         push_global: "Push notification rules live in Settings as push.reminders array. Applied to blocks by offset from start_time.",
         notify_message: "Set notify_message on a task to override the Telegram message template for that specific reminder. Sent verbatim.",
         webhook: "Set telegram.webhookUrl in Settings to receive a POST every time a Telegram reminder fires — no polling needed.",
@@ -164,17 +169,17 @@ http.route({
         },
         {
           method: "POST", path: "/api/tasks", auth: true,
-          description: "Create a task. Include blockReminderOffsets to set per-block reminders. If recurrence is set, creates all future occurrences.",
+          description: "Create a task. Include blockReminders to set per-block reminders with optional custom messages. If recurrence is set, creates all future occurrences.",
           required: ["title", "date"],
-          optional: ["emoji", "category", "start_time", "end_time", "notes", "completed", "end_date", "notify_before", "notify_message", "blockReminderOffsets", "recurrence"],
+          optional: ["emoji", "category", "start_time", "end_time", "notes", "completed", "end_date", "notify_before", "notify_message", "blockReminders", "recurrence"],
           response: "Task object (201), or { created: number } if recurrence was set",
-          example: { title: "Doctor appointment", date: "2026-05-15", start_time: "10:00", emoji: "🏥", category: "Health", blockReminderOffsets: [15, 60] },
+          example: { title: "Flight to NYC", date: "2026-05-15", start_time: "14:00", emoji: "✈️", category: "Travel", blockReminders: [{ offsetMinutes: 120, message: "Start packing!" }, { offsetMinutes: 30, message: "Head to the airport." }, { offsetMinutes: 5, message: "Last call — go!" }] },
         },
         {
           method: "PATCH", path: "/api/tasks/:id", auth: true,
           description: "Partially update a task. Only send fields to change. Rescheduled reminders fire automatically.",
-          patchable_fields: ["title", "emoji", "category", "date", "start_time", "end_time", "notes", "completed", "notify_before", "end_date", "notify_message", "blockReminderOffsets"],
-          note_offsets: "To silence Telegram for a block: PATCH with blockReminderOffsets: []. To use global setting: PATCH with blockReminderOffsets: null (omit the field).",
+          patchable_fields: ["title", "emoji", "category", "date", "start_time", "end_time", "notes", "completed", "notify_before", "end_date", "notify_message", "blockReminders"],
+          note_offsets: "To silence Telegram for this block: PATCH with blockReminders: []. To revert to global setting: omit blockReminders or send null. To update messages: send the full new blockReminders array.",
           response: "Updated task object",
         },
         {
@@ -265,7 +270,7 @@ http.route({
       // ── WEBHOOK ────────────────────────────────────────────────
       webhook: {
         how_to_enable: "PATCH /api/settings with { \"telegram\": { \"webhookUrl\": \"https://your-endpoint\" } }",
-        trigger: "Fires once per scheduled reminder offset. If blockReminderOffsets=[5,15,60], your endpoint receives 3 POSTs per event.",
+        trigger: "Fires once per scheduled reminder. If blockReminders has 3 entries, your endpoint receives 3 POSTs per event. notify_message in the payload is the per-reminder message (if set), otherwise the block-level message, otherwise null.",
         payload: {
           event: "reminder",
           blockId: "<task id>",
@@ -286,7 +291,7 @@ http.route({
       // ── COMMON MISTAKES ────────────────────────────────────────
       common_mistakes: [
         "Reminders only fire if start_time is set on the block. A block with only a date gets no Telegram/push reminders.",
-        "blockReminderOffsets overrides the global setting entirely for that block. Set [] to silence, omit to inherit.",
+        "blockReminders overrides the global setting entirely for that block. Set [] to silence all Telegram reminders, omit the field to inherit global setting.",
         "bulk-complete and bulk-delete with 'search' match ALL dates. Always confirm scope with the user.",
         "Use 'id' field from responses (not '_id') for all operations.",
         "Date format is YYYY-MM-DD. Time format is HH:MM (24h). Wrong formats are rejected with 400.",
@@ -375,8 +380,8 @@ http.route({
     if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
     if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
     if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
-    if (body.blockReminderOffsets !== undefined) {
-      const err = validateOffsets(body.blockReminderOffsets);
+    if (body.blockReminders !== undefined) {
+      const err = validateBlockReminders(body.blockReminders);
       if (err) return json({ error: err }, 400);
     }
 
@@ -392,7 +397,7 @@ http.route({
       end_date: body.end_date ?? undefined,
       notify_before: body.notify_before ?? undefined,
       notify_message: body.notify_message ?? undefined,
-      blockReminderOffsets: Array.isArray(body.blockReminderOffsets) ? body.blockReminderOffsets : undefined,
+      blockReminders: Array.isArray(body.blockReminders) ? body.blockReminders : undefined,
     };
 
     if (body.recurrence) {
@@ -430,7 +435,7 @@ http.route({
 });
 
 // ── PATCH /api/tasks/:id ───────────────────────────────────────
-const PATCHABLE = new Set(["title","emoji","category","date","start_time","end_time","notes","completed","notify_before","end_date","notify_message","blockReminderOffsets"]);
+const PATCHABLE = new Set(["title","emoji","category","date","start_time","end_time","notes","completed","notify_before","end_date","notify_message","blockReminders"]);
 
 http.route({
   pathPrefix: "/api/tasks/",
@@ -448,8 +453,8 @@ http.route({
     if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
     if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
     if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
-    if (body.blockReminderOffsets !== undefined && body.blockReminderOffsets !== null) {
-      const err = validateOffsets(body.blockReminderOffsets);
+    if (body.blockReminders !== undefined && body.blockReminders !== null) {
+      const err = validateBlockReminders(body.blockReminders);
       if (err) return json({ error: err }, 400);
     }
 
@@ -458,8 +463,8 @@ http.route({
     for (const key of Object.keys(body)) {
       if (PATCHABLE.has(key)) fields[key] = body[key];
     }
-    // null blockReminderOffsets means "revert to global" — send undefined
-    if (fields.blockReminderOffsets === null) fields.blockReminderOffsets = undefined;
+    // null blockReminders means "revert to global setting" — send undefined
+    if (fields.blockReminders === null) fields.blockReminders = undefined;
 
     if (Object.keys(fields).length === 0) return json({ error: "No patchable fields provided. Allowed: " + [...PATCHABLE].join(", ") }, 400);
 

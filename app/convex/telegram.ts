@@ -5,8 +5,11 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 
 export const sendReminder = internalAction({
-  args: { blockId: v.id("blocks") },
-  handler: async (ctx, { blockId }) => {
+  args: {
+    blockId: v.id("blocks"),
+    offsetMessage: v.union(v.string(), v.null()),  // per-reminder custom message (null = not set)
+  },
+  handler: async (ctx, { blockId, offsetMessage }) => {
     const block = await ctx.runQuery(api.blocks.getById, { id: blockId });
     if (!block || block.completed) return;
 
@@ -15,7 +18,10 @@ export const sendReminder = internalAction({
     if (!botToken || !chatId) return;
 
     let text: string;
-    if (block.notify_message) {
+    // Priority: per-reminder message > block-level notify_message > global template
+    if (offsetMessage) {
+      text = offsetMessage;
+    } else if (block.notify_message) {
       text = block.notify_message;
     } else {
       const templateRaw = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramTemplate" });
@@ -55,7 +61,7 @@ export const sendReminder = internalAction({
             end_time: block.end_time ?? null,
             category: block.category,
             notes: block.notes ?? null,
-            notify_message: block.notify_message ?? null,
+            notify_message: offsetMessage || block.notify_message || null,
             fired_at: new Date().toISOString(),
           }),
         });
