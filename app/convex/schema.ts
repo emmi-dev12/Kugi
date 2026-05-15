@@ -16,6 +16,7 @@ export default defineSchema({
     end_date: v.optional(v.string()),
     telegramJobId: v.optional(v.id("_scheduled_functions")),
     telegramJobIds: v.optional(v.array(v.string())),
+    sendblueJobIds: v.optional(v.array(v.string())),
     recurrence: v.optional(v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly"))),
     recurrenceGroupId: v.optional(v.string()),
     googleEventId: v.optional(v.string()),

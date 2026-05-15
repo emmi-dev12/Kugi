@@ -304,6 +304,75 @@ export const setTelegramTemplate = mutation({
   },
 });
 
+export const getSendblueConfig = query({
+  args: {},
+  handler: async (ctx) => {
+    const apiKeyRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "sendblueApiKey")).first();
+    const apiSecretRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "sendblueApiSecret")).first();
+    const recipientRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "sendblueRecipient")).first();
+    const reminderOffsetsRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "sendblueReminderOffsets")).first();
+    const channelEnabledRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "channelEnabled_sendblue")).first();
+    let reminderOffsets: number[] | null = null;
+    if (reminderOffsetsRow?.value) {
+      try { reminderOffsets = JSON.parse(reminderOffsetsRow.value); } catch {}
+    }
+    return {
+      apiKey: apiKeyRow?.value ?? null,
+      apiSecret: apiSecretRow?.value ?? null,
+      recipient: recipientRow?.value ?? null,
+      reminderOffsets,
+      channelEnabled: channelEnabledRow?.value !== "false",
+    };
+  },
+});
+
+export const setSendblueConfig = mutation({
+  args: {
+    apiKey: v.string(),
+    apiSecret: v.string(),
+    recipient: v.string(),
+    reminderOffsets: v.optional(v.array(v.number())),
+    channelEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { apiKey, apiSecret, recipient, reminderOffsets, channelEnabled }) => {
+    const pairs: [string, string][] = [
+      ["sendblueApiKey", apiKey],
+      ["sendblueApiSecret", apiSecret],
+      ["sendblueRecipient", recipient],
+    ];
+    if (reminderOffsets !== undefined) {
+      pairs.push(["sendblueReminderOffsets", JSON.stringify(reminderOffsets)]);
+    }
+    if (channelEnabled !== undefined) {
+      pairs.push(["channelEnabled_sendblue", channelEnabled ? "true" : "false"]);
+    }
+    for (const [key, value] of pairs) {
+      const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
+      if (existing) await ctx.db.patch(existing._id, { value });
+      else await ctx.db.insert("settings", { key, value });
+    }
+  },
+});
+
+export const getTelegramChannelEnabled = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "channelEnabled_telegram")).first();
+    return row?.value !== "false"; // default true
+  },
+});
+
+export const setChannelEnabled = mutation({
+  args: { channel: v.string(), enabled: v.boolean() },
+  handler: async (ctx, { channel, enabled }) => {
+    const key = `channelEnabled_${channel}`;
+    const value = enabled ? "true" : "false";
+    const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
+    if (existing) await ctx.db.patch(existing._id, { value });
+    else await ctx.db.insert("settings", { key, value });
+  },
+});
+
 export const setIntegrationEnabled = mutation({
   args: { integration: v.string(), enabled: v.boolean() },
   handler: async (ctx, { integration, enabled }) => {
