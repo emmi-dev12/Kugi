@@ -27,13 +27,15 @@ export const sendReminder = internalAction({
       const templateRaw = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramTemplate" });
       const DEFAULT_TEMPLATE = "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}";
       const template = templateRaw || DEFAULT_TEMPLATE;
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const vars: Record<string, string> = {
         emoji: block.emoji ? `${block.emoji} ` : "",
-        title: block.title ?? "",
+        title: esc(block.title ?? ""),
         time: block.start_time ? ` starts at ${block.start_time}` : " is coming up",
         date: block.date ?? "",
-        notes: block.notes ? `\n\n${block.notes}` : "",
-        category: block.category ?? "",
+        notes: block.notes ? `\n\n${esc(block.notes)}` : "",
+        category: esc(block.category ?? ""),
       };
       text = template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
     }
