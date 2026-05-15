@@ -17,12 +17,27 @@ function json(data: unknown, status = 200) {
   });
 }
 
+// Constant-time string comparison to prevent timing-oracle attacks on the API key.
+function constantTimeEqual(a: string, b: string): boolean {
+  const aLen = a.length;
+  const bLen = b.length;
+  // Always iterate max(aLen, bLen) iterations — no early exit.
+  let diff = aLen ^ bLen;
+  const len = Math.max(aLen, bLen);
+  for (let i = 0; i < len; i++) {
+    const ac = i < aLen ? a.charCodeAt(i) : 0;
+    const bc = i < bLen ? b.charCodeAt(i) : 0;
+    diff |= ac ^ bc;
+  }
+  return diff === 0;
+}
+
 async function authenticate(ctx: any, req: Request): Promise<boolean> {
   const auth = req.headers.get("Authorization") ?? "";
   if (!auth.startsWith("Bearer ")) return false;
   const token = auth.slice(7);
   const storedKey = await ctx.runQuery(api.settings.getApiKey, {});
-  return storedKey !== null && storedKey === token;
+  return storedKey !== null && constantTimeEqual(storedKey, token);
 }
 
 // Normalize a raw Convex block for API consumers:
@@ -34,14 +49,21 @@ function normalizeTask(t: any) {
   return { id: _id, ...rest };
 }
 
-// Validate YYYY-MM-DD
+// Validate YYYY-MM-DD — format AND calendar range.
 function isValidDate(s: any): boolean {
-  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, mo, d] = s.split("-").map(Number);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  // Verify the date actually exists (catches Feb 30, Apr 31, etc.)
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
 }
 
-// Validate HH:MM
+// Validate HH:MM — 24-hour clock range.
 function isValidTime(s: any): boolean {
-  return typeof s === "string" && /^\d{2}:\d{2}$/.test(s);
+  if (typeof s !== "string" || !/^\d{2}:\d{2}$/.test(s)) return false;
+  const [h, m] = s.split(":").map(Number);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59;
 }
 
 // Validate blockReminders: array of {atTime: "HH:MM", message?}, max 6 entries
@@ -52,7 +74,10 @@ function validateBlockReminders(v: any): string | null {
     const r = v[i];
     if (typeof r !== "object" || r === null) return `blockReminders[${i}] must be an object`;
     if (!isValidTime(r.atTime)) return `blockReminders[${i}].atTime must be a valid HH:MM string (e.g. "09:00")`;
-    if (r.message !== undefined && typeof r.message !== "string") return `blockReminders[${i}].message must be a string`;
+    if (r.message !== undefined) {
+      if (typeof r.message !== "string") return `blockReminders[${i}].message must be a string`;
+      if (r.message.length > MAX_REMINDER_MSG) return `blockReminders[${i}].message must be ${MAX_REMINDER_MSG} characters or fewer`;
+    }
   }
   return null;
 }
@@ -73,17 +98,50 @@ function mask(v: string | null | undefined): string | null {
   return v ? "***" : null;
 }
 
-// Validate a webhook URL: must be HTTPS and not a private/loopback address
+// Validate a webhook URL: must be HTTPS and not a private/loopback/metadata address.
 function validateWebhookUrl(url: string): string | null {
   let parsed: URL;
   try { parsed = new URL(url); } catch { return "must be a valid URL"; }
   if (parsed.protocol !== "https:") return "must use HTTPS";
-  const h = parsed.hostname;
-  if (h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h.endsWith(".local")) {
+  const h = parsed.hostname.toLowerCase();
+
+  // Loopback and local hostnames
+  if (h === "localhost" || h === "0.0.0.0" || h.endsWith(".local") || h.endsWith(".localhost")) {
     return "loopback/local addresses are not allowed";
   }
+
+  // Strip IPv6 brackets for range checks
+  const bare = h.startsWith("[") && h.endsWith("]") ? h.slice(1, -1) : h;
+
+  // IPv6 loopback (::1) and unspecified (::/128)
+  if (bare === "::1" || bare === "::" || bare === "0:0:0:0:0:0:0:1") {
+    return "loopback addresses are not allowed";
+  }
+
+  // Check private/reserved IPv4 ranges
+  const v4 = bare.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [, a, b, c, d] = v4.map(Number);
+    if (a > 255 || b > 255 || c > 255 || d > 255) return "invalid IP address";
+    if (a === 127) return "loopback addresses are not allowed";
+    if (a === 10) return "private IP ranges are not allowed";
+    if (a === 172 && b >= 16 && b <= 31) return "private IP ranges are not allowed";
+    if (a === 192 && b === 168) return "private IP ranges are not allowed";
+    if (a === 169 && b === 254) return "link-local/cloud-metadata addresses are not allowed";
+    if (a === 100 && b >= 64 && b <= 127) return "shared address space (RFC 6598) not allowed";
+    if (a === 0) return "invalid IP address";
+  }
+
   return null;
 }
+
+// Hard limits applied at the HTTP API layer.
+const MAX_BULK = 500;          // max items in any single bulk operation
+const MAX_TITLE = 500;         // chars
+const MAX_NOTES = 50_000;      // chars (~10 pages)
+const MAX_EMOJI = 10;          // grapheme clusters
+const MAX_NOTIFY_MSG = 1_000;  // chars
+const MAX_REMINDER_MSG = 1_000; // chars
 
 // ── OPTIONS preflight ──────────────────────────────────────────
 const PREFLIGHT_PATHS = [
@@ -404,10 +462,14 @@ http.route({
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.title?.trim()) return json({ error: "'title' is required" }, 400);
     if (!body?.date) return json({ error: "'date' is required (YYYY-MM-DD)" }, 400);
-    if (!isValidDate(body.date)) return json({ error: "date must be YYYY-MM-DD" }, 400);
-    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
-    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
-    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
+    if (!isValidDate(body.date)) return json({ error: "date must be a valid YYYY-MM-DD" }, 400);
+    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be a valid YYYY-MM-DD" }, 400);
+    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM (00:00–23:59)" }, 400);
+    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM (00:00–23:59)" }, 400);
+    if (typeof body.title === "string" && body.title.trim().length > MAX_TITLE) return json({ error: `title must be ${MAX_TITLE} characters or fewer` }, 400);
+    if (typeof body.notes === "string" && body.notes.length > MAX_NOTES) return json({ error: `notes must be ${MAX_NOTES} characters or fewer` }, 400);
+    if (typeof body.emoji === "string" && [...new Intl.Segmenter().segment(body.emoji)].length > MAX_EMOJI) return json({ error: `emoji must be ${MAX_EMOJI} grapheme clusters or fewer` }, 400);
+    if (typeof body.notify_message === "string" && body.notify_message.length > MAX_NOTIFY_MSG) return json({ error: `notify_message must be ${MAX_NOTIFY_MSG} characters or fewer` }, 400);
     if (body.blockReminders !== undefined) {
       const err = validateBlockReminders(body.blockReminders);
       if (err) return json({ error: err }, 400);
@@ -477,10 +539,13 @@ http.route({
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
     // Validate
-    if (body.date && !isValidDate(body.date)) return json({ error: "date must be YYYY-MM-DD" }, 400);
-    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be YYYY-MM-DD" }, 400);
-    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM" }, 400);
-    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM" }, 400);
+    if (body.date && !isValidDate(body.date)) return json({ error: "date must be a valid YYYY-MM-DD" }, 400);
+    if (body.end_date && !isValidDate(body.end_date)) return json({ error: "end_date must be a valid YYYY-MM-DD" }, 400);
+    if (body.start_time && !isValidTime(body.start_time)) return json({ error: "start_time must be HH:MM (00:00–23:59)" }, 400);
+    if (body.end_time && !isValidTime(body.end_time)) return json({ error: "end_time must be HH:MM (00:00–23:59)" }, 400);
+    if (typeof body.title === "string" && body.title.trim().length > MAX_TITLE) return json({ error: `title must be ${MAX_TITLE} characters or fewer` }, 400);
+    if (typeof body.notes === "string" && body.notes.length > MAX_NOTES) return json({ error: `notes must be ${MAX_NOTES} characters or fewer` }, 400);
+    if (typeof body.notify_message === "string" && body.notify_message.length > MAX_NOTIFY_MSG) return json({ error: `notify_message must be ${MAX_NOTIFY_MSG} characters or fewer` }, 400);
     if (body.blockReminders !== undefined && body.blockReminders !== null) {
       const err = validateBlockReminders(body.blockReminders);
       if (err) return json({ error: err }, 400);
@@ -522,9 +587,13 @@ http.route({
     if (!existing) return json({ error: "Not found" }, 404);
 
     if (mode !== "this") {
-      const futureDays = url.searchParams.has("futureDays")
-        ? parseInt(url.searchParams.get("futureDays")!)
-        : undefined;
+      let futureDays: number | undefined;
+      if (url.searchParams.has("futureDays")) {
+        futureDays = parseInt(url.searchParams.get("futureDays")!);
+        if (!Number.isInteger(futureDays) || futureDays < 1 || futureDays > 3650) {
+          return json({ error: "futureDays must be an integer between 1 and 3650" }, 400);
+        }
+      }
       await ctx.runMutation(api.blocks.deleteRecurring, { id: id as any, mode: mode as "future" | "all", futureDays });
     } else {
       await ctx.runMutation(api.blocks.remove, { id: id as any });
@@ -621,12 +690,14 @@ http.route({
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!Array.isArray(body?.blocks)) return json({ error: "body.blocks must be an array" }, 400);
     if (body.blocks.length === 0) return json({ created: 0 });
-    // Validate each block minimally
+    if (body.blocks.length > MAX_BULK) return json({ error: `bulk create is limited to ${MAX_BULK} items per request` }, 400);
     for (let i = 0; i < body.blocks.length; i++) {
       const b = body.blocks[i];
       if (!b?.title?.trim()) return json({ error: `blocks[${i}].title is required` }, 400);
-      if (!b?.date || !isValidDate(b.date)) return json({ error: `blocks[${i}].date must be YYYY-MM-DD` }, 400);
-      if (b.start_time && !isValidTime(b.start_time)) return json({ error: `blocks[${i}].start_time must be HH:MM` }, 400);
+      if (!b?.date || !isValidDate(b.date)) return json({ error: `blocks[${i}].date must be a valid YYYY-MM-DD` }, 400);
+      if (b.start_time && !isValidTime(b.start_time)) return json({ error: `blocks[${i}].start_time must be HH:MM (00:00–23:59)` }, 400);
+      if (typeof b.title === "string" && b.title.trim().length > MAX_TITLE) return json({ error: `blocks[${i}].title must be ${MAX_TITLE} characters or fewer` }, 400);
+      if (typeof b.notes === "string" && b.notes.length > MAX_NOTES) return json({ error: `blocks[${i}].notes must be ${MAX_NOTES} characters or fewer` }, 400);
     }
     const ids = await ctx.runMutation(api.blocks.bulkCreate, { blocks: body.blocks });
     return json({ created: ids.length }, 201);
@@ -642,6 +713,7 @@ http.route({
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
+    if (Array.isArray(body?.ids) && body.ids.length > MAX_BULK) return json({ error: `ids array is limited to ${MAX_BULK} items` }, 400);
 
     let ids: string[] = body?.ids ?? [];
     if (body?.search) {
@@ -669,6 +741,7 @@ http.route({
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
+    if (Array.isArray(body?.ids) && body.ids.length > MAX_BULK) return json({ error: `ids array is limited to ${MAX_BULK} items` }, 400);
 
     let ids: string[] = body?.ids ?? [];
     if (body?.search) {
@@ -696,7 +769,12 @@ http.route({
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!Array.isArray(body?.ids) || body.ids.length === 0) return json({ error: "body.ids must be a non-empty array" }, 400);
-    if (!body?.fields || typeof body.fields !== "object") return json({ error: "body.fields object required" }, 400);
+    if (body.ids.length > MAX_BULK) return json({ error: `ids array is limited to ${MAX_BULK} items` }, 400);
+    if (!body?.fields || typeof body.fields !== "object" || Array.isArray(body.fields)) return json({ error: "body.fields object required" }, 400);
+    const BULK_UPDATE_FIELDS = new Set(["category", "completed", "emoji"]);
+    const unknownFields = Object.keys(body.fields).filter(k => !BULK_UPDATE_FIELDS.has(k));
+    if (unknownFields.length > 0) return json({ error: `Unknown fields: ${unknownFields.join(", ")}. Allowed: ${[...BULK_UPDATE_FIELDS].join(", ")}` }, 400);
+    if (typeof body.fields.category === "string" && body.fields.category.length > 100) return json({ error: "category must be 100 characters or fewer" }, 400);
     const count = await ctx.runMutation(api.blocks.bulkUpdate, { ids: body.ids, fields: body.fields });
     return json({ updated: count });
   }),

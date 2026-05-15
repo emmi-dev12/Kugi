@@ -21,11 +21,14 @@ export const sendReminder = internalAction({
     const channelEnabled = await ctx.runQuery(internal.settings.getSettingValue, { key: "channelEnabled_sendblue" });
     if (channelEnabled === "false") return;
 
+    // Strip control characters and HTML from message content sent to the SMS API.
+    const sanitise = (s: string) => s.replace(/<[^>]*>/g, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+
     let content: string;
     if (offsetMessage) {
-      content = offsetMessage;
+      content = sanitise(offsetMessage);
     } else if (block.notify_message) {
-      content = block.notify_message;
+      content = sanitise(block.notify_message);
     } else {
       const templateRaw = await ctx.runQuery(internal.settings.getSettingValue, { key: "sendblueTemplate" });
       const DEFAULT_TEMPLATE = "⏰ {emoji}{title}{time}{notes}";

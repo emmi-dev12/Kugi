@@ -1,11 +1,15 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// Sentinel returned by public queries for masked credential fields.
+// The server ignores writes of this value so re-sends from the UI never overwrite real credentials.
+const SENTINEL = "***";
+
 function generateKey(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let s = "kugi_";
-  for (let i = 0; i < 40; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return s;
+  // Use 32 cryptographically random bytes (256 bits), hex-encoded — no modulo bias.
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return "kugi_" + Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
 }
 
 export const getApiKey = query({
@@ -173,13 +177,16 @@ export const getComposioApiKey = query({
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "composioApiKey"))
       .first();
-    return row?.value || null;
+    // Return SENTINEL (not the actual key) so callers can detect "configured" state.
+    return row?.value ? SENTINEL : null;
   },
 });
 
 export const setComposioApiKey = mutation({
   args: { value: v.string() },
   handler: async (ctx, { value }) => {
+    // Ignore the masked SENTINEL — only write real values or "" (to clear).
+    if (value === SENTINEL) return;
     const existing = await ctx.db
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "composioApiKey"))
@@ -222,8 +229,10 @@ export const getTelegramConfig = query({
     }
     const webhookUrlRow = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "webhookUrl")).first();
     return {
-      botToken: botTokenRow?.value ?? null,
-      chatId: chatIdRow?.value ?? null,
+      // Credentials are masked — server reads the real values via getSettingValue (internal).
+      // SENTINEL is returned so the UI can detect "configured" state without exposing the secret.
+      botToken: botTokenRow?.value ? SENTINEL : null,
+      chatId: chatIdRow?.value ? SENTINEL : null,
       offsetMinutes,
       reminderOffsets,
       webhookUrl: webhookUrlRow?.value ?? null,
@@ -240,11 +249,11 @@ export const setTelegramConfig = mutation({
     webhookUrl: v.optional(v.string()),
   },
   handler: async (ctx, { botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl }) => {
-    const pairs: [string, string][] = [
-      ["telegramBotToken", botToken],
-      ["telegramChatId", chatId],
-      ["telegramOffsetMinutes", String(offsetMinutes)],
-    ];
+    const pairs: [string, string][] = [];
+    // Skip writes when the UI re-sends the masked SENTINEL — this preserves the real credential.
+    if (botToken !== SENTINEL) pairs.push(["telegramBotToken", botToken]);
+    if (chatId !== SENTINEL) pairs.push(["telegramChatId", chatId]);
+    pairs.push(["telegramOffsetMinutes", String(offsetMinutes)]);
     if (reminderOffsets !== undefined) {
       pairs.push(["telegramReminderOffsets", JSON.stringify(reminderOffsets)]);
     }
@@ -254,7 +263,7 @@ export const setTelegramConfig = mutation({
     for (const [key, value] of pairs) {
       const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
       if (existing) await ctx.db.patch(existing._id, { value });
-      else await ctx.db.insert("settings", { key, value });
+      else if (value) await ctx.db.insert("settings", { key, value });
     }
   },
 });
@@ -317,8 +326,9 @@ export const getSendblueConfig = query({
       try { reminderOffsets = JSON.parse(reminderOffsetsRow.value); } catch {}
     }
     return {
-      apiKey: apiKeyRow?.value ?? null,
-      apiSecret: apiSecretRow?.value ?? null,
+      // API key and secret are masked — only return existence indicator.
+      apiKey: apiKeyRow?.value ? SENTINEL : null,
+      apiSecret: apiSecretRow?.value ? SENTINEL : null,
       recipient: recipientRow?.value ?? null,
       reminderOffsets,
       channelEnabled: channelEnabledRow?.value !== "false",
@@ -335,11 +345,11 @@ export const setSendblueConfig = mutation({
     channelEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, { apiKey, apiSecret, recipient, reminderOffsets, channelEnabled }) => {
-    const pairs: [string, string][] = [
-      ["sendblueApiKey", apiKey],
-      ["sendblueApiSecret", apiSecret],
-      ["sendblueRecipient", recipient],
-    ];
+    const pairs: [string, string][] = [];
+    // Skip SENTINEL writes so the UI re-sending masked values doesn't overwrite real credentials.
+    if (apiKey !== SENTINEL) pairs.push(["sendblueApiKey", apiKey]);
+    if (apiSecret !== SENTINEL) pairs.push(["sendblueApiSecret", apiSecret]);
+    pairs.push(["sendblueRecipient", recipient]);
     if (reminderOffsets !== undefined) {
       pairs.push(["sendblueReminderOffsets", JSON.stringify(reminderOffsets)]);
     }
@@ -349,7 +359,7 @@ export const setSendblueConfig = mutation({
     for (const [key, value] of pairs) {
       const existing = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", key)).first();
       if (existing) await ctx.db.patch(existing._id, { value });
-      else await ctx.db.insert("settings", { key, value });
+      else if (value) await ctx.db.insert("settings", { key, value });
     }
   },
 });

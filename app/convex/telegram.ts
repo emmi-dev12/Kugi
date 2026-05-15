@@ -17,12 +17,17 @@ export const sendReminder = internalAction({
     const chatId = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramChatId" });
     if (!botToken || !chatId) return;
 
+    // Strip HTML tags from verbatim text so user content isn't rendered as HTML
+    // by Telegram's parse_mode:HTML. The template branch uses intentional HTML
+    // (e.g. <b>{title}</b>) so only user-supplied strings need sanitisation.
+    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "");
+
     let text: string;
     // Priority: per-reminder message > block-level notify_message > global template
     if (offsetMessage) {
-      text = offsetMessage;
+      text = stripHtml(offsetMessage);
     } else if (block.notify_message) {
-      text = block.notify_message;
+      text = stripHtml(block.notify_message);
     } else {
       const templateRaw = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramTemplate" });
       const DEFAULT_TEMPLATE = "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}";

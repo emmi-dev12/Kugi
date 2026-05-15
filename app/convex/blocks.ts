@@ -21,6 +21,28 @@ function localToUTC(dateStr: string, timeStr: string, tz: string): number {
   return utcMs;
 }
 
+// Field length limits — kept in sync with http.ts constants.
+const MAX_TITLE = 500;
+const MAX_NOTES = 50_000;
+const MAX_NOTIFY_MSG = 1_000;
+const MAX_REMINDER_MSG = 1_000;
+const MAX_CATEGORY = 100;
+
+function validateFieldLengths(fields: {
+  title?: string; notes?: string; notify_message?: string; category?: string;
+  blockReminders?: { atTime: string; message?: string }[];
+}): void {
+  if (fields.title !== undefined && fields.title.length > MAX_TITLE) throw new Error(`title must be ${MAX_TITLE} characters or fewer`);
+  if (fields.notes !== undefined && fields.notes.length > MAX_NOTES) throw new Error(`notes must be ${MAX_NOTES} characters or fewer`);
+  if (fields.notify_message !== undefined && fields.notify_message.length > MAX_NOTIFY_MSG) throw new Error(`notify_message must be ${MAX_NOTIFY_MSG} characters or fewer`);
+  if (fields.category !== undefined && fields.category.length > MAX_CATEGORY) throw new Error(`category must be ${MAX_CATEGORY} characters or fewer`);
+  if (fields.blockReminders) {
+    for (const r of fields.blockReminders) {
+      if (r.message !== undefined && r.message.length > MAX_REMINDER_MSG) throw new Error(`blockReminders message must be ${MAX_REMINDER_MSG} characters or fewer`);
+    }
+  }
+}
+
 // Per-block reminder: fires at an exact local time on the block's date.
 type BlockReminder = { atTime: string; message?: string };
 // Global reminder: fires relative to the block's start_time.
@@ -257,6 +279,7 @@ export const create = mutation({
     blockReminders: v.optional(v.array(v.object({ atTime: v.string(), message: v.optional(v.string()) }))),
   },
   handler: async (ctx, args) => {
+    validateFieldLengths(args);
     const id = await ctx.db.insert("blocks", args);
     const tz = await getTZ(ctx);
     const jobIds = await scheduleReminders(ctx, id, args.date, args.start_time, args.blockReminders, tz);
@@ -284,6 +307,7 @@ export const update = mutation({
     blockReminders: v.optional(v.array(v.object({ atTime: v.string(), message: v.optional(v.string()) }))),
   },
   handler: async (ctx, { id, ...fields }) => {
+    validateFieldLengths(fields);
     const block = await ctx.db.get(id);
     if (block) await cancelScheduledJobs(ctx, block);
     await ctx.db.patch(id, { ...fields, telegramJobIds: undefined, telegramJobId: undefined, sendblueJobIds: undefined });
@@ -361,6 +385,7 @@ export const createRecurring = mutation({
     recurrence: v.union(v.literal("hourly"), v.literal("daily"), v.literal("monthly"), v.literal("yearly")),
   },
   handler: async (ctx, args) => {
+    validateFieldLengths(args);
     const recurrenceGroupId = `rg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const { recurrence, ...blockFields } = args;
 
@@ -560,6 +585,7 @@ export const bulkCreate = mutation({
   handler: async (ctx, { blocks }) => {
     const ids = [];
     for (const block of blocks) {
+      validateFieldLengths(block);
       ids.push(await ctx.db.insert("blocks", block));
     }
     return ids;

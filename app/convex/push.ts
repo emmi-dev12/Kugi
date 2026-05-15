@@ -4,10 +4,22 @@ import { v } from "convex/values";
 
 // ── Subscriptions ──────────────────────────────────────────────
 
+const MAX_SUBSCRIPTIONS = 50;
+
 export const saveSubscription = mutation({
   args: { subscription: v.string(), userAgent: v.optional(v.string()) },
   handler: async (ctx, { subscription, userAgent }) => {
-    const parsed = JSON.parse(subscription);
+    // Validate subscription structure before accepting it.
+    let parsed: any;
+    try { parsed = JSON.parse(subscription); } catch { throw new Error("Invalid subscription JSON"); }
+    if (!parsed?.endpoint || typeof parsed.endpoint !== "string") {
+      throw new Error("Invalid subscription: missing endpoint");
+    }
+    // Endpoint must be a valid HTTPS URL (all real browser push services use HTTPS).
+    let endpointUrl: URL;
+    try { endpointUrl = new URL(parsed.endpoint); } catch { throw new Error("Invalid subscription: malformed endpoint URL"); }
+    if (endpointUrl.protocol !== "https:") throw new Error("Invalid subscription: endpoint must use HTTPS");
+
     const all = await ctx.db.query("pushSubscriptions").collect();
     const existing = all.find(s => {
       try { return JSON.parse(s.subscription).endpoint === parsed.endpoint; } catch { return false; }
@@ -15,6 +27,10 @@ export const saveSubscription = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, { subscription, userAgent });
       return existing._id;
+    }
+    // Cap total subscriptions to limit abuse of unauthenticated registration.
+    if (all.length >= MAX_SUBSCRIPTIONS) {
+      throw new Error(`Subscription limit of ${MAX_SUBSCRIPTIONS} reached`);
     }
     return await ctx.db.insert("pushSubscriptions", { subscription, userAgent });
   },

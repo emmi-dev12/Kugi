@@ -120,12 +120,17 @@ export const checkAndNotify = internalAction({
       }
     }
 
-    // Persist fired keys, pruning entries older than 7 days
+    // Persist fired keys, pruning entries older than 7 days.
+    // Also cap total entries to prevent unbounded blob growth.
+    const MAX_FIRED_KEYS = 5_000;
     const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-    const cleaned: Record<string, number> = {};
-    for (const [k, t] of Object.entries(fired)) {
-      if (t > cutoff) cleaned[k] = t;
+    let entries = Object.entries(fired).filter(([, t]) => t > cutoff);
+    if (entries.length > MAX_FIRED_KEYS) {
+      // Evict oldest entries first
+      entries.sort(([, a], [, b]) => b - a);
+      entries = entries.slice(0, MAX_FIRED_KEYS);
     }
+    const cleaned = Object.fromEntries(entries);
     await ctx.runMutation(internal.settings.upsertSetting, {
       key: "firedPushKeys",
       value: JSON.stringify(cleaned),

@@ -40,8 +40,10 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-// In-app notification via postMessage (client-side fallback)
+// In-app notification via postMessage (client-side fallback).
+// Only accept messages from the same origin to prevent cross-origin notification injection.
 self.addEventListener('message', e => {
+  if (e.source && e.source.url && !e.source.url.startsWith(self.location.origin)) return;
   if (e.data?.type === 'NOTIFY') {
     const { title, body, tag } = e.data;
     self.registration.showNotification(title, {
