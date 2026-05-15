@@ -57,6 +57,34 @@ function validateBlockReminders(v: any): string | null {
   return null;
 }
 
+// Validate telegramReminderOffsets: array of numbers (minutes, 0–10080), max 4
+function validateOffsets(v: any): string | null {
+  if (!Array.isArray(v)) return "must be an array";
+  if (v.length > 4) return "max 4 entries allowed";
+  for (let i = 0; i < v.length; i++) {
+    if (typeof v[i] !== "number" || !Number.isFinite(v[i])) return `[${i}] must be a finite number`;
+    if (v[i] < 0 || v[i] > 10080) return `[${i}] must be between 0 and 10080 minutes`;
+  }
+  return null;
+}
+
+// Mask a secret value: show only that it is set, not the actual value
+function mask(v: string | null | undefined): string | null {
+  return v ? "***" : null;
+}
+
+// Validate a webhook URL: must be HTTPS and not a private/loopback address
+function validateWebhookUrl(url: string): string | null {
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return "must be a valid URL"; }
+  if (parsed.protocol !== "https:") return "must use HTTPS";
+  const h = parsed.hostname;
+  if (h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h.endsWith(".local")) {
+    return "loopback/local addresses are not allowed";
+  }
+  return null;
+}
+
 // ── OPTIONS preflight ──────────────────────────────────────────
 const PREFLIGHT_PATHS = [
   { path: "/api/tasks", type: "path" },
@@ -560,8 +588,10 @@ http.route({
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.name?.trim()) return json({ error: "name required" }, 400);
+    if (body.name.trim().length > 50) return json({ error: "name must be 50 characters or fewer" }, 400);
     if (!body?.emoji) return json({ error: "emoji required" }, 400);
     if (!body?.color) return json({ error: "color required (hex string, e.g. '#4f7cff')" }, 400);
+    if (!/^#[0-9a-fA-F]{6}$/.test(body.color)) return json({ error: "color must be a valid hex color (e.g. '#4f7cff')" }, 400);
     await ctx.runMutation(api.settings.addCategory, { name: body.name.trim(), emoji: body.emoji, color: body.color });
     return json({ ok: true, name: body.name.trim() }, 201);
   }),
@@ -686,14 +716,14 @@ http.route({
     const remindersJson = await ctx.runQuery(api.settings.getReminders, {});
     return json({
       telegram: {
-        botToken: telegram.botToken,
-        chatId: telegram.chatId,
+        botToken: mask(telegram.botToken),
+        chatId: mask(telegram.chatId),
         offsetMinutes: telegram.offsetMinutes,
         reminderOffsets: telegram.reminderOffsets ?? null,
         webhookUrl: telegram.webhookUrl ?? null,
         messageTemplate: telegramTemplate ?? "⏰ Reminder: {emoji}<b>{title}</b>{time}{notes}",
         templateVariables: ["{emoji}", "{title}", "{time}", "{date}", "{notes}", "{category}"],
-        note: "reminderOffsets overrides offsetMinutes when set. null reminderOffsets = fall back to [offsetMinutes].",
+        note: "reminderOffsets overrides offsetMinutes when set. null reminderOffsets = fall back to [offsetMinutes]. botToken and chatId are write-only and returned as '***'.",
       },
       push: {
         enabled: pushEnabled,
@@ -701,7 +731,7 @@ http.route({
       },
       googleCalendar: {
         enabled: gcalEnabled,
-        composioApiKey: composioApiKey ?? null,
+        composioApiKey: mask(composioApiKey),
       },
     });
   }),
@@ -721,13 +751,20 @@ http.route({
         const err = validateOffsets(body.telegram.reminderOffsets);
         if (err) return json({ error: `telegram.reminderOffsets: ${err}` }, 400);
       }
+      if (body.telegram.webhookUrl !== undefined && body.telegram.webhookUrl !== null && body.telegram.webhookUrl !== "") {
+        const urlErr = validateWebhookUrl(body.telegram.webhookUrl);
+        if (urlErr) return json({ error: `telegram.webhookUrl: ${urlErr}` }, 400);
+      }
       const current = await ctx.runQuery(api.settings.getTelegramConfig, {});
+      const resolvedWebhookUrl = body.telegram.webhookUrl === undefined
+        ? (current.webhookUrl ?? undefined)
+        : (body.telegram.webhookUrl === null || body.telegram.webhookUrl === "" ? undefined : body.telegram.webhookUrl);
       await ctx.runMutation(api.settings.setTelegramConfig, {
         botToken: body.telegram.botToken ?? current.botToken ?? "",
         chatId: body.telegram.chatId ?? current.chatId ?? "",
         offsetMinutes: body.telegram.offsetMinutes ?? current.offsetMinutes ?? 15,
         reminderOffsets: body.telegram.reminderOffsets !== undefined ? body.telegram.reminderOffsets : (current.reminderOffsets ?? undefined),
-        webhookUrl: body.telegram.webhookUrl !== undefined ? body.telegram.webhookUrl : (current.webhookUrl ?? undefined),
+        webhookUrl: resolvedWebhookUrl,
       });
       if (body.telegram.messageTemplate !== undefined) {
         await ctx.runMutation(api.settings.setTelegramTemplate, { template: body.telegram.messageTemplate });
@@ -764,8 +801,8 @@ http.route({
       ok: true,
       updated: {
         telegram: {
-          botToken: telegram.botToken,
-          chatId: telegram.chatId,
+          botToken: mask(telegram.botToken),
+          chatId: mask(telegram.chatId),
           offsetMinutes: telegram.offsetMinutes,
           reminderOffsets: telegram.reminderOffsets ?? null,
           webhookUrl: telegram.webhookUrl ?? null,
