@@ -5,7 +5,9 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { ComposioToolSet } from "composio-core";
 
-const ENTITY_ID = "boop-default";
+// Entity ID used to scope Composio actions to this deployment's Google account.
+// Configurable via KUGI_COMPOSIO_ENTITY_ID env var; falls back to a stable default.
+const ENTITY_ID = process.env.KUGI_COMPOSIO_ENTITY_ID ?? "kugi-default";
 const CALENDAR_ID = "primary";
 
 function isoDateTime(date: string, time: string): string {

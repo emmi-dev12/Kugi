@@ -68,7 +68,9 @@ export function useBlocks() {
     try {
       return await createMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      alert('Create failed: ' + e.message);
+      // Show validation messages (user-facing) but not raw server internals.
+      const msg = e.message?.length < 200 ? e.message : 'An unexpected error occurred. Please try again.';
+      alert('Could not create block: ' + msg);
       throw e;
     }
   };
@@ -82,7 +84,8 @@ export function useBlocks() {
     try {
       return await createRecurringMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      alert('Create recurring failed: ' + e.message);
+      const msg = e.message?.length < 200 ? e.message : 'An unexpected error occurred. Please try again.';
+      alert('Could not create recurring block: ' + msg);
       throw e;
     }
   };
