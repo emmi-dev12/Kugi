@@ -258,7 +258,7 @@ http.route({
         {
           method: "POST", path: "/api/categories", auth: true,
           description: "Add a custom category.",
-          body: "{ name: string, emoji: string, color: string (hex) }",
+          body: "{ name: string (max 50 chars), emoji: string, color: string (hex #rrggbb, e.g. '#4f7cff') }",
           response: "{ ok: true, name }",
         },
         {
@@ -268,23 +268,23 @@ http.route({
         },
         {
           method: "GET", path: "/api/settings", auth: true,
-          description: "Read all configurable settings including Telegram config, webhookUrl, reminderOffsets, push rules.",
-          response: "{ telegram: { botToken, chatId, offsetMinutes, reminderOffsets, webhookUrl, messageTemplate, templateVariables }, push: { enabled, reminders }, googleCalendar: { enabled, composioApiKey } }",
+          description: "Read configurable settings. Sensitive fields (botToken, chatId, composioApiKey) are write-only and returned as '***' when set.",
+          response: "{ telegram: { botToken: '***'|null, chatId: '***'|null, offsetMinutes, reminderOffsets, webhookUrl, messageTemplate, templateVariables }, push: { enabled, reminders }, googleCalendar: { enabled, composioApiKey: '***'|null } }",
         },
         {
           method: "PATCH", path: "/api/settings", auth: true,
-          description: "Update any subset of settings. Returns updated settings.",
+          description: "Update any subset of settings. Returns updated settings (sensitive fields masked as '***').",
           body_schema: {
-            "telegram.botToken": "string",
-            "telegram.chatId": "string",
+            "telegram.botToken": "string — write-only, not readable back",
+            "telegram.chatId": "string — write-only, not readable back",
             "telegram.offsetMinutes": "number — legacy single offset, used as fallback",
-            "telegram.reminderOffsets": "number[] (max 4) — global default reminder schedule, e.g. [5,15,60]",
-            "telegram.webhookUrl": "string — URL POSTed on every reminder fire. Set this for real-time agent integration.",
+            "telegram.reminderOffsets": "number[] (max 4, each 0–10080 minutes) — global default reminder schedule, e.g. [5,15,60]",
+            "telegram.webhookUrl": "string — must be HTTPS, loopback addresses rejected. POSTed on every reminder fire.",
             "telegram.messageTemplate": "string — template with {emoji} {title} {time} {date} {notes} {category}",
             "push.enabled": "boolean",
             "push.reminders": "array of { id: string, offsetMinutes: number, atTime?: HH:MM, message?: string }",
             "googleCalendar.enabled": "boolean",
-            "googleCalendar.composioApiKey": "string",
+            "googleCalendar.composioApiKey": "string — write-only, not readable back",
           },
           examples: {
             set_webhook: { telegram: { webhookUrl: "https://your-agent.example.com/kugi-webhook" } },
