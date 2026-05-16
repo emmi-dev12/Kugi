@@ -3,8 +3,12 @@ import { useIntegrations, useTelegram, usePushEnabled, useSendblue, useTelegramC
 import { allTimezones } from '../../utils/timezone';
 import styles from './SettingsModal.module.css';
 
-export default function SettingsModal({
-  open,
+export default function SettingsModal({ open, ...props }) {
+  if (!open) return null;
+  return <SettingsModalContent {...props} />;
+}
+
+function SettingsModalContent({
   onClose,
   // Notifications
   permission,
@@ -64,8 +68,6 @@ export default function SettingsModal({
   const [sendblueInput, setSendblueInput] = useState({ apiKey: '', apiSecret: '', recipient: '' });
   const [sendblueReminderOffsets, setSendblueReminderOffsets] = useState(null); // null = use server value
   const [tab, setTab] = useState('general');
-
-  if (!open) return null;
 
   const TABS = [
     { id: 'general', label: 'General' },
