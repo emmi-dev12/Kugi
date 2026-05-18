@@ -2,6 +2,13 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { makeFunctionReference } from 'convex/server';
 
+function friendlyError(e) {
+  const msg = e?.message ?? '';
+  // Short messages without stack traces are safe to show (validation errors from Convex).
+  if (msg.length > 0 && msg.length < 200 && !msg.includes('\n') && !msg.includes('at ')) return msg;
+  return 'An unexpected error occurred. Please try again.';
+}
+
 // Remove empty strings (optional string fields must be absent, not "")
 // Keep null/number/boolean — only drop ""
 function stripEmpty(obj) {
@@ -68,9 +75,7 @@ export function useBlocks() {
     try {
       return await createMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      // Show validation messages (user-facing) but not raw server internals.
-      const msg = e.message?.length < 200 ? e.message : 'An unexpected error occurred. Please try again.';
-      alert('Could not create block: ' + msg);
+      alert('Could not create block: ' + friendlyError(e));
       throw e;
     }
   };
@@ -84,8 +89,7 @@ export function useBlocks() {
     try {
       return await createRecurringMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      const msg = e.message?.length < 200 ? e.message : 'An unexpected error occurred. Please try again.';
-      alert('Could not create recurring block: ' + msg);
+      alert('Could not create recurring block: ' + friendlyError(e));
       throw e;
     }
   };
@@ -157,8 +161,8 @@ export function useApiKey() {
   const ensure = useMutation(fn.settings.ensureApiKey);
   const rotate = useMutation(fn.settings.rotateApiKey);
 
-  // Always ensure a key exists on mount — idempotent, safe to call every time.
-  useEffect(() => { ensure(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Only ensure a key exists once the query has resolved and confirmed there is none.
+  useEffect(() => { if (apiKey === null) ensure(); }, [apiKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // undefined = loading, null = no key yet, string = ready
   return { apiKey, rotateApiKey: rotate };

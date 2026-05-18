@@ -43,6 +43,18 @@ function validateFieldLengths(fields: {
   }
 }
 
+function validateBlockReminderStructure(reminders: any[]): void {
+  if (reminders.length > 6) throw new Error("blockReminders max length is 6");
+  for (let i = 0; i < reminders.length; i++) {
+    const r = reminders[i];
+    if (typeof r !== "object" || r === null) throw new Error(`blockReminders[${i}] must be an object`);
+    if (typeof r.atTime !== "string" || !/^\d{2}:\d{2}$/.test(r.atTime)) throw new Error(`blockReminders[${i}].atTime must be a valid HH:MM string`);
+    const [h, m] = r.atTime.split(":").map(Number);
+    if (h > 23 || m > 59) throw new Error(`blockReminders[${i}].atTime must be a valid HH:MM string`);
+    if (r.message !== undefined && typeof r.message !== "string") throw new Error(`blockReminders[${i}].message must be a string`);
+  }
+}
+
 // Per-block reminder: fires at an exact local time on the block's date.
 type BlockReminder = { atTime: string; message?: string };
 // Global reminder: fires relative to the block's start_time.
@@ -389,6 +401,7 @@ export const createRecurring = mutation({
     const recurrenceGroupId = `rg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const { recurrence, ...blockFields } = args;
 
+    const MAX_RECURRENCE = 365;
     const dates: string[] = [];
     if (recurrence === "hourly") {
       for (let i = 0; i < 30; i++) dates.push(addDays(args.date, i));
@@ -398,6 +411,9 @@ export const createRecurring = mutation({
       for (let i = 0; i < 60; i++) dates.push(addMonths(args.date, i));
     } else if (recurrence === "yearly") {
       for (let i = 0; i < 10; i++) dates.push(addYears(args.date, i));
+    }
+    if (dates.length > MAX_RECURRENCE) {
+      throw new Error(`Recurrence would create ${dates.length} blocks, exceeding the maximum of ${MAX_RECURRENCE}. Use a shorter recurrence period.`);
     }
 
     const tz = await getTZ(ctx);
@@ -439,8 +455,8 @@ export const deleteRecurring = mutation({
 
     const today = new Date().toISOString().slice(0, 10);
     const allInGroup = await ctx.db.query("blocks")
-      .collect()
-      .then(blocks => blocks.filter(b => b.recurrenceGroupId === recurrenceGroupId));
+      .withIndex("by_recurrence_group", (q: any) => q.eq("recurrenceGroupId", recurrenceGroupId))
+      .collect();
 
     let toDelete: typeof allInGroup;
 
@@ -526,7 +542,11 @@ export const bulkUpdate = mutation({
 export const getStats = query({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("blocks").collect();
+    const STATS_LIMIT = 10000;
+    const all = await ctx.db.query("blocks").take(STATS_LIMIT);
+    if (all.length === STATS_LIMIT) {
+      return { error: "Too many blocks to compute stats accurately. Use targeted date queries instead." };
+    }
     const today = new Date().toISOString().slice(0, 10);
     const todayDate = new Date(today);
     const dow = todayDate.getDay();
@@ -586,6 +606,9 @@ export const bulkCreate = mutation({
     const ids = [];
     for (const block of blocks) {
       validateFieldLengths(block);
+      if (Array.isArray((block as any).blockReminders)) {
+        validateBlockReminderStructure((block as any).blockReminders);
+      }
       ids.push(await ctx.db.insert("blocks", block));
     }
     return ids;

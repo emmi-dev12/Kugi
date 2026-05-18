@@ -17,10 +17,13 @@ export const sendReminder = internalAction({
     const chatId = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramChatId" });
     if (!botToken || !chatId) return;
 
-    // Strip HTML tags from verbatim text so user content isn't rendered as HTML
-    // by Telegram's parse_mode:HTML. The template branch uses intentional HTML
-    // (e.g. <b>{title}</b>) so only user-supplied strings need sanitisation.
-    const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "");
+    // Strip all HTML tags and decode entities from user-supplied verbatim text so
+    // it is not rendered as HTML by Telegram's parse_mode:HTML.
+    const stripHtml = (s: string) =>
+      s.replace(/<[^>]*>/g, "")
+       .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+       .replace(/&amp;/g, "&").replace(/&quot;/g, '"')
+       .replace(/&#x27;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 
     let text: string;
     // Priority: per-reminder message > block-level notify_message > global template
@@ -45,15 +48,49 @@ export const sendReminder = internalAction({
       text = template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
     }
 
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-    });
+    try {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+      });
+    } catch (e: any) {
+      // Redact token from error messages before any potential propagation
+      const msg = (e?.message ?? String(e)).replace(new RegExp(botToken, "g"), "[REDACTED]");
+      throw new Error(msg);
+    }
 
     // Fire webhook if configured
     const webhookUrl = await ctx.runQuery(internal.settings.getSettingValue, { key: "webhookUrl" });
     if (webhookUrl) {
+      // Defense-in-depth: block known cloud-metadata and private hostnames at call time,
+      // in case DNS rebinding occurs after the URL was validated at write time.
+      const BLOCKED_HOSTS = new Set([
+        "169.254.169.254",
+        "metadata.google.internal",
+        "metadata.internal",
+        "169.254.169.254.nip.io",
+      ]);
+      let skip = false;
+      try {
+        const h = new URL(webhookUrl).hostname.toLowerCase();
+        if (BLOCKED_HOSTS.has(h)) {
+          skip = true;
+        } else {
+          // Check raw IPv4 private ranges
+          const v4 = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+          if (v4) {
+            const [, a, b] = v4.map(Number);
+            if (a === 169 && b === 254) skip = true;
+            else if (a === 10) skip = true;
+            else if (a === 172 && b >= 16 && b <= 31) skip = true;
+            else if (a === 192 && b === 168) skip = true;
+          }
+        }
+      } catch { skip = true; }
+      if (skip) {
+        console.warn("Webhook blocked: hostname resolves to a private/metadata address", webhookUrl);
+      } else {
       try {
         await fetch(webhookUrl, {
           method: "POST",
@@ -73,6 +110,7 @@ export const sendReminder = internalAction({
           }),
         });
       } catch {}
+      } // end !skip
     }
   },
 });

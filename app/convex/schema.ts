@@ -26,7 +26,8 @@ export default defineSchema({
       atTime: v.string(),           // HH:MM — exact local time to fire on the block's date
       message: v.optional(v.string()),
     }))),
-  }).index("by_date", ["date"]),
+  }).index("by_date", ["date"])
+    .index("by_recurrence_group", ["recurrenceGroupId"]),
 
   settings: defineTable({
     key: v.string(),
@@ -37,4 +38,12 @@ export default defineSchema({
     subscription: v.string(), // JSON of PushSubscription
     userAgent: v.optional(v.string()),
   }),
+
+  auditLog: defineTable({
+    action: v.string(),
+    resourceType: v.string(),
+    resourceId: v.optional(v.string()),
+    timestamp: v.number(),
+    details: v.optional(v.string()),
+  }).index("by_timestamp", ["timestamp"]),
 });

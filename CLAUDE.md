@@ -46,7 +46,8 @@ The frontend is a **static site with no server**. Users supply their own Convex 
 
 | File | Contents |
 |------|---------|
-| `schema.ts` | Three tables: `blocks`, `settings`, `pushSubscriptions` |
+| `schema.ts` | Four tables: `blocks`, `settings`, `pushSubscriptions`, `auditLog` |
+| `auditLog.ts` | Internal mutation `log` — writes to the `auditLog` table |
 | `blocks.ts` | Queries and mutations for blocks |
 | `settings.ts` | API key, categories, Telegram, push, GCal integration settings |
 | `http.ts` | REST HTTP API for AI agent access (`.convex.site` endpoint) |
@@ -67,7 +68,7 @@ notify_message (string, optional — sent verbatim to push + Telegram, overrides
 end_date, telegramJobId (legacy single job, kept for cancel compat), telegramJobIds (string[], up to 4 scheduled jobs),
 recurrence (hourly|daily|monthly|yearly), recurrenceGroupId, googleEventId
 ```
-Index: `by_date`
+Indexes: `by_date`, `by_recurrence_group` (on `recurrenceGroupId`)
 
 ### settings table keys
 | Key | Value |
@@ -177,8 +178,14 @@ components/UI/
 - **Worktree deployment** — changes made in `.claude/worktrees/<name>` must be committed and merged to `main` before they appear in the Render deployment.
 - **`fetchFromGoogle` now takes `deleteKugiIds?`** — when called from the GCal sync UI, pass the user-selected IDs; omit for legacy auto-delete behaviour.
 - **Telegram template variables** — `{time}` expands to `" starts at HH:MM"` or `" is coming up"` (not the raw time). `{notes}` expands to `"\n\n<notes>"` or `""`. Don't treat them as raw substitutions.
-- **bulk-delete/bulk-complete accept `search`** — the HTTP API accepts either `ids` array or `search` string (selects all matching blocks). Never need two calls.
+- **bulk-delete/bulk-complete accept `search`** — the HTTP API accepts either `ids` array or `search` string (selects all matching blocks). Never need two calls. When using `search`, the caller must also pass `?confirm=true` as a query parameter or the API returns 400 with the count of affected tasks.
+- **HTTP API rate limit** — 60 requests/minute per API key (token bucket). Returns 429 on excess. Brute-force protection locks an IP for 60 s after 5 failed auth attempts.
+- **CORS origin** — non-OPTIONS responses set `Access-Control-Allow-Origin: https://kugi.app`. To add another origin, update `ALLOWED_ORIGINS` in `http.ts`. OPTIONS preflights keep `*`.
+- **Audit log** — every HTTP API write (create/update/delete/bulk/settings) is logged to the `auditLog` table via `internal.auditLog.log`. Failures are swallowed (try/catch) so they never break the main operation.
+- **Recurring block cap** — `createRecurring` throws if the generated occurrence count exceeds 365. Daily recurrence would produce 730 entries which exceeds the cap — use a custom date range instead.
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
 - **sw.js cache name** — currently `kugi-v8`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
+- **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.
