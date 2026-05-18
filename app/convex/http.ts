@@ -1,19 +1,99 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
+// ── Rate limiting (token bucket, 60 req/min per API key) ───────
+const rateBuckets = new Map<string, { tokens: number; lastRefill: number }>();
+const RATE_MAX = 60;
+const RATE_REFILL_MS = 1000; // 1 token per second
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  let bucket = rateBuckets.get(key);
+  if (!bucket) {
+    bucket = { tokens: RATE_MAX - 1, lastRefill: now };
+    rateBuckets.set(key, bucket);
+    return true;
+  }
+  const elapsed = now - bucket.lastRefill;
+  const refill = Math.floor(elapsed / RATE_REFILL_MS);
+  if (refill > 0) {
+    bucket.tokens = Math.min(RATE_MAX, bucket.tokens + refill);
+    bucket.lastRefill = now;
+  }
+  if (bucket.tokens <= 0) return false;
+  bucket.tokens--;
+  return true;
+}
+
+// ── Brute-force protection (5 failures → 60s lockout per IP) ──
+const authFailures = new Map<string, { failures: number; lockedUntil: number }>();
+const BRUTE_MAX = 5;
+const BRUTE_LOCKOUT_MS = 60_000;
+
+function checkBruteForce(ip: string): string | null {
+  const now = Date.now();
+  const rec = authFailures.get(ip);
+  if (rec && now < rec.lockedUntil) {
+    const secs = Math.ceil((rec.lockedUntil - now) / 1000);
+    return `Too many failed attempts. Try again in ${secs} seconds.`;
+  }
+  return null;
+}
+
+function recordAuthFailure(ip: string): void {
+  const now = Date.now();
+  const rec = authFailures.get(ip) ?? { failures: 0, lockedUntil: 0 };
+  rec.failures++;
+  if (rec.failures >= BRUTE_MAX) rec.lockedUntil = now + BRUTE_LOCKOUT_MS;
+  authFailures.set(ip, rec);
+}
+
+function clearAuthFailure(ip: string): void {
+  authFailures.delete(ip);
+}
+
+// Allowed origins for the non-preflight CORS header.
+// Add additional domains here if the frontend is served from multiple hosts.
+const ALLOWED_ORIGINS = new Set([
+  "https://kugi.app",
+  "https://www.kugi.app",
+]);
+
+const CORS_METHODS = "GET, POST, PATCH, DELETE, OPTIONS";
+const CORS_HEADERS = "Authorization, Content-Type";
+
+// OPTIONS preflights keep Access-Control-Allow-Origin: * so browsers can probe.
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": CORS_METHODS,
+  "Access-Control-Allow-Headers": CORS_HEADERS,
 };
 
-function json(data: unknown, status = 200) {
+async function audit(ctx: any, action: string, resourceType: string, resourceId?: string, details?: string): Promise<void> {
+  try {
+    await ctx.runMutation(internal.auditLog.log, { action, resourceType, resourceId, details });
+  } catch {}
+}
+
+function resolveOrigin(req: Request): string {
+  const origin = req.headers.get("origin") ?? "";
+  return ALLOWED_ORIGINS.has(origin) ? origin : [...ALLOWED_ORIGINS][0];
+}
+
+function json(data: unknown, status = 200, req?: Request) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS },
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": req ? resolveOrigin(req) : [...ALLOWED_ORIGINS][0],
+      "Access-Control-Allow-Methods": CORS_METHODS,
+      "Access-Control-Allow-Headers": CORS_HEADERS,
+      "Vary": "Origin",
+    },
   });
 }
 
@@ -32,12 +112,34 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function authenticate(ctx: any, req: Request): Promise<boolean> {
+// Returns null on success, or a Response to send immediately on failure.
+async function authenticate(ctx: any, req: Request): Promise<Response | null> {
+  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+
+  // Check brute-force lockout first (before touching DB)
+  const lockMsg = checkBruteForce(ip);
+  if (lockMsg) return json({ error: lockMsg }, 401, req);
+
   const auth = req.headers.get("Authorization") ?? "";
-  if (!auth.startsWith("Bearer ")) return false;
+  if (!auth.startsWith("Bearer ")) {
+    recordAuthFailure(ip);
+    return json({ error: "Unauthorized" }, 401, req);
+  }
   const token = auth.slice(7);
   const storedKey = await ctx.runQuery(api.settings.getApiKey, {});
-  return storedKey !== null && constantTimeEqual(storedKey, token);
+  const ok = storedKey !== null && constantTimeEqual(storedKey, token);
+  if (!ok) {
+    recordAuthFailure(ip);
+    return json({ error: "Unauthorized" }, 401, req);
+  }
+  clearAuthFailure(ip);
+
+  // Rate limit by API key
+  if (!checkRateLimit(token)) {
+    return json({ error: "Rate limit exceeded" }, 429, req);
+  }
+
+  return null;
 }
 
 // Normalize a raw Convex block for API consumers:
@@ -392,7 +494,7 @@ http.route({
   path: "/api/info",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     return json({ deprecated: true, message: "Use GET /api/docs instead (no auth required)" });
   }),
 });
@@ -402,7 +504,7 @@ http.route({
   path: "/api/stats",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const stats = await ctx.runQuery(api.blocks.getStats, {});
     return json(stats);
   }),
@@ -413,7 +515,7 @@ http.route({
   path: "/api/tasks",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const url = new URL(req.url);
     const date = url.searchParams.get("date");
     const from = url.searchParams.get("from");
@@ -457,7 +559,7 @@ http.route({
   path: "/api/tasks",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.title?.trim()) return json({ error: "'title' is required" }, 400);
@@ -499,10 +601,12 @@ http.route({
         ...commonFields,
         recurrence: body.recurrence,
       });
+      await audit(ctx, "create_recurring", "task", undefined, `recurrence:${body.recurrence} count:${count}`);
       return json({ created: count }, 201);
     }
 
     const id = await ctx.runMutation(api.blocks.create, commonFields);
+    await audit(ctx, "create", "task", String(id));
     const task = await ctx.runQuery(api.blocks.getById, { id });
     return json(normalizeTask(task), 201);
   }),
@@ -513,7 +617,7 @@ http.route({
   pathPrefix: "/api/tasks/",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const id = segments[2];
     if (!id) return json({ error: "id required" }, 400);
@@ -531,7 +635,7 @@ http.route({
   pathPrefix: "/api/tasks/",
   method: "PATCH",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const id = segments[2];
     if (!id) return json({ error: "id required" }, 400);
@@ -565,6 +669,7 @@ http.route({
     if (!existing) return json({ error: "Not found" }, 404);
 
     await ctx.runMutation(api.blocks.update, { id: id as any, ...fields });
+    await audit(ctx, "update", "task", id);
     const updated = await ctx.runQuery(api.blocks.getById, { id: id as any });
     return json(normalizeTask(updated));
   }),
@@ -575,7 +680,7 @@ http.route({
   pathPrefix: "/api/tasks/",
   method: "DELETE",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const url = new URL(req.url);
     const segments = url.pathname.split("/").filter(Boolean);
     const id = segments[2];
@@ -595,8 +700,10 @@ http.route({
         }
       }
       await ctx.runMutation(api.blocks.deleteRecurring, { id: id as any, mode: mode as "future" | "all", futureDays });
+      await audit(ctx, `delete_recurring_${mode}`, "task", id);
     } else {
       await ctx.runMutation(api.blocks.remove, { id: id as any });
+      await audit(ctx, "delete", "task", id);
     }
     return json({ ok: true });
   }),
@@ -607,7 +714,7 @@ http.route({
   pathPrefix: "/api/tasks/",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const id = segments[2];
     const action = segments[3];
@@ -618,6 +725,7 @@ http.route({
     if (!existing) return json({ error: "Not found" }, 404);
 
     await ctx.runMutation(api.blocks.toggleComplete, { id: id as any });
+    await audit(ctx, "toggle_complete", "task", id);
     const task = await ctx.runQuery(api.blocks.getById, { id: id as any });
     return json(normalizeTask(task));
   }),
@@ -639,7 +747,7 @@ http.route({
   path: "/api/categories",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const custom = await ctx.runQuery(api.settings.getCustomCategories, {});
     const customList = Object.entries(custom as Record<string, any>).map(([name, v]) => ({
       name, emoji: v.emoji, color: v.color, default: false,
@@ -653,7 +761,7 @@ http.route({
   path: "/api/categories",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.name?.trim()) return json({ error: "name required" }, 400);
@@ -662,6 +770,7 @@ http.route({
     if (!body?.color) return json({ error: "color required (hex string, e.g. '#4f7cff')" }, 400);
     if (!/^#[0-9a-fA-F]{6}$/.test(body.color)) return json({ error: "color must be a valid hex color (e.g. '#4f7cff')" }, 400);
     await ctx.runMutation(api.settings.addCategory, { name: body.name.trim(), emoji: body.emoji, color: body.color });
+    await audit(ctx, "create", "category", body.name.trim());
     return json({ ok: true, name: body.name.trim() }, 201);
   }),
 });
@@ -671,11 +780,12 @@ http.route({
   pathPrefix: "/api/categories/",
   method: "DELETE",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
     const name = decodeURIComponent(segments[2] ?? "");
     if (!name) return json({ error: "name required in path" }, 400);
     await ctx.runMutation(api.settings.removeCategory, { name });
+    await audit(ctx, "delete", "category", name);
     return json({ ok: true });
   }),
 });
@@ -685,7 +795,7 @@ http.route({
   path: "/api/tasks/bulk",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!Array.isArray(body?.blocks)) return json({ error: "body.blocks must be an array" }, 400);
@@ -700,6 +810,7 @@ http.route({
       if (typeof b.notes === "string" && b.notes.length > MAX_NOTES) return json({ error: `blocks[${i}].notes must be ${MAX_NOTES} characters or fewer` }, 400);
     }
     const ids = await ctx.runMutation(api.blocks.bulkCreate, { blocks: body.blocks });
+    await audit(ctx, "bulk_create", "task", undefined, `count:${ids.length}`);
     return json({ created: ids.length }, 201);
   }),
 });
@@ -709,7 +820,8 @@ http.route({
   path: "/api/tasks/bulk-complete",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
+    const url = new URL(req.url);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
@@ -725,9 +837,13 @@ http.route({
         b.category?.toLowerCase().includes(q) ||
         b.emoji?.includes(q)
       ).map(b => b._id);
+      if (url.searchParams.get("confirm") !== "true") {
+        return json({ error: `Destructive operation requires confirm=true query parameter. This will affect ${ids.length} matching tasks across all dates.` }, 400);
+      }
     }
     if (ids.length === 0) return json({ updated: 0 });
     const count = await ctx.runMutation(api.blocks.bulkComplete, { ids, completed: body.completed ?? true });
+    await audit(ctx, "bulk_complete", "task", undefined, `count:${count}`);
     return json({ updated: count });
   }),
 });
@@ -737,7 +853,8 @@ http.route({
   path: "/api/tasks/bulk-delete",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
+    const url = new URL(req.url);
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!body?.ids && !body?.search) return json({ error: "Provide either 'ids' array or 'search' string" }, 400);
@@ -753,9 +870,13 @@ http.route({
         b.category?.toLowerCase().includes(q) ||
         b.emoji?.includes(q)
       ).map(b => b._id);
+      if (url.searchParams.get("confirm") !== "true") {
+        return json({ error: `Destructive operation requires confirm=true query parameter. This will affect ${ids.length} matching tasks across all dates.` }, 400);
+      }
     }
     if (ids.length === 0) return json({ deleted: 0 });
     const count = await ctx.runMutation(api.blocks.bulkDelete, { ids });
+    await audit(ctx, "bulk_delete", "task", undefined, `count:${count}`);
     return json({ deleted: count });
   }),
 });
@@ -765,7 +886,7 @@ http.route({
   path: "/api/tasks/bulk-update",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
     if (!Array.isArray(body?.ids) || body.ids.length === 0) return json({ error: "body.ids must be a non-empty array" }, 400);
@@ -776,6 +897,7 @@ http.route({
     if (unknownFields.length > 0) return json({ error: `Unknown fields: ${unknownFields.join(", ")}. Allowed: ${[...BULK_UPDATE_FIELDS].join(", ")}` }, 400);
     if (typeof body.fields.category === "string" && body.fields.category.length > 100) return json({ error: "category must be 100 characters or fewer" }, 400);
     const count = await ctx.runMutation(api.blocks.bulkUpdate, { ids: body.ids, fields: body.fields });
+    await audit(ctx, "bulk_update", "task", undefined, `count:${count}`);
     return json({ updated: count });
   }),
 });
@@ -785,7 +907,7 @@ http.route({
   path: "/api/settings",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     const telegram = await ctx.runQuery(api.settings.getTelegramConfig, {});
     const telegramTemplate = await ctx.runQuery(api.settings.getTelegramTemplate, {});
     const pushEnabled = await ctx.runQuery(api.settings.getPushEnabled, {});
@@ -820,7 +942,7 @@ http.route({
   path: "/api/settings",
   method: "PATCH",
   handler: httpAction(async (ctx, req) => {
-    if (!(await authenticate(ctx, req))) return json({ error: "Unauthorized" }, 401);
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
@@ -869,6 +991,7 @@ http.route({
       await ctx.runMutation(api.settings.setComposioApiKey, { value: body.googleCalendar.composioApiKey });
     }
 
+    await audit(ctx, "update", "settings", undefined, `keys:${Object.keys(body ?? {}).join(",")}`);
     // Return updated settings so caller can confirm
     const telegram = await ctx.runQuery(api.settings.getTelegramConfig, {});
     const telegramTemplate = await ctx.runQuery(api.settings.getTelegramTemplate, {});
