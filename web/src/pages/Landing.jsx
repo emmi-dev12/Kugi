@@ -28,6 +28,56 @@ const WEEK_BLOCKS = [
 const DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const DATES = ['5', '6', '7', '8', '9'];
 
+const API_GROUPS = [
+  {
+    label: 'Tasks',
+    icon: '📋',
+    endpoints: [
+      { method: 'GET',    path: '/api/tasks',              desc: 'List blocks. Filter by ?date=, ?from=&to=, ?search=, ?completed=' },
+      { method: 'POST',   path: '/api/tasks',              desc: 'Create a block. Supports notify_message field.' },
+      { method: 'GET',    path: '/api/tasks/:id',          desc: 'Get a single block by ID.' },
+      { method: 'PATCH',  path: '/api/tasks/:id',          desc: 'Update any fields on a block.' },
+      { method: 'DELETE', path: '/api/tasks/:id',          desc: 'Delete. ?mode=this|future|all for recurring blocks.' },
+      { method: 'POST',   path: '/api/tasks/:id/complete', desc: 'Toggle the completed status of a block.' },
+    ],
+  },
+  {
+    label: 'Bulk',
+    icon: '⚡',
+    endpoints: [
+      { method: 'POST', path: '/api/tasks/bulk',          desc: 'Bulk create multiple blocks in one call.' },
+      { method: 'POST', path: '/api/tasks/bulk-complete', desc: 'Bulk complete. Accepts ids array or search string.' },
+      { method: 'POST', path: '/api/tasks/bulk-delete',   desc: 'Bulk delete. Accepts ids array or search string.' },
+      { method: 'POST', path: '/api/tasks/bulk-update',   desc: 'Bulk update fields: category, emoji, completed.' },
+    ],
+  },
+  {
+    label: 'Categories',
+    icon: '🏷️',
+    endpoints: [
+      { method: 'GET',    path: '/api/categories',       desc: 'List all custom categories.' },
+      { method: 'POST',   path: '/api/categories',       desc: 'Create a new custom category.' },
+      { method: 'DELETE', path: '/api/categories/:name', desc: 'Delete a category by name.' },
+    ],
+  },
+  {
+    label: 'Settings',
+    icon: '⚙️',
+    endpoints: [
+      { method: 'GET',   path: '/api/settings', desc: 'Read all settings — Telegram, push reminders, GCal.' },
+      { method: 'PATCH', path: '/api/settings', desc: 'Update any subset of settings in one call.' },
+    ],
+  },
+  {
+    label: 'Meta',
+    icon: '📖',
+    endpoints: [
+      { method: 'GET', path: '/api/docs',  desc: 'Full interactive API reference. No auth required.' },
+      { method: 'GET', path: '/api/stats', desc: 'Deployment usage statistics.' },
+    ],
+  },
+];
+
 /* ─── utilities ─── */
 
 function detectOS() {
@@ -76,7 +126,6 @@ export default function Landing({ onGetStarted }) {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (window.__pwaInstallPrompt) { setInstallPrompt(window.__pwaInstallPrompt); window.__pwaInstallPrompt = null; }
     const h = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener('beforeinstallprompt', h);
@@ -106,6 +155,7 @@ export default function Landing({ onGetStarted }) {
 
   const [bentoRef, bentoInView] = useInView();
   const [devRef, devInView] = useInView();
+  const [apiRef, apiInView] = useInView(0.05);
   const [ctaRef, ctaInView] = useInView();
 
   return (
@@ -120,6 +170,7 @@ export default function Landing({ onGetStarted }) {
           </div>
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navLink}>Features</a>
+            <a href="#api" className={styles.navLink}>API</a>
             <a href="#developer" className={styles.navLink}>Developer</a>
             <a href="#install" className={styles.navLink}>Install</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
@@ -130,6 +181,7 @@ export default function Landing({ onGetStarted }) {
 
       {/* ── HERO ── */}
       <section className={styles.hero}>
+        <div className={styles.heroGlow} aria-hidden />
         <div className={styles.heroStripe} aria-hidden />
 
         {/* Left: copy */}
@@ -141,7 +193,7 @@ export default function Landing({ onGetStarted }) {
 
           <h1 className={styles.heroH1}>
             Clarity<br />
-            is the<br />
+            <em>is the</em><br />
             feature.
           </h1>
 
@@ -174,126 +226,124 @@ export default function Landing({ onGetStarted }) {
 
         {/* Right: interactive preview */}
         <div className={styles.heroRight}>
-          <div className={styles.preview}>
+          <div className={styles.previewGlowWrap}>
+            <div className={styles.preview}>
 
-            {/* Title bar */}
-            <div className={styles.previewBar}>
-              <span className={styles.dot} style={{ background: '#ff5f57' }} />
-              <span className={styles.dot} style={{ background: '#febc2e' }} />
-              <span className={styles.dot} style={{ background: '#28c840' }} />
-              <span className={styles.previewLabel}>kugi — week of may 5</span>
-              {/* View toggle */}
-              <div className={styles.previewToggle}>
-                <button
-                  className={`${styles.previewToggleBtn} ${previewMode === 'desktop' ? styles.previewToggleActive : ''}`}
-                  onClick={() => { setPreviewMode('desktop'); setSelectedBlock(null); }}
-                  title="Desktop view"
-                >
-                  <DesktopIcon />
-                </button>
-                <button
-                  className={`${styles.previewToggleBtn} ${previewMode === 'mobile' ? styles.previewToggleActive : ''}`}
-                  onClick={() => { setPreviewMode('mobile'); setSelectedBlock(null); }}
-                  title="Mobile view"
-                >
-                  <MobileIcon />
-                </button>
-              </div>
-              <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />live</div>
-            </div>
-
-            {previewMode === 'desktop' ? (
-              /* ── Desktop view ── */
-              <div className={styles.previewBody}>
-                <div className={styles.previewDayRow}>
-                  {DAYS.map((d, i) => (
-                    <div key={i} className={`${styles.previewDayCell} ${i === 2 ? styles.previewDayToday : ''}`}>
-                      <span className={styles.previewDayName}>{d}</span>
-                      <span className={`${styles.previewDayNum} ${i === 2 ? styles.previewDayNumToday : ''}`}>{DATES[i]}</span>
-                    </div>
-                  ))}
+              {/* Title bar */}
+              <div className={styles.previewBar}>
+                <span className={styles.dot} style={{ background: '#ff5f57' }} />
+                <span className={styles.dot} style={{ background: '#febc2e' }} />
+                <span className={styles.dot} style={{ background: '#28c840' }} />
+                <span className={styles.previewLabel}>kugi — week of may 5</span>
+                <div className={styles.previewToggle}>
+                  <button
+                    className={`${styles.previewToggleBtn} ${previewMode === 'desktop' ? styles.previewToggleActive : ''}`}
+                    onClick={() => { setPreviewMode('desktop'); setSelectedBlock(null); }}
+                    title="Desktop view"
+                  >
+                    <DesktopIcon />
+                  </button>
+                  <button
+                    className={`${styles.previewToggleBtn} ${previewMode === 'mobile' ? styles.previewToggleActive : ''}`}
+                    onClick={() => { setPreviewMode('mobile'); setSelectedBlock(null); }}
+                    title="Mobile view"
+                  >
+                    <MobileIcon />
+                  </button>
                 </div>
-                <div className={styles.previewGrid}>
-                  {DAYS.map((_, dayIdx) => (
-                    <div key={dayIdx} className={styles.previewCol}>
-                      {WEEK_BLOCKS.filter(b => b.day === dayIdx).map((b) => (
+                <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />live</div>
+              </div>
+
+              {previewMode === 'desktop' ? (
+                <div className={styles.previewBody}>
+                  <div className={styles.previewDayRow}>
+                    {DAYS.map((d, i) => (
+                      <div key={i} className={`${styles.previewDayCell} ${i === 2 ? styles.previewDayToday : ''}`}>
+                        <span className={styles.previewDayName}>{d}</span>
+                        <span className={`${styles.previewDayNum} ${i === 2 ? styles.previewDayNumToday : ''}`}>{DATES[i]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.previewGrid}>
+                    {DAYS.map((_, dayIdx) => (
+                      <div key={dayIdx} className={styles.previewCol}>
+                        {WEEK_BLOCKS.filter(b => b.day === dayIdx).map((b) => (
+                          <button
+                            key={b.id}
+                            className={`${styles.previewBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
+                            style={{ borderLeftColor: b.color, background: selectedBlock?.id === b.id ? `${b.color}30` : `${b.color}18` }}
+                            onClick={() => handleBlockClick(b)}
+                          >
+                            <div className={styles.previewBlockEmoji}>{b.emoji}</div>
+                            <div>
+                              <div className={styles.previewBlockTitle}>{b.title}</div>
+                              <div className={styles.previewBlockTime}>{b.time}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.previewMobileBody}>
+                  <div className={styles.previewMobileNav}>
+                    <button
+                      className={styles.previewNavBtn}
+                      onClick={() => { setPreviewDay(d => Math.max(0, d - 1)); setSelectedBlock(null); }}
+                      disabled={previewDay === 0}
+                    >‹</button>
+                    <div className={styles.previewMobileDay}>
+                      <span className={styles.previewMobileDayName}>{DAYS[previewDay]}</span>
+                      <span className={`${styles.previewMobileDayNum} ${previewDay === 2 ? styles.previewDayNumToday : ''}`}>{DATES[previewDay]}</span>
+                    </div>
+                    <button
+                      className={styles.previewNavBtn}
+                      onClick={() => { setPreviewDay(d => Math.min(4, d + 1)); setSelectedBlock(null); }}
+                      disabled={previewDay === 4}
+                    >›</button>
+                  </div>
+                  <div className={styles.previewMobileCol}>
+                    {WEEK_BLOCKS.filter(b => b.day === previewDay).length === 0 ? (
+                      <div className={styles.previewEmpty}>No blocks today</div>
+                    ) : (
+                      WEEK_BLOCKS.filter(b => b.day === previewDay).map((b) => (
                         <button
                           key={b.id}
-                          className={`${styles.previewBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
+                          className={`${styles.previewMobileBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
                           style={{ borderLeftColor: b.color, background: selectedBlock?.id === b.id ? `${b.color}30` : `${b.color}18` }}
                           onClick={() => handleBlockClick(b)}
                         >
-                          <div className={styles.previewBlockEmoji}>{b.emoji}</div>
-                          <div>
+                          <span className={styles.previewMobileBlockEmoji}>{b.emoji}</span>
+                          <div className={styles.previewMobileBlockInfo}>
                             <div className={styles.previewBlockTitle}>{b.title}</div>
                             <div className={styles.previewBlockTime}>{b.time}</div>
                           </div>
+                          {selectedBlock?.id === b.id && <span className={styles.previewBlockCheck}>✓</span>}
                         </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              /* ── Mobile view ── */
-              <div className={styles.previewMobileBody}>
-                <div className={styles.previewMobileNav}>
-                  <button
-                    className={styles.previewNavBtn}
-                    onClick={() => { setPreviewDay(d => Math.max(0, d - 1)); setSelectedBlock(null); }}
-                    disabled={previewDay === 0}
-                  >‹</button>
-                  <div className={styles.previewMobileDay}>
-                    <span className={styles.previewMobileDayName}>{DAYS[previewDay]}</span>
-                    <span className={`${styles.previewMobileDayNum} ${previewDay === 2 ? styles.previewDayNumToday : ''}`}>{DATES[previewDay]}</span>
+                      ))
+                    )}
                   </div>
-                  <button
-                    className={styles.previewNavBtn}
-                    onClick={() => { setPreviewDay(d => Math.min(4, d + 1)); setSelectedBlock(null); }}
-                    disabled={previewDay === 4}
-                  >›</button>
                 </div>
-                <div className={styles.previewMobileCol}>
-                  {WEEK_BLOCKS.filter(b => b.day === previewDay).length === 0 ? (
-                    <div className={styles.previewEmpty}>No blocks today</div>
-                  ) : (
-                    WEEK_BLOCKS.filter(b => b.day === previewDay).map((b) => (
-                      <button
-                        key={b.id}
-                        className={`${styles.previewMobileBlock} ${selectedBlock?.id === b.id ? styles.previewBlockSelected : ''}`}
-                        style={{ borderLeftColor: b.color, background: selectedBlock?.id === b.id ? `${b.color}30` : `${b.color}18` }}
-                        onClick={() => handleBlockClick(b)}
-                      >
-                        <span className={styles.previewMobileBlockEmoji}>{b.emoji}</span>
-                        <div className={styles.previewMobileBlockInfo}>
-                          <div className={styles.previewBlockTitle}>{b.title}</div>
-                          <div className={styles.previewBlockTime}>{b.time}</div>
-                        </div>
-                        {selectedBlock?.id === b.id && <span className={styles.previewBlockCheck}>✓</span>}
-                      </button>
-                    ))
+              )}
+
+              {selectedBlock && (
+                <div className={styles.previewDetail}>
+                  <div className={styles.previewDetailBar}>
+                    <span className={styles.previewDetailEmoji}>{selectedBlock.emoji}</span>
+                    <div className={styles.previewDetailInfo}>
+                      <div className={styles.previewDetailTitle}>{selectedBlock.title}</div>
+                      <div className={styles.previewDetailTime}>{selectedBlock.time}</div>
+                    </div>
+                    <button className={styles.previewDetailClose} onClick={() => setSelectedBlock(null)}>×</button>
+                  </div>
+                  {selectedBlock.notes && (
+                    <div className={styles.previewDetailNotes}>{selectedBlock.notes}</div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Block detail panel */}
-            {selectedBlock && (
-              <div className={styles.previewDetail}>
-                <div className={styles.previewDetailBar}>
-                  <span className={styles.previewDetailEmoji}>{selectedBlock.emoji}</span>
-                  <div className={styles.previewDetailInfo}>
-                    <div className={styles.previewDetailTitle}>{selectedBlock.title}</div>
-                    <div className={styles.previewDetailTime}>{selectedBlock.time}</div>
-                  </div>
-                  <button className={styles.previewDetailClose} onClick={() => setSelectedBlock(null)}>×</button>
-                </div>
-                {selectedBlock.notes && (
-                  <div className={styles.previewDetailNotes}>{selectedBlock.notes}</div>
-                )}
-              </div>
-            )}
-
+            </div>
           </div>
         </div>
       </section>
@@ -312,7 +362,6 @@ export default function Landing({ onGetStarted }) {
 
           <div className={styles.bento}>
 
-            {/* AI Agent — wide */}
             <div className={`${styles.bentoCard} ${styles.bentoAi}`}>
               <div className={styles.bentoEyebrow}>AI-Native</div>
               <div className={styles.bentoTitle}>Your agents already<br />speak its language.</div>
@@ -331,7 +380,6 @@ export default function Landing({ onGetStarted }) {
               </div>
             </div>
 
-            {/* PWA — narrow tall */}
             <div className={`${styles.bentoCard} ${styles.bentoPwa}`}>
               <div className={styles.bentoEyebrow}>Universal</div>
               <div className={styles.bentoTitle}>Installs<br />everywhere.</div>
@@ -352,7 +400,6 @@ export default function Landing({ onGetStarted }) {
               )}
             </div>
 
-            {/* Real-time sync — small */}
             <div className={`${styles.bentoCard} ${styles.bentoSync}`}>
               <div className={styles.bentoEyebrow}>Infrastructure</div>
               <div className={styles.bentoTitle}>Real-time,<br />always.</div>
@@ -364,7 +411,6 @@ export default function Landing({ onGetStarted }) {
               </div>
             </div>
 
-            {/* Reminders — wide */}
             <div className={`${styles.bentoCard} ${styles.bentoReminders}`}>
               <div className={styles.bentoEyebrow}>Notifications</div>
               <div className={styles.bentoTitle}>Remind me the way I want to be reminded.</div>
@@ -383,7 +429,6 @@ export default function Landing({ onGetStarted }) {
               </div>
             </div>
 
-            {/* Data ownership */}
             <div className={`${styles.bentoCard} ${styles.bentoData}`}>
               <div className={styles.bentoEyebrow}>Ownership</div>
               <div className={styles.bentoTitle}>Zero central servers. Ever.</div>
@@ -397,30 +442,88 @@ export default function Landing({ onGetStarted }) {
               </div>
             </div>
 
-            {/* API */}
             <div className={`${styles.bentoCard} ${styles.bentoApi}`}>
               <div className={styles.bentoEyebrow}>Developer</div>
               <div className={styles.bentoTitle}>A REST API<br />worth using.</div>
               <div className={styles.apiSnippet}>
-                <div className={styles.apiLine}>
-                  <span className={styles.apiMethod}>GET</span>
-                  <span className={styles.apiPath}>/api/tasks?date=today</span>
-                </div>
-                <div className={styles.apiLine}>
-                  <span className={styles.apiMethod}>POST</span>
-                  <span className={styles.apiPath}>/api/tasks</span>
-                </div>
-                <div className={styles.apiLine}>
-                  <span className={styles.apiMethod}>PATCH</span>
-                  <span className={styles.apiPath}>/api/tasks/:id</span>
-                </div>
-                <div className={styles.apiLine}>
-                  <span className={styles.apiMethod}>GET</span>
-                  <span className={styles.apiPath}>/api/docs</span>
-                </div>
+                {[
+                  { m: 'GET',    p: '/api/tasks?date=today' },
+                  { m: 'POST',   p: '/api/tasks' },
+                  { m: 'PATCH',  p: '/api/tasks/:id' },
+                  { m: 'GET',    p: '/api/docs' },
+                ].map(({ m, p }) => (
+                  <div key={p} className={styles.apiLine}>
+                    <span className={`${styles.apiMethod} ${styles['apiMethod' + m]}`}>{m}</span>
+                    <span className={styles.apiPath}>{p}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* ── API REFERENCE ── */}
+      <section
+        id="api"
+        className={`${styles.apiSection} ${apiInView ? styles.inView : ''}`}
+        ref={apiRef}
+      >
+        <div className={styles.sectionInner}>
+          <div className={styles.sectionHead}>
+            <div className={styles.eyebrow}>REST API</div>
+            <h2 className={styles.sectionH2}>Every endpoint, documented.</h2>
+            <p className={styles.sectionSub}>
+              Bearer-authenticated. Base URL is your Convex deployment at{' '}
+              <code className={styles.inlineCode}>.convex.site</code>.
+              Full interactive docs at <code className={styles.inlineCode}>/api/docs</code> — no auth needed.
+            </p>
+          </div>
+
+          <div className={styles.apiAuthBar}>
+            <div className={styles.apiAuthLeft}>
+              <span className={styles.apiAuthLabel}>Base URL</span>
+              <code className={styles.apiAuthCode}>https://[deployment].convex.site</code>
+            </div>
+            <div className={styles.apiAuthDivider} />
+            <div className={styles.apiAuthLeft}>
+              <span className={styles.apiAuthLabel}>Auth</span>
+              <code className={styles.apiAuthCode}>Authorization: Bearer &lt;your-api-key&gt;</code>
+            </div>
+            <a href="#developer" className={styles.apiAuthLink}>How to get your key →</a>
+          </div>
+
+          <div className={styles.apiGroups}>
+            {API_GROUPS.map((group) => (
+              <div key={group.label} className={styles.apiGroup}>
+                <div className={styles.apiGroupHeader}>
+                  <span className={styles.apiGroupIcon}>{group.icon}</span>
+                  <span className={styles.apiGroupLabel}>{group.label}</span>
+                  <span className={styles.apiGroupCount}>{group.endpoints.length}</span>
+                </div>
+                <div className={styles.apiEndpoints}>
+                  {group.endpoints.map((ep) => (
+                    <div key={ep.method + ep.path} className={styles.apiEndpoint}>
+                      <span className={`${styles.apiMethodBadge} ${styles['badge' + ep.method]}`}>{ep.method}</span>
+                      <code className={styles.apiEndpointPath}>{ep.path}</code>
+                      <span className={styles.apiEndpointDesc}>{ep.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.apiFootnote}>
+            <InfoIcon />
+            <span>
+              All endpoints accept and return JSON. Timestamps are ISO 8601.
+              Dates are <code className={styles.inlineCode}>YYYY-MM-DD</code>, times are{' '}
+              <code className={styles.inlineCode}>HH:MM</code>.
+              The <code className={styles.inlineCode}>DELETE /api/tasks/:id</code> endpoint supports{' '}
+              <code className={styles.inlineCode}>?mode=this|future|all</code> for recurring blocks.
+            </span>
           </div>
         </div>
       </section>
@@ -611,6 +714,16 @@ function MobileIcon() {
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
       <rect x="3" y="0.75" width="6" height="10.5" rx="1.3" stroke="currentColor" strokeWidth="1.2"/>
       <circle cx="6" cy="9.5" r="0.65" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M7 6.5v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      <circle cx="7" cy="4.5" r="0.7" fill="currentColor"/>
     </svg>
   );
 }
