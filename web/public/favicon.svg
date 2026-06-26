@@ -1,41 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#182a1e"/>
-      <stop offset="100%" stop-color="#0c110e"/>
+      <stop offset="0%" stop-color="#6f9d7d"/>
+      <stop offset="46%" stop-color="#45684f"/>
+      <stop offset="100%" stop-color="#2a3a46"/>
     </linearGradient>
-    <linearGradient id="spine" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
-      <stop offset="0%" stop-color="#8fc49f"/>
-      <stop offset="100%" stop-color="#3d5c47"/>
-    </linearGradient>
-    <linearGradient id="ua" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
-      <stop offset="0%" stop-color="#4a7358"/>
-      <stop offset="100%" stop-color="#78ae8a"/>
-    </linearGradient>
-    <linearGradient id="la" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
-      <stop offset="0%" stop-color="#3d5c47"/>
-      <stop offset="100%" stop-color="#5d8a6a"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="10" cy="8" r="16" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#5d8a6a" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#5d8a6a" stop-opacity="0"/>
-    </radialGradient>
-    <clipPath id="clip">
-      <rect width="32" height="32" rx="8"/>
-    </clipPath>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&amp;display=swap');
+      text { font-family: 'Caveat', 'Segoe Script', 'Comic Sans MS', cursive; }
+    </style>
   </defs>
   <rect width="32" height="32" rx="8" fill="url(#bg)"/>
-  <g clip-path="url(#clip)">
-    <rect width="32" height="32" fill="url(#glow)"/>
-    <!-- Lower arm block -->
-    <rect x="9.5" y="13.5" width="17" height="5" rx="2.2" fill="url(#la)" transform="rotate(35 10 16)"/>
-    <!-- Upper arm block -->
-    <rect x="9.5" y="13.5" width="17" height="5" rx="2.2" fill="url(#ua)" transform="rotate(-35 10 16)"/>
-    <!-- Spine block -->
-    <rect x="5" y="5" width="5.5" height="22" rx="2.5" fill="url(#spine)"/>
-    <!-- Specular sheen on spine -->
-    <rect x="5" y="5" width="5.5" height="3" rx="2.5" fill="white" fill-opacity="0.15"/>
-    <!-- Hairline border -->
-    <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7.25" stroke="white" stroke-opacity="0.08" stroke-width="1" fill="none"/>
-  </g>
+  <rect x="0.6" y="0.6" width="30.8" height="30.8" rx="7.4" fill="none" stroke="#ffffff" stroke-opacity="0.12"/>
+  <text x="16" y="22.5" font-size="19" font-weight="700" text-anchor="middle" fill="#eef4ef">kugi</text>
 </svg>

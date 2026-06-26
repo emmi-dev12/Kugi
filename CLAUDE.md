@@ -133,7 +133,10 @@ components/UI/
   CategoryManager.jsx
   BlockCard.jsx               — block card; inline title edit (dbl-click / long-press) via onUpdate prop
   BlockDetailsSheet.jsx
+  KugiMark.jsx               — unified logo+icon: handwritten lowercase "kugi" on a sage→slate tile (sizes sm/md/lg). Used in app header, Landing, Setup. Replaces the old geometric KugiLogo.
 ```
+
+**Branding:** the name is lowercase **kugi** everywhere. The logo *is* the wordmark — `KugiMark` (sage→slate rounded tile, Caveat script). `web/public/favicon.svg` matches it; the PNG home-screen icons in `web/public/icons/` are the old geometric mark and still need a one-time re-export to the new design.
 
 **Key hooks (`web/src/hooks/useDB.js`):**
 - `useBlocks()` — exposes: `blocks`, `createBlock`, `updateBlock`, `deleteBlock`, `toggleComplete`, `bulkCreate`, `bulkDelete`, `bulkComplete`, `createRecurring`, `deleteRecurring`
@@ -195,6 +198,7 @@ components/UI/
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
-- **sw.js cache name** — currently `kugi-v15`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **sw.js cache name** — currently `kugi-v16`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + settings gear, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
 - **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
 - **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.

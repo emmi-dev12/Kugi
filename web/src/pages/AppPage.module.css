@@ -15,26 +15,12 @@
   height: calc(56px + env(safe-area-inset-top));
 }
 
-.logo {
-  display: flex; align-items: center; gap: 8px;
-  color: var(--text);
-}
-.logoText {
-  font-family: var(--font-script);
-  font-size: 26px; font-weight: 700; letter-spacing: 0;
-  line-height: 1; color: var(--text);
-  padding-bottom: 2px;
-}
-.logoIcon {
-  width: 28px; height: 28px;
-  background: linear-gradient(135deg, #5d8a6a 0%, #3d5c47 100%);
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-}
+.logo { flex-shrink: 0; }
 
 .headerCenter {
   display: flex; align-items: center; gap: 10px;
 }
+.navLabelShort { display: none; }
 .navLabel {
   font-size: 14px; font-weight: 600;
   color: var(--text); min-width: 200px; text-align: center;
@@ -286,7 +272,6 @@
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .resizeHandle { display: none; }
-  .logoText { font-size: 22px; }
 
   /* Colorful gradient background so glass blur has something to work with */
   .app {
@@ -296,22 +281,37 @@
       var(--bg);
   }
 
-  /* Liquid Glass header */
+  /* Liquid Glass header — two rows on mobile so nothing is squashed */
   .header {
-    padding: env(safe-area-inset-top) 12px 0;
-    height: calc(50px + env(safe-area-inset-top));
-    align-items: flex-end;
-    padding-bottom: 0;
+    flex-wrap: wrap;
+    row-gap: 10px;
+    height: auto;
+    align-items: center;
+    padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
     background: var(--glass-bg);
     backdrop-filter: blur(32px) saturate(2);
     -webkit-backdrop-filter: blur(32px) saturate(2);
     border-bottom: 1px solid var(--glass-border);
     box-shadow: var(--glass-specular);
   }
-  /* Re-align children to the 50px row below the safe area */
-  .header > * { margin-bottom: 0; height: 50px; display: flex; align-items: center; }
+  .header > * { margin-bottom: 0; height: auto; }
 
-  .navLabel { min-width: 0; font-size: 13px; }
+  /* Row 1: logo (left) + settings (right) */
+  .logo { order: 1; }
+  .mobileSettingsBtn { order: 2; margin-left: auto; }
+
+  /* Row 2: full-width date navigator */
+  .headerCenter {
+    order: 3;
+    flex-basis: 100%;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .navLabel { flex: 1; min-width: 0; font-size: 14px; text-align: center; }
+  .navLabelFull { display: none; }
+  .navLabelShort { display: inline; }
+
   /* New Block button lives in the bottom nav + button — hide it in the header */
   .headerRight { display: none; }
 
