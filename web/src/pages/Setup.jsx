@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import KugiLogo from '../components/UI/KugiLogo';
+import KugiMark from '../components/UI/KugiMark';
 import styles from './Setup.module.css';
 
 export default function Setup({ onComplete }) {
@@ -25,8 +25,7 @@ export default function Setup({ onComplete }) {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logoRow}>
-          <div className={styles.logoIcon}><KugiLogo size={28} /></div>
-          <span className={styles.logoText}>kugi</span>
+          <KugiMark size="lg" />
         </div>
         <h1 className={styles.title}>Connect your workspace</h1>
         <p className={styles.sub}>

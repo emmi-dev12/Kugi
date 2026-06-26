@@ -121,15 +121,22 @@ pages/
 
 components/UI/
   BlockModal.jsx              — create/edit form (includes notify_message field)
-  CommandPalette.jsx          — Cmd+K search with multi-select bulk delete/complete
+  CommandPalette.jsx          — Cmd+K search with multi-select bulk delete/complete;
+                                empty-query starter panel (command list + shortcut cheatsheet), fuzzy title match
   QuickAdd.jsx                — NLP quick-add bar (chrono-node), 'q' shortcut
+  PlanMyDay.jsx               — "Plan my day" focus overlay ('p' / header button): day load, unscheduled list, carry-over from yesterday
+  Celebration.jsx            — confetti + handwritten "all done", fired when the last open block of a day completes (reduced-motion aware)
+  WelcomeCard.jsx            — first-run empty state (no blocks); dismissal in localStorage 'kugiWelcomeDismissed'
   DeleteRecurringModal.jsx    — 3-mode delete for recurring series
   SettingsModal.jsx           — tabs: General, Notifications, Categories, Integrations, Developer
                                 Integrations tab: GCal sync with orphan confirmation dialog
   CategoryManager.jsx
-  BlockCard.jsx
+  BlockCard.jsx               — block card; inline title edit (dbl-click / long-press) via onUpdate prop
   BlockDetailsSheet.jsx
+  KugiMark.jsx               — unified logo+icon: handwritten lowercase "kugi" on a sage→slate tile (sizes sm/md/lg). Used in app header, Landing, Setup. Replaces the old geometric KugiLogo.
 ```
+
+**Branding:** the name is lowercase **kugi** everywhere (incl. `manifest.json`, `index.html` title/apple-title). The logo *is* the wordmark — `KugiMark` (sage→slate rounded tile, Caveat script). `web/public/favicon.svg` and the PNG home-screen icons (`web/public/icons/icon-16/32/180/192/512.png`) all render the handwritten kugi on the sage→slate tile. To regenerate the PNGs: render the tile with the Caveat font at each size (the icons were produced via headless Chromium with the Caveat TTF embedded as base64 — there's no SVG rasterizer/system Caveat font in the build env, so a plain `convert favicon.svg` won't reproduce the script face).
 
 **Key hooks (`web/src/hooks/useDB.js`):**
 - `useBlocks()` — exposes: `blocks`, `createBlock`, `updateBlock`, `deleteBlock`, `toggleComplete`, `bulkCreate`, `bulkDelete`, `bulkComplete`, `createRecurring`, `deleteRecurring`
@@ -137,7 +144,7 @@ components/UI/
 - `useCategories()`, `useTelegram()`, `usePushEnabled()`, `useApiKey()`
 
 **Key utils:**
-- `dates.js` — all date helpers; always imports `getTZ()` dynamically (never hardcode timezone)
+- `dates.js` — all date helpers; always imports `getTZ()` dynamically (never hardcode timezone). Timeline math: `timeToMins`, `minsToPx` (64px/hour), `minsToTime` (drag-to-reschedule)
 - `parseQuickAdd.js` — chrono-node NLP parser for the QuickAdd bar
 - `categories.js` — `CATEGORIES` constant + `getColor`, `getCatEmoji`, `hexRgb`
 
@@ -147,7 +154,7 @@ components/UI/
 
 ### CSS conventions
 - CSS Modules everywhere (`.module.css` per component)
-- Global CSS vars in `web/src/index.css`: `--bg`, `--surface`, `--surface2`, `--surface3`, `--border`, `--border2`, `--text`, `--text-muted`, `--text-dim`
+- Design tokens live in `web/src/styles/globals.css` `:root` (imported once in `main.jsx`, so tokens resolve in every module). Core: `--bg`, `--surface`, `--surface2/3/4`, `--border`, `--border2`, `--text`, `--text-muted`, `--text-dim`, `--accent`. Added in the UI/UX upgrade: spacing scale `--s1`…`--s6`, elevation `--elev-1/2/3`, functional `--success`/`--danger`/`--info`, motion `--ease-out` + `--dur-fast`/`--dur`/`--dur-slow`, and `--font-script` (Caveat — handwritten "kugi" wordmark only, never body text)
 - Mobile breakpoint: `768px` in both CSS `@media` and JS `window.matchMedia`
 - Portals (`createPortal`) used for: BlockCard action sheet, BlockDetailsSheet, BlockModal overlay
 - Safe area insets (`env(safe-area-inset-top/bottom)`) used throughout for Dynamic Island/notch
@@ -161,9 +168,14 @@ components/UI/
 | Push notifications | `pushActions.ts:checkAndNotify` (cron every 1 min); rules in `reminders` setting |
 | GCal sync with orphan confirmation | `calendarSyncActions.ts`: `getSyncDiff`, `fetchFromGoogle({deleteKugiIds})`, `pushToGoogle`, `deleteGcalEvents`; UI in `SettingsModal` |
 | Multi-select bulk delete in search | `CommandPalette.jsx` — checkboxes + Select All + bulk toolbar |
+| Drag-to-reschedule / resize | `DayView.jsx` timeline `TimelineBody`: pointer drag moves a timed block, bottom `resizeHandle` resizes; 15-min snap; commits via `onUpdateBlock` (= `handleUpdate` in AppPage) so undo/redo + toasts work |
+| Inline title edit | `BlockCard.jsx` `onUpdate` prop; double-click (desktop) / long-press (mobile) → commits `{ title }` through `handleUpdate` |
+| Plan my day | `PlanMyDay.jsx` (`'p'` / header Plan button); carry-over moves yesterday's unfinished by updating `date` |
+| Completion celebration | `Celebration.jsx`; triggered in `AppPage.handleToggle` when a day's last open block completes; `triggerCelebration()` falls back to a toast under `prefers-reduced-motion` |
+| First-run welcome | `WelcomeCard.jsx`; rendered in AppPage main when `blocks.length === 0 && !welcomeDismissed` |
 | AI agent API | `http.ts` — all endpoints; agent should always `GET /api/docs` first |
 | NLP quick-add | `QuickAdd.jsx` + `parseQuickAdd.js` (chrono-node); keyboard shortcut `q` |
-| Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search |
+| Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search; empty-query starter panel + fuzzy title match |
 | Landing page | `Landing.jsx` — Linear-style dark design, 3D preview, AI Agent section with copyable setup prompt |
 
 ---
@@ -186,6 +198,7 @@ components/UI/
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
-- **sw.js cache name** — currently `kugi-v8`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **sw.js cache name** — currently `kugi-v16`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + settings gear, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
 - **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
 - **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import KugiLogo from '../components/UI/KugiLogo';
+import KugiMark from '../components/UI/KugiMark';
 import styles from './Landing.module.css';
 
 /* ─── constants ─── */
@@ -165,8 +165,7 @@ export default function Landing({ onGetStarted }) {
       <nav className={styles.nav}>
         <div className={styles.navInner}>
           <div className={styles.brand}>
-            <div className={styles.brandMark}><KugiLogo size={14} /></div>
-            <span className={styles.brandName}>kugi</span>
+            <KugiMark size="sm" />
           </div>
           <div className={styles.navLinks}>
             <a href="#features" className={styles.navLink}>Features</a>
@@ -610,8 +609,7 @@ export default function Landing({ onGetStarted }) {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.brand}>
-            <div className={styles.brandMark}><KugiLogo size={12} /></div>
-            <span className={styles.brandName}>kugi</span>
+            <KugiMark size="sm" />
           </div>
           <div className={styles.footerLinks}>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>GitHub</a>

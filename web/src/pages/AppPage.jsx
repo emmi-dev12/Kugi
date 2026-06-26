@@ -9,7 +9,7 @@ import DayView from '../components/Calendar/DayView';
 import CompletedView from '../components/Calendar/CompletedView';
 import CalendarView from '../components/Calendar/CalendarView';
 import BlockModal from '../components/UI/BlockModal';
-import KugiLogo from '../components/UI/KugiLogo';
+import KugiMark from '../components/UI/KugiMark';
 import CategoryManager from '../components/UI/CategoryManager';
 import SearchModal from '../components/UI/SearchModal';
 import CommandPalette from '../components/UI/CommandPalette';
@@ -191,6 +191,13 @@ export default function AppPage() {
     : view === 'completed' ? 'Completed'
     : 'Calendar';
 
+  // Compact label for the mobile header (the full date wraps on a phone).
+  const navLabelShort = view === 'day'
+    ? currentDay.toLocaleDateString('en-US', { timeZone: getTZ(), weekday: 'short', day: 'numeric', month: 'short' })
+    : view === 'week'
+    ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])}`
+    : navLabel;
+
   const weekDateStrsSet = new Set(weekDays.map(toDateStr));
   const scopeBlocks = view === 'week'
     ? blocks.filter(b => [...weekDateStrsSet].some(ds => (!b.end_date ? b.date === ds : b.date <= ds && ds <= b.end_date)))
@@ -327,14 +334,14 @@ export default function AppPage() {
     <div className={styles.app}>
       {/* HEADER */}
       <header className={styles.header}>
-        <div className={styles.logo}>
-          <div className={styles.logoIcon}><KugiLogo size={20} /></div>
-          <span className={styles.logoText}>kugi</span>
-        </div>
+        <KugiMark size="md" className={styles.logo} />
         <div className={styles.headerCenter}>
-          <button className="btn-icon" onClick={() => nav(-1)}>‹</button>
-          <span className={styles.navLabel}>{navLabel}</span>
-          <button className="btn-icon" onClick={() => nav(1)}>›</button>
+          <button className="btn-icon" onClick={() => nav(-1)} aria-label="Previous">‹</button>
+          <span className={styles.navLabel}>
+            <span className={styles.navLabelFull}>{navLabel}</span>
+            <span className={styles.navLabelShort}>{navLabelShort}</span>
+          </span>
+          <button className="btn-icon" onClick={() => nav(1)} aria-label="Next">›</button>
           <button className="btn-secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={goToday}>Today</button>
         </div>
         <div className={styles.headerRight}>
