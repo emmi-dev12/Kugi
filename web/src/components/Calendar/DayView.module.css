@@ -60,15 +60,41 @@
 .timedBlock {
   position: absolute; left: 0; right: 12px;
   border-radius: 12px; padding: 9px 12px;
-  cursor: pointer; border: 1px solid transparent;
-  transition: all 0.15s; z-index: 5;
+  cursor: grab; border: 1px solid transparent;
+  transition: top var(--dur-fast) var(--ease-out), height var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  z-index: 5; touch-action: none;
 }
-.timedBlock:hover { transform: translateX(3px); box-shadow: 0 6px 24px rgba(0,0,0,0.5); z-index: 6; }
-.timedBlock.completed { opacity: 0.38; }
+.timedBlock:hover { box-shadow: var(--elev-2); z-index: 6; }
+.timedBlock.completed { opacity: 0.62; }
+.timedBlock.dragging {
+  cursor: grabbing; z-index: 20;
+  box-shadow: var(--elev-3);
+  transition: none;
+  outline: 2px solid var(--accent-border);
+}
+.dragTime {
+  position: absolute; top: 6px; left: 12px;
+  font-size: 11px; font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  background: var(--accent-bg); border: 1px solid var(--accent-border);
+  padding: 2px 7px; border-radius: 6px; z-index: 2;
+}
+.resizeHandle {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 9px;
+  cursor: ns-resize; touch-action: none;
+  border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+}
+.resizeHandle::after {
+  content: ''; position: absolute; left: 50%; bottom: 3px;
+  width: 24px; height: 3px; margin-left: -12px; border-radius: 2px;
+  background: var(--card-text-time); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.timedBlock:hover .resizeHandle::after { opacity: 0.5; }
 
 .timedInner { display: flex; align-items: flex-start; gap: 7px; }
 .timedTitle { font-size: 12px; font-weight: 700; color: var(--card-text); line-height: 1.35; }
-.timedTitle.done { text-decoration: line-through; opacity: 0.5; }
+.timedTitle.done { opacity: 0.72; }
 .timedTime { font-size: 10px; color: var(--card-text-time); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .timedNotes { font-size: 10px; color: var(--card-text-sub); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .timedBadge {

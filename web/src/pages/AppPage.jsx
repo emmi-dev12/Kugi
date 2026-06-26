@@ -14,6 +14,9 @@ import CategoryManager from '../components/UI/CategoryManager';
 import SearchModal from '../components/UI/SearchModal';
 import CommandPalette from '../components/UI/CommandPalette';
 import QuickAdd from '../components/UI/QuickAdd';
+import PlanMyDay from '../components/UI/PlanMyDay';
+import Celebration from '../components/UI/Celebration';
+import WelcomeCard from '../components/UI/WelcomeCard';
 import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
@@ -49,6 +52,9 @@ export default function AppPage() {
   const isResizing = useRef(false);
   const quickAddRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => localStorage.getItem('kugiWelcomeDismissed') === 'true');
   const [toast, setToast] = useState(null);
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
@@ -134,11 +140,31 @@ export default function AppPage() {
   }
 
   function handleToggle(id) {
+    const block = blocks.find(b => b.id === id);
     toggleComplete(id);
     recordAction(
       () => toggleComplete(id),
       () => toggleComplete(id)
     );
+    // Celebrate finishing the last open block of a day.
+    if (block && !block.completed) {
+      const covers = (b) => b.end_date ? (b.date <= block.date && block.date <= b.end_date) : b.date === block.date;
+      const dayBlocks = blocks.filter(covers);
+      const remaining = dayBlocks.filter(b => b.id !== id && !b.completed);
+      if (dayBlocks.length >= 1 && remaining.length === 0) triggerCelebration();
+    }
+  }
+
+  function triggerCelebration() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { showToast('All done for the day ✓'); return; }
+    setCelebrate(true);
+    setTimeout(() => setCelebrate(false), 2400);
+  }
+
+  function dismissWelcome() {
+    setWelcomeDismissed(true);
+    localStorage.setItem('kugiWelcomeDismissed', 'true');
   }
 
   function undo() {
@@ -184,12 +210,14 @@ export default function AppPage() {
       }
       if (meta && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
       if (meta && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); return; }
-      if (modal.open || settingsOpen || searchOpen) return;
+      if (e.key === 'Escape' && planOpen) { setPlanOpen(false); return; }
+      if (modal.open || settingsOpen || searchOpen || planOpen) return;
       if (e.key === 'n') openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()));
       if (e.key === 'w') setView('week');
       if (e.key === 'd') setView('day');
       if (e.key === 'f') setView('completed');
       if (e.key === 't') goToday();
+      if (e.key === 'p') { e.preventDefault(); setPlanOpen(true); }
       if (e.key === 'l' && view === 'day') setDayLayout('timeline');
       if (e.key === 'b' && view === 'day') setDayLayout('bento');
       if (e.key === 'q') { e.preventDefault(); quickAddRef.current?.focus(); }
@@ -197,7 +225,7 @@ export default function AppPage() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [modal.open, settingsOpen, searchOpen, view, currentDay]);
+  }, [modal.open, settingsOpen, searchOpen, planOpen, view, currentDay]);
 
   function openModal(block, defaultDate) {
     setModal({ open: true, block, defaultDate });
@@ -315,6 +343,13 @@ export default function AppPage() {
             <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
             <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
           </div>
+          <button className={styles.planBtn} onClick={() => setPlanOpen(true)} title="Plan my day (p)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M13 3l-1.1 1.1M4.1 11.9L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+            <span className={styles.planBtnText}>Plan</span>
+          </button>
           <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title="Search blocks (/)">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
@@ -363,6 +398,14 @@ export default function AppPage() {
             onAdd={handleQuickAdd}
             defaultDate={view === 'day' ? currentDay : todayZurich()}
           />
+          {blocks.length === 0 && !welcomeDismissed && (
+            <WelcomeCard
+              onNewBlock={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
+              onQuickAdd={() => quickAddRef.current?.focus()}
+              onSearch={() => setSearchOpen(true)}
+              onDismiss={dismissWelcome}
+            />
+          )}
           {view === 'week' && (
             <WeekView
               days={weekDays}
@@ -387,6 +430,7 @@ export default function AppPage() {
               onDeleteBlock={handleDelete}
               onToggleBlock={handleToggle}
               onAddBlock={dateStr => openModal(null, dateStr)}
+              onUpdateBlock={handleUpdate}
             />
           )}
           {view === 'completed' && (
@@ -443,6 +487,18 @@ export default function AppPage() {
           onFilterCategory={cat => setActiveCategory(cat)}
         />
       )}
+
+      {planOpen && (
+        <PlanMyDay
+          day={currentDay}
+          blocks={blocks}
+          onClose={() => setPlanOpen(false)}
+          onEditBlock={block => openModal(block)}
+          onUpdateBlock={handleUpdate}
+        />
+      )}
+
+      {celebrate && <Celebration />}
 
       {toast && <div className={styles.toast}>{toast}</div>}
 

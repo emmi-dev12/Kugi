@@ -76,3 +76,10 @@ export function timeToMins(t) {
 export function minsToPx(m) {
   return (m / 60) * 64;
 }
+
+export function minsToTime(m) {
+  const clamped = Math.max(0, Math.min(1439, Math.round(m)));
+  const h = Math.floor(clamped / 60);
+  const mm = clamped % 60;
+  return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}

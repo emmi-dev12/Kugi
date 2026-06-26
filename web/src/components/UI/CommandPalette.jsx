@@ -12,6 +12,26 @@ const COMMANDS = [
   { id: 'category', label: 'Filter by category…', hint: null,  desc: 'Filter view to category (> category [name])' },
 ];
 
+// Keyboard cheatsheet surfaced in the empty-state starter panel.
+const SHORTCUTS = [
+  { keys: 'N', label: 'New block' },
+  { keys: 'Q', label: 'Quick add' },
+  { keys: 'P', label: 'Plan my day' },
+  { keys: 'W / D / F', label: 'Week / Day / Finished' },
+  { keys: 'T', label: 'Today' },
+  { keys: '⌘Z', label: 'Undo' },
+];
+
+// Lightweight fuzzy: every char of the query appears in order in the text.
+function subseq(text, q) {
+  if (!q) return true;
+  let i = 0;
+  for (let c = 0; c < text.length && i < q.length; c++) {
+    if (text[c] === q[i]) i++;
+  }
+  return i === q.length;
+}
+
 export default function CommandPalette({
   blocks = [],
   categories = {},
@@ -41,14 +61,18 @@ export default function CommandPalette({
   const searchResults = !isCmd && query.trim().length > 0
     ? blocks.filter(b => {
         const q = query.toLowerCase();
+        const qTight = q.replace(/\s+/g, '');
         return (
           b.title?.toLowerCase().includes(q) ||
           b.notes?.toLowerCase().includes(q) ||
           b.category?.toLowerCase().includes(q) ||
-          b.emoji?.includes(q)
+          b.emoji?.includes(q) ||
+          subseq((b.title || '').toLowerCase(), qTight)
         );
       }).slice(0, 50)
     : [];
+
+  const showStarter = !isCmd && query.trim().length === 0;
 
   const cmdResults = isCmd
     ? COMMANDS.filter(c =>
@@ -98,6 +122,16 @@ export default function CommandPalette({
     else if (cmd.id === 'category') {
       onFilterCategory?.(arg || null);
       onClose();
+    }
+  }
+
+  function starterClick(cmd) {
+    // Nav commands run immediately; arg-taking commands prefill command mode.
+    if (['today', 'week', 'day'].includes(cmd.id)) {
+      executeCommand(cmd);
+    } else {
+      setQuery(`> ${cmd.id} `);
+      inputRef.current?.focus();
     }
   }
 
@@ -239,6 +273,32 @@ export default function CommandPalette({
               <button className={styles.confirmOk} onClick={confirmAction}>
                 {confirm.type === 'complete' ? 'Complete' : 'Delete'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Starter — shown on empty query for discoverability */}
+        {!confirm && !bulkConfirm && showStarter && (
+          <div className={styles.starter}>
+            <div className={styles.starterSection}>
+              <div className={styles.starterLabel}>Quick commands</div>
+              {COMMANDS.map(cmd => (
+                <div key={cmd.id} className={styles.starterCmd} onClick={() => starterClick(cmd)}>
+                  <span className={styles.cmdLabel}>{cmd.label}</span>
+                  {cmd.hint && <kbd className={styles.cmdHint}>{cmd.hint}</kbd>}
+                </div>
+              ))}
+            </div>
+            <div className={styles.starterSection}>
+              <div className={styles.starterLabel}>Keyboard shortcuts</div>
+              <div className={styles.shortcutGrid}>
+                {SHORTCUTS.map(s => (
+                  <div key={s.keys} className={styles.shortcutRow}>
+                    <kbd className={styles.shortcutKbd}>{s.keys}</kbd>
+                    <span className={styles.shortcutLabel}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

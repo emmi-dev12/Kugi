@@ -42,7 +42,7 @@ export default function WeekView({ days, blocks, activeCategory, onEditBlock, on
                     draggable onDragStart={() => setDragId(block.id)}
                     onDragEnd={() => { setDragId(null); setDragOver(null); }}
                     onEdit={() => onEditBlock(block)}
-                    onDelete={onDeleteBlock} onToggle={onToggleBlock} />
+                    onDelete={onDeleteBlock} onToggle={onToggleBlock} onUpdate={onUpdateBlock} />
                 ))}
                 <div
                   className={`${styles.dropZone} ${dragOver === dateStr ? styles.dragOver : ''}`}

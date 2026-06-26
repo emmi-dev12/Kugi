@@ -84,7 +84,7 @@
   background: linear-gradient(140deg, #5d8a6a 0%, #3d5c47 100%);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.brandName { font-size: 15px; font-weight: 600; color: #dde8e0; letter-spacing: 0.1px; }
+.brandName { font-family: var(--font-script); font-size: 24px; font-weight: 700; color: #dde8e0; letter-spacing: 0; line-height: 1; }
 
 .navLinks { display: flex; align-items: center; gap: 2px; }
 .navLink {

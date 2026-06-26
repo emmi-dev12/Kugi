@@ -23,14 +23,17 @@ It exposes a full **REST API** so AI agents can read, create, update, and search
 
 ## Features
 
-- **Week view** — 7-column grid, horizontal scroll on mobile
+- **Week view** — 7-column grid, drag blocks between days, horizontal scroll on mobile
 - **Day view** — bento grid or timeline layout, toggle between them
+- **Drag to reschedule** — on the day timeline, drag a block to a new time or drag its bottom edge to resize; snaps to 15 minutes
+- **Inline edit** — double-click (or long-press on mobile) a block title to rename it in place
+- **Plan my day** — a focus view (`p`) showing the day's load, unscheduled blocks, and one-tap carry-over of yesterday's unfinished
 - **Multi-day blocks** — set a start and end date, block spans every day in between
 - **Custom categories** — add your own with a name, emoji, and color; synced to Convex
-- **Search** — Cmd+K (or `/`) to search across all block titles, notes, and categories
-- **Undo / Redo** — Cmd+Z / Cmd+Shift+Z for create, edit, delete, and toggle
+- **Command palette** — Cmd+K (or `/`) to search blocks or run commands (`>`), with multi-select bulk complete/delete
+- **Undo / Redo** — Cmd+Z / Cmd+Shift+Z for create, edit, delete, toggle, and reschedule
 - **Light & dark mode** — toggle in the header, persisted across sessions
-- **Completed tab** — all finished blocks grouped by date
+- **Completed tab** — all finished blocks grouped by date, with a quiet celebration when you clear a day
 - **Calendar tab** — full month view, tap a day to jump to it
 - **Real-time sync** — Convex keeps every open tab in sync instantly
 - **PWA** — installable from the browser, works offline via service worker
@@ -43,12 +46,15 @@ It exposes a full **REST API** so AI agents can read, create, update, and search
 | Key | Action |
 |---|---|
 | `n` | New block |
+| `q` | Focus quick-add bar |
+| `p` | Plan my day |
 | `w` | Week view |
 | `d` | Day view |
 | `f` | Finished (completed) view |
-| `t` | Timeline layout (day view) |
+| `t` | Go to today |
+| `l` | Timeline layout (day view) |
 | `b` | Bento layout (day view) |
-| `/` or `⌘K` | Search |
+| `/` or `⌘K` | Search / command palette |
 | `⌘Z` | Undo |
 | `⌘⇧Z` | Redo |
 
