@@ -41,6 +41,7 @@
 
 /* Settings gear — mobile only */
 .mobileSettingsBtn { display: none; }
+.mobilePlanBtn { display: none; }
 
 .viewToggle {
   display: flex;
@@ -296,13 +297,14 @@
   }
   .header > * { margin-bottom: 0; height: auto; }
 
-  /* Row 1: logo (left) + settings (right) */
+  /* Row 1: logo (left) + plan & settings (right) */
   .logo { order: 1; }
-  .mobileSettingsBtn { order: 2; margin-left: auto; }
+  .mobilePlanBtn { order: 2; margin-left: auto; }
+  .mobileSettingsBtn { order: 3; margin-left: 8px; }
 
   /* Row 2: full-width date navigator */
   .headerCenter {
-    order: 3;
+    order: 4;
     flex-basis: 100%;
     width: 100%;
     justify-content: space-between;
@@ -315,7 +317,7 @@
   /* New Block button lives in the bottom nav + button — hide it in the header */
   .headerRight { display: none; }
 
-  .mobileSettingsBtn {
+  .mobileSettingsBtn, .mobilePlanBtn {
     display: flex; align-items: center; justify-content: center;
     width: 36px; height: 36px; border-radius: 12px; flex-shrink: 0;
     background: var(--glass-bg);
@@ -326,6 +328,8 @@
     color: var(--text-muted); cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Plan gets the sage accent so it reads as the primary daily action */
+  .mobilePlanBtn { color: var(--accent); border-color: var(--accent-border); }
 
   .statsBar {
     gap: 8px; padding: 5px 10px; overflow-x: auto; flex-wrap: nowrap;

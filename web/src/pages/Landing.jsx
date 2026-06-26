@@ -5,7 +5,7 @@ import styles from './Landing.module.css';
 
 /* ─── constants ─── */
 
-const AI_PROMPT = `Fetch my Kugi API docs first: GET https://[deployment].convex.site/api/docs
+const AI_PROMPT = `Fetch my kugi API docs first: GET https://[deployment].convex.site/api/docs
 Use my Bearer token from Settings → Developer.
 Then: organize today's blocks, set up Telegram reminders,
 sync Google Calendar, and help me plan the week.
@@ -459,6 +459,31 @@ export default function Landing({ onGetStarted }) {
               </div>
             </div>
 
+            <div className={`${styles.bentoCard} ${styles.bentoFlow}`}>
+              <div className={styles.bentoEyebrow}>Built for flow</div>
+              <div className={styles.bentoTitle}>Plan it. Drag it. Done.</div>
+              <p className={styles.bentoDesc}>
+                The small interactions the big calendars never bothered with —
+                so shaping your day feels good, not like data entry.
+              </p>
+              <div className={styles.flowGrid}>
+                {[
+                  { icon: '🗓️', name: 'Drag to reschedule', sub: 'Grab a block, drop it on a new time. Snaps to 15 min.' },
+                  { icon: '🌅', name: 'Plan my day',        sub: 'See the day’s load and carry over yesterday in a tap.' },
+                  { icon: '⌘',  name: 'Command palette',    sub: 'Search blocks or run anything, all from the keyboard.' },
+                  { icon: '✨', name: 'Quiet wins',         sub: 'A calm celebration when you finish a day.' },
+                ].map(f => (
+                  <div key={f.name} className={styles.flowItem}>
+                    <span className={styles.flowIcon}>{f.icon}</span>
+                    <div>
+                      <div className={styles.flowName}>{f.name}</div>
+                      <div className={styles.flowSub}>{f.sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -550,7 +575,7 @@ export default function Landing({ onGetStarted }) {
               },
               {
                 n: '02',
-                title: 'Connect Kugi',
+                title: 'Connect kugi',
                 desc: 'Paste your deployment URL at /setup. Your calendar is ready instantly.',
                 code: 'https://[name].convex.cloud',
               },
@@ -582,10 +607,10 @@ export default function Landing({ onGetStarted }) {
             <h2 className={styles.sectionH2}>Any device. Any platform.</h2>
           </div>
           <div className={styles.osGrid}>
-            <OSCard os="mac"     icon="🍎" label="Mac"          current={os === 'mac'}     steps={['Open in Chrome or Edge', 'Click Install in address bar', 'Kugi runs as a native window']} installAction={canPrompt ? () => triggerInstall() : null} installed={installed} />
-            <OSCard os="ios"     icon="📱" label="iPhone / iPad" current={os === 'ios'}     steps={['Open in Safari', 'Tap Share → Add to Home Screen', 'Kugi appears on your home screen']} iosHint={showIOSHint} onIosHint={() => setShowIOSHint(true)} installed={installed && os === 'ios'} />
-            <OSCard os="android" icon="🤖" label="Android"      current={os === 'android'} steps={['Open in Chrome', 'Tap Install in the address bar', 'Kugi lands on your home screen']} installAction={canPrompt && os === 'android' ? () => triggerInstall() : null} installed={installed && os === 'android'} />
-            <OSCard os="win"     icon="🪟" label="Windows"      current={os === 'windows'} steps={['Open in Chrome or Edge', 'Click Install in address bar', 'Kugi opens as a standalone window']} installAction={canPrompt && os === 'windows' ? () => triggerInstall() : null} installed={installed && os === 'windows'} />
+            <OSCard os="mac"     icon="🍎" label="Mac"          current={os === 'mac'}     steps={['Open in Chrome or Edge', 'Click Install in address bar', 'kugi runs as a native window']} installAction={canPrompt ? () => triggerInstall() : null} installed={installed} />
+            <OSCard os="ios"     icon="📱" label="iPhone / iPad" current={os === 'ios'}     steps={['Open in Safari', 'Tap Share → Add to Home Screen', 'kugi appears on your home screen']} iosHint={showIOSHint} onIosHint={() => setShowIOSHint(true)} installed={installed && os === 'ios'} />
+            <OSCard os="android" icon="🤖" label="Android"      current={os === 'android'} steps={['Open in Chrome', 'Tap Install in the address bar', 'kugi lands on your home screen']} installAction={canPrompt && os === 'android' ? () => triggerInstall() : null} installed={installed && os === 'android'} />
+            <OSCard os="win"     icon="🪟" label="Windows"      current={os === 'windows'} steps={['Open in Chrome or Edge', 'Click Install in address bar', 'kugi opens as a standalone window']} installAction={canPrompt && os === 'windows' ? () => triggerInstall() : null} installed={installed && os === 'windows'} />
           </div>
         </div>
       </section>
