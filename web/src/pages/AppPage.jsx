@@ -376,8 +376,15 @@ export default function AppPage() {
             </svg>
           </button>
         </div>
+        {/* Plan my day — mobile only */}
+        <button className={styles.mobilePlanBtn} onClick={() => setPlanOpen(true)} aria-label="Plan my day">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+            <path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+            <path d="M12 3.5v2.5M4 9l1.7 1.7M20 9l-1.7 1.7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          </svg>
+        </button>
         {/* Settings gear — mobile only */}
-        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)}>
+        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)} aria-label="Settings">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
