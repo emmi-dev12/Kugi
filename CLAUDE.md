@@ -136,7 +136,7 @@ components/UI/
   KugiMark.jsx               — unified logo+icon: handwritten lowercase "kugi" on a sage→slate tile (sizes sm/md/lg). Used in app header, Landing, Setup. Replaces the old geometric KugiLogo.
 ```
 
-**Branding:** the name is lowercase **kugi** everywhere. The logo *is* the wordmark — `KugiMark` (sage→slate rounded tile, Caveat script). `web/public/favicon.svg` matches it; the PNG home-screen icons in `web/public/icons/` are the old geometric mark and still need a one-time re-export to the new design.
+**Branding:** the name is lowercase **kugi** everywhere (incl. `manifest.json`, `index.html` title/apple-title). The logo *is* the wordmark — `KugiMark` (sage→slate rounded tile, Caveat script). `web/public/favicon.svg` and the PNG home-screen icons (`web/public/icons/icon-16/32/180/192/512.png`) all render the handwritten kugi on the sage→slate tile. To regenerate the PNGs: render the tile with the Caveat font at each size (the icons were produced via headless Chromium with the Caveat TTF embedded as base64 — there's no SVG rasterizer/system Caveat font in the build env, so a plain `convert favicon.svg` won't reproduce the script face).
 
 **Key hooks (`web/src/hooks/useDB.js`):**
 - `useBlocks()` — exposes: `blocks`, `createBlock`, `updateBlock`, `deleteBlock`, `toggleComplete`, `bulkCreate`, `bulkDelete`, `bulkComplete`, `createRecurring`, `deleteRecurring`

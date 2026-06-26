@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="web/public/icons/icon-512.png" width="96" height="96" alt="Kugi icon" />
+<img src="web/public/icons/icon-512.png" width="96" height="96" alt="kugi icon" />
 
 # kugi
 
@@ -15,7 +15,7 @@
 
 ## What is it
 
-Kugi is a personal planner built around time **blocks** — schedule, complete, and track them across week and day views. It runs as a **PWA** in the browser. Your data lives in your own [Convex](https://convex.dev) deployment.
+kugi is a personal planner built around time **blocks** — schedule, complete, and track them across week and day views. It runs as a **PWA** in the browser, with a mobile-optimised layout (two-row header, bottom nav, drag-to-reschedule). Your data lives in your own [Convex](https://convex.dev) deployment.
 
 It exposes a full **REST API** so AI agents can read, create, update, and search your blocks programmatically.
 
@@ -190,10 +190,10 @@ curl "$BASE/api/tasks?search=deep+work" \
 
 ### System prompt for your AI agent
 
-Copy this into the system prompt of any AI agent that should manage your Kugi calendar. Replace the placeholders.
+Copy this into the system prompt of any AI agent that should manage your kugi calendar. Replace the placeholders.
 
 ```
-You are a scheduling assistant with access to the user's Kugi calendar via HTTP API.
+You are a scheduling assistant with access to the user's kugi calendar via HTTP API.
 
 ## Connection
 Base URL: https://your-project.convex.site
@@ -251,7 +251,7 @@ For agents that support **tool definitions** (function calling), define these to
 [
   {
     "name": "kugi_info",
-    "description": "Get today's date and the Kugi API schema. Call this first every session.",
+    "description": "Get today's date and the kugi API schema. Call this first every session.",
     "parameters": { "type": "object", "properties": {}, "required": [] }
   },
   {
