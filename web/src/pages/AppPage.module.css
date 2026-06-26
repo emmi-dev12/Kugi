@@ -17,8 +17,13 @@
 
 .logo {
   display: flex; align-items: center; gap: 8px;
-  font-size: 16px; font-weight: 800; letter-spacing: -0.4px;
   color: var(--text);
+}
+.logoText {
+  font-family: var(--font-script);
+  font-size: 26px; font-weight: 700; letter-spacing: 0;
+  line-height: 1; color: var(--text);
+  padding-bottom: 2px;
 }
 .logoIcon {
   width: 28px; height: 28px;
@@ -281,7 +286,7 @@
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .resizeHandle { display: none; }
-  .logoText { display: none; }
+  .logoText { font-size: 22px; }
 
   /* Colorful gradient background so glass blur has something to work with */
   .app {
@@ -392,6 +397,20 @@
 }
 
 /* Search button */
+.planBtn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 5px 11px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.planBtn:hover { background: rgba(93,138,106,0.20); transform: translateY(-1px); }
+.planBtnText { font-size: 13px; }
+
 .searchBtn {
   display: flex;
   align-items: center;

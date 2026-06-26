@@ -25,7 +25,8 @@
   display: flex; align-items: center; justify-content: center;
 }
 .logoText {
-  font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+  font-family: var(--font-script);
+  font-size: 34px; font-weight: 700; letter-spacing: 0; line-height: 1;
   color: var(--text);
 }
 
