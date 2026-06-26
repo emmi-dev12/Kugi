@@ -122,10 +122,7 @@ function TimelineBody({ timed, untimed, dateStr, nowMins, onEditBlock, onDeleteB
         <div className={styles.schedCol}>
           {HOURS.map(h => (
             <div key={h} className={styles.timeRow}
-              onClick={() => {
-                const block = onAddBlock(dateStr);
-                // pre-fill time handled by parent
-              }} />
+              onClick={() => { onAddBlock(dateStr); }} />
           ))}
           {nowMins !== null && (
             <div className={styles.nowLine} style={{ top: minsToPx(nowMins) }} />

@@ -15,6 +15,8 @@ import SearchModal from '../components/UI/SearchModal';
 import CommandPalette from '../components/UI/CommandPalette';
 import QuickAdd from '../components/UI/QuickAdd';
 import PlanMyDay from '../components/UI/PlanMyDay';
+import Celebration from '../components/UI/Celebration';
+import WelcomeCard from '../components/UI/WelcomeCard';
 import {
   getWeekStart, addDays, toDateStr, formatShort, formatFull,
   formatMonthYear, isToday, todayZurich
@@ -51,6 +53,8 @@ export default function AppPage() {
   const quickAddRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => localStorage.getItem('kugiWelcomeDismissed') === 'true');
   const [toast, setToast] = useState(null);
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
@@ -136,11 +140,31 @@ export default function AppPage() {
   }
 
   function handleToggle(id) {
+    const block = blocks.find(b => b.id === id);
     toggleComplete(id);
     recordAction(
       () => toggleComplete(id),
       () => toggleComplete(id)
     );
+    // Celebrate finishing the last open block of a day.
+    if (block && !block.completed) {
+      const covers = (b) => b.end_date ? (b.date <= block.date && block.date <= b.end_date) : b.date === block.date;
+      const dayBlocks = blocks.filter(covers);
+      const remaining = dayBlocks.filter(b => b.id !== id && !b.completed);
+      if (dayBlocks.length >= 1 && remaining.length === 0) triggerCelebration();
+    }
+  }
+
+  function triggerCelebration() {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { showToast('All done for the day ✓'); return; }
+    setCelebrate(true);
+    setTimeout(() => setCelebrate(false), 2400);
+  }
+
+  function dismissWelcome() {
+    setWelcomeDismissed(true);
+    localStorage.setItem('kugiWelcomeDismissed', 'true');
   }
 
   function undo() {
@@ -374,6 +398,14 @@ export default function AppPage() {
             onAdd={handleQuickAdd}
             defaultDate={view === 'day' ? currentDay : todayZurich()}
           />
+          {blocks.length === 0 && !welcomeDismissed && (
+            <WelcomeCard
+              onNewBlock={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
+              onQuickAdd={() => quickAddRef.current?.focus()}
+              onSearch={() => setSearchOpen(true)}
+              onDismiss={dismissWelcome}
+            />
+          )}
           {view === 'week' && (
             <WeekView
               days={weekDays}
@@ -465,6 +497,8 @@ export default function AppPage() {
           onUpdateBlock={handleUpdate}
         />
       )}
+
+      {celebrate && <Celebration />}
 
       {toast && <div className={styles.toast}>{toast}</div>}
 

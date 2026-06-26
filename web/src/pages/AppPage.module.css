@@ -451,12 +451,12 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-specular), var(--glass-shadow);
   border-radius: 14px;
-  padding: 8px 18px;
-  font-size: 13px;
+  padding: 9px 18px;
+  font-size: 13px; font-weight: 500;
   color: var(--text);
   z-index: 2000;
   pointer-events: none;
-  animation: toastIn 0.15s ease;
+  animation: toastIn var(--dur) var(--ease-out);
   white-space: nowrap;
 }
 @keyframes toastIn {

@@ -1,0 +1,38 @@
+.wrap {
+  position: fixed; inset: 0; z-index: 700;
+  pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.confetti { position: absolute; inset: 0; overflow: hidden; }
+.piece {
+  position: absolute; top: -16px;
+  width: 9px; height: 14px; border-radius: 2px;
+  opacity: 0;
+  animation-name: fall;
+  animation-timing-function: cubic-bezier(0.4, 0.1, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+
+.message {
+  font-family: var(--font-script);
+  font-size: 64px; font-weight: 700; color: var(--accent);
+  text-shadow: 0 4px 24px rgba(93,138,106,0.5);
+  animation: pop var(--dur-slow) var(--ease-out) forwards;
+}
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.6) rotate(-4deg); }
+  55% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 0; transform: scale(1) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece { display: none; }
+  .message { animation: fadeMsg 1.6s ease forwards; }
+  @keyframes fadeMsg { 0% { opacity: 0; } 20%, 70% { opacity: 1; } 100% { opacity: 0; } }
+}
