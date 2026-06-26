@@ -124,7 +124,7 @@ components/UI/
   CommandPalette.jsx          — Cmd+K search with multi-select bulk delete/complete;
                                 empty-query starter panel (command list + shortcut cheatsheet), fuzzy title match
   QuickAdd.jsx                — NLP quick-add bar (chrono-node), 'q' shortcut
-  PlanMyDay.jsx               — "Plan my day" focus overlay ('p' / header button): day load, unscheduled list, carry-over from yesterday
+  PlanMyDay.jsx               — "Plan my day" focus overlay ('p' / desktop header button / mobile header sunrise button): day load, unscheduled list, carry-over from yesterday
   Celebration.jsx            — confetti + handwritten "all done", fired when the last open block of a day completes (reduced-motion aware)
   WelcomeCard.jsx            — first-run empty state (no blocks); dismissal in localStorage 'kugiWelcomeDismissed'
   DeleteRecurringModal.jsx    — 3-mode delete for recurring series
@@ -170,13 +170,13 @@ components/UI/
 | Multi-select bulk delete in search | `CommandPalette.jsx` — checkboxes + Select All + bulk toolbar |
 | Drag-to-reschedule / resize | `DayView.jsx` timeline `TimelineBody`: pointer drag moves a timed block, bottom `resizeHandle` resizes; 15-min snap; commits via `onUpdateBlock` (= `handleUpdate` in AppPage) so undo/redo + toasts work |
 | Inline title edit | `BlockCard.jsx` `onUpdate` prop; double-click (desktop) / long-press (mobile) → commits `{ title }` through `handleUpdate` |
-| Plan my day | `PlanMyDay.jsx` (`'p'` / header Plan button); carry-over moves yesterday's unfinished by updating `date` |
+| Plan my day | `PlanMyDay.jsx`; opened by `'p'`, the desktop header Plan button (`.planBtn` in `headerRight`), or the mobile header sunrise button (`.mobilePlanBtn`). Note: `headerRight` is `display:none` on mobile, so any new header action needs a separate mobile entry point. Carry-over moves yesterday's unfinished by updating `date` |
 | Completion celebration | `Celebration.jsx`; triggered in `AppPage.handleToggle` when a day's last open block completes; `triggerCelebration()` falls back to a toast under `prefers-reduced-motion` |
 | First-run welcome | `WelcomeCard.jsx`; rendered in AppPage main when `blocks.length === 0 && !welcomeDismissed` |
 | AI agent API | `http.ts` — all endpoints; agent should always `GET /api/docs` first |
 | NLP quick-add | `QuickAdd.jsx` + `parseQuickAdd.js` (chrono-node); keyboard shortcut `q` |
 | Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search; empty-query starter panel + fuzzy title match |
-| Landing page | `Landing.jsx` — Linear-style dark design, 3D preview, AI Agent section with copyable setup prompt |
+| Landing page | `Landing.jsx` — Linear-style dark design, interactive week/day preview, AI Agent section with copyable prompt, and a "Built for flow" bento card (`.bentoFlow`, full-width row 4) showcasing the signature interactions. Brand copy is lowercase **kugi** (repo URLs keep capital `Kugi`) |
 
 ---
 
@@ -188,6 +188,10 @@ components/UI/
 - **GitHub web merge editor** — can silently drop CSS property values (e.g. `grid-template-columns`) when resolving conflicts. Verify CSS-heavy files after any web-UI merge.
 - **Convex HTTP endpoint** — always `.convex.site`, never `.convex.cloud`.
 - **Worktree deployment** — changes made in `.claude/worktrees/<name>` must be committed and merged to `main` before they appear in the Render deployment.
+- **PRs are squash-merged** — the repo squashes each PR into one new commit on `main` (new hash). After your PR merges, do NOT keep committing on the same branch and open another PR from it: git sees the branch's original commits and main's squash as divergent histories touching the same lines → phantom conflicts. Instead start fresh from `main`, or drop the already-merged commits with `git rebase --onto origin/main <last-merged-commit> <branch>` before pushing the next change.
+- **No CI / Render auto-deploy** — there are no GitHub Actions or required checks on this repo; merging to `main` is the gate, and Render auto-deploys `main`. Verify changes locally (`npm run build`, `npm run lint`, and headless-Chromium screenshots for visual work) — nothing runs them for you.
+- **Lint has a pre-existing baseline** — `npm run lint` (in `web/`) reports ~30 errors on a clean checkout (unused imports, `set-state-in-effect`, etc.). Don't try to clear them all; just make sure your change doesn't add new ones. `npm run build` must stay green.
+- **Chromium can't fetch web fonts in the build env** — the Caveat handwritten font (`--font-script`, loaded via Google Fonts `@import` in `globals.css`) does not load in headless Chromium here, so local screenshots show a serif/cursive fallback. It renders correctly on real devices. The PNG app icons embed Caveat as base64 so they bake the script face in (see Branding note above).
 - **`fetchFromGoogle` now takes `deleteKugiIds?`** — when called from the GCal sync UI, pass the user-selected IDs; omit for legacy auto-delete behaviour.
 - **Telegram template variables** — `{time}` expands to `" starts at HH:MM"` or `" is coming up"` (not the raw time). `{notes}` expands to `"\n\n<notes>"` or `""`. Don't treat them as raw substitutions.
 - **bulk-delete/bulk-complete accept `search`** — the HTTP API accepts either `ids` array or `search` string (selects all matching blocks). Never need two calls. When using `search`, the caller must also pass `?confirm=true` as a query parameter or the API returns 400 with the count of affected tasks.
@@ -198,7 +202,7 @@ components/UI/
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
-- **sw.js cache name** — currently `kugi-v16`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
-- **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + settings gear, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
+- **sw.js cache name** — currently `kugi-v17`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + `.mobilePlanBtn` + `.mobileSettingsBtn`, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The desktop `headerRight` cluster (view toggle, Plan, Search, New Block, gear) is `display:none` on mobile — its actions live in the bottom nav or dedicated `.mobile*` buttons instead. The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
 - **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
 - **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.
