@@ -168,4 +168,10 @@
   .layoutBtn { flex: 1; justify-content: center; padding: 8px 10px; font-size: 13px; }
   .timeRow { height: 56px; }
   .timedActions { display: flex; }
+
+  /* Let DayView expand to full height so it scrolls with the WelcomeCard */
+  .wrap { flex: 0 0 auto; overflow: visible; }
+  .timelineOuter { flex: 0 0 auto; overflow: visible; }
+  .timelineBody { overflow-y: visible; }
+  .bentoWrap { overflow-y: visible; }
 }
