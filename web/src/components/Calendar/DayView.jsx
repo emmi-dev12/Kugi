@@ -209,10 +209,10 @@ function BentoBody({ dayBlocks, dateStr, onEditBlock, onDeleteBlock, onToggleBlo
     return (
       <div className={styles.empty}>
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect x="3" y="3" width="19" height="19" rx="5" fill="rgba(79,124,255,0.25)"/>
-          <rect x="26" y="3" width="19" height="19" rx="5" fill="rgba(139,92,246,0.25)"/>
-          <rect x="3" y="26" width="19" height="19" rx="5" fill="rgba(16,185,129,0.25)"/>
-          <rect x="26" y="26" width="19" height="19" rx="5" fill="rgba(244,63,94,0.25)"/>
+          <rect x="3" y="3" width="19" height="19" rx="5" fill="rgba(106,174,122,0.45)"/>
+          <rect x="26" y="3" width="19" height="19" rx="5" fill="rgba(93,138,106,0.32)"/>
+          <rect x="3" y="26" width="19" height="19" rx="5" fill="rgba(74,110,86,0.26)"/>
+          <rect x="26" y="26" width="19" height="19" rx="5" fill="rgba(61,92,71,0.20)"/>
         </svg>
         <span>No blocks today. Tap + to add one.</span>
       </div>
