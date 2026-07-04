@@ -54,7 +54,6 @@ export default function AppPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-  const [welcomeDismissed, setWelcomeDismissed] = useState(() => localStorage.getItem('kugiWelcomeDismissed') === 'true');
   const [toast, setToast] = useState(null);
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
@@ -160,11 +159,6 @@ export default function AppPage() {
     if (reduce) { showToast('All done for the day ✓'); return; }
     setCelebrate(true);
     setTimeout(() => setCelebrate(false), 2400);
-  }
-
-  function dismissWelcome() {
-    setWelcomeDismissed(true);
-    localStorage.setItem('kugiWelcomeDismissed', 'true');
   }
 
   function undo() {
@@ -412,14 +406,11 @@ export default function AppPage() {
             onAdd={handleQuickAdd}
             defaultDate={view === 'day' ? currentDay : todayZurich()}
           />
-          {blocks.length === 0 && !welcomeDismissed && (
-            <WelcomeCard
-              onNewBlock={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
-              onQuickAdd={() => quickAddRef.current?.focus()}
-              onSearch={() => setSearchOpen(true)}
-              onDismiss={dismissWelcome}
-            />
-          )}
+          <WelcomeCard
+            onNewBlock={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
+            onQuickAdd={() => quickAddRef.current?.focus()}
+            onSearch={() => setSearchOpen(true)}
+          />
           {view === 'week' && (
             <WeekView
               days={weekDays}

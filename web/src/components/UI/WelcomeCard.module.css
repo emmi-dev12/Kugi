@@ -6,17 +6,7 @@
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   box-shadow: var(--elev-2);
-  animation: slideUp var(--dur-slow) var(--ease-out);
 }
-
-.dismiss {
-  position: absolute; top: 14px; right: 14px;
-  width: 28px; height: 28px; border-radius: var(--radius-xs);
-  background: var(--surface2); border: 1px solid var(--border2);
-  color: var(--text-muted); font-size: 12px;
-  transition: all var(--dur-fast) var(--ease-out);
-}
-.dismiss:hover { background: var(--surface3); color: var(--text); }
 
 .kicker {
   font-family: var(--font-script);
