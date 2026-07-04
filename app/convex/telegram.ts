@@ -52,7 +52,23 @@ export const sendReminder = internalAction({
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "✅ Done", callback_data: `d:${blockId}` },
+                { text: "⏰ +30m", callback_data: `s30:${blockId}` },
+              ],
+              [
+                { text: "⏰ +1h", callback_data: `s60:${blockId}` },
+                { text: "📅 Tomorrow", callback_data: `tom:${blockId}` },
+              ],
+            ],
+          },
+        }),
       });
     } catch (e: any) {
       // Redact token from error messages before any potential propagation

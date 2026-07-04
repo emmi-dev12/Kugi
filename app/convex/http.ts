@@ -1016,4 +1016,152 @@ http.route({
   }),
 });
 
+// ── POST /telegram/webhook ─────────────────────────────────────
+// Called by Telegram when the user taps an inline keyboard button.
+// Verified via the X-Telegram-Bot-Api-Secret-Token header.
+http.route({
+  path: "/telegram/webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const secret = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramWebhookSecret" });
+    if (!secret) return new Response("Not configured", { status: 503 });
+    const incoming = req.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
+    // Constant-time comparison to prevent timing oracle
+    if (!constantTimeEqual(incoming, secret)) return new Response("Unauthorized", { status: 401 });
+
+    let body: any;
+    try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
+
+    const cq = body?.callback_query;
+    if (!cq) return new Response("OK", { status: 200 }); // not a callback query
+
+    const callbackQueryId: string = cq.id;
+    const data: string = cq.data ?? "";
+    const messageId: number | undefined = cq.message?.message_id;
+    const chatId: number | undefined = cq.message?.chat?.id;
+
+    const colon = data.indexOf(":");
+    if (colon === -1) return new Response("OK", { status: 200 });
+    const action = data.slice(0, colon);
+    const blockId = data.slice(colon + 1);
+
+    const botToken = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramBotToken" });
+    if (!botToken) return new Response("OK", { status: 200 });
+
+    let alertText = "";
+    try {
+      if (action === "d") {
+        const block = await ctx.runQuery(api.blocks.getById, { id: blockId as any });
+        if (block) {
+          await ctx.runMutation(api.blocks.toggleComplete, { id: blockId as any });
+          alertText = block.completed ? "Marked as undone ↩" : "Done! ✅";
+        }
+      } else if (action === "s30" || action === "s60") {
+        const mins = action === "s30" ? 30 : 60;
+        const block = await ctx.runQuery(api.blocks.getById, { id: blockId as any });
+        if (block?.start_time) {
+          const [hStr, mStr] = block.start_time.split(":");
+          const newMins = parseInt(hStr) * 60 + parseInt(mStr) + mins;
+          if (newMins < 1440) {
+            const newH = Math.floor(newMins / 60);
+            const newM = newMins % 60;
+            const newTime = `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
+            const updates: any = { id: blockId as any, start_time: newTime };
+            if (block.end_time) {
+              const [ehStr, emStr] = block.end_time.split(":");
+              const newEndMins = parseInt(ehStr) * 60 + parseInt(emStr) + mins;
+              if (newEndMins < 1440) {
+                updates.end_time = `${String(Math.floor(newEndMins / 60)).padStart(2, "0")}:${String(newEndMins % 60).padStart(2, "0")}`;
+              }
+            }
+            await ctx.runMutation(api.blocks.update, updates);
+            alertText = `Snoozed to ${newTime} ⏰`;
+          }
+        }
+      } else if (action === "tom") {
+        const block = await ctx.runQuery(api.blocks.getById, { id: blockId as any });
+        if (block?.date) {
+          const [y, mo, d] = block.date.split("-").map(Number);
+          const dt = new Date(Date.UTC(y, mo - 1, d));
+          dt.setUTCDate(dt.getUTCDate() + 1);
+          const newDate = dt.toISOString().slice(0, 10);
+          await ctx.runMutation(api.blocks.update, { id: blockId as any, date: newDate });
+          alertText = "Moved to tomorrow 📅";
+        }
+      }
+    } catch {}
+
+    // Answer callback query — required by Telegram (must happen within 10s)
+    try {
+      await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text: alertText, show_alert: false }),
+      });
+    } catch {}
+
+    // Remove inline keyboard after action is taken
+    if (messageId !== undefined && chatId !== undefined) {
+      try {
+        await fetch(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } }),
+        });
+      } catch {}
+    }
+
+    return new Response("OK", { status: 200 });
+  }),
+});
+
+// ── OPTIONS /telegram/register-webhook ────────────────────────
+http.route({
+  path: "/telegram/register-webhook",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { status: 204, headers: CORS })),
+});
+
+// ── POST /telegram/register-webhook ───────────────────────────
+// Registers the Convex site URL as the Telegram bot webhook.
+// Requires Bearer auth (API key). Generates and stores the webhook secret.
+http.route({
+  path: "/telegram/register-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    { const authErr = await authenticate(ctx, req); if (authErr) return authErr; }
+
+    const botToken = await ctx.runQuery(internal.settings.getSettingValue, { key: "telegramBotToken" });
+    if (!botToken) return json({ error: "Telegram bot token not configured" }, 400, req);
+
+    // Generate a fresh webhook secret
+    const secret = crypto.randomUUID().replace(/-/g, "");
+    await ctx.runMutation(internal.settings.upsertSetting, { key: "telegramWebhookSecret", value: secret });
+
+    const webhookUrl = `${new URL(req.url).origin}/telegram/webhook`;
+    let tgRes: any;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: secret,
+          allowed_updates: ["callback_query"],
+          drop_pending_updates: true,
+        }),
+      });
+      tgRes = await res.json();
+    } catch (e: any) {
+      return json({ error: "Failed to reach Telegram API", detail: String(e?.message ?? e) }, 502, req);
+    }
+
+    if (!tgRes?.ok) {
+      return json({ error: "Telegram rejected webhook registration", detail: tgRes?.description ?? tgRes }, 400, req);
+    }
+
+    return json({ ok: true, webhook_url: webhookUrl }, 200, req);
+  }),
+});
+
 export default http;
