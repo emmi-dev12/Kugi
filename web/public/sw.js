@@ -1,4 +1,4 @@
-const CACHE = 'kugi-v18';
+const CACHE = 'kugi-v19';
 const PRECACHE = ['/', '/app', '/setup'];
 
 self.addEventListener('install', e => {

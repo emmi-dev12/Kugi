@@ -1,9 +1,8 @@
 import styles from './WelcomeCard.module.css';
 
-export default function WelcomeCard({ onNewBlock, onQuickAdd, onSearch, onDismiss }) {
+export default function WelcomeCard({ onNewBlock, onQuickAdd, onSearch }) {
   return (
     <div className={styles.card}>
-      <button className={styles.dismiss} onClick={onDismiss} aria-label="Dismiss">✕</button>
       <div className={styles.kicker}>welcome to kugi</div>
       <p className={styles.lead}>Your calendar, the calm way. Three ways to start:</p>
       <div className={styles.actions}>
