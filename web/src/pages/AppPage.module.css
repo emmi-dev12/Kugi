@@ -355,6 +355,9 @@
   /* Space for bottom nav + safe area on bottom */
   .app { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
+  /* Single scroll container: WelcomeCard + view content scroll together */
+  .main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
   /* Liquid Glass bottom nav */
   .bottomNav {
     display: flex;

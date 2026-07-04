@@ -62,3 +62,8 @@
 }
 .emptyText { font-size: 16px; font-weight: 700; color: var(--text); }
 .emptyHint { font-size: 13px; color: var(--text-muted); text-align: center; line-height: 1.5; }
+
+@media (max-width: 768px) {
+  .wrap { flex: 0 0 auto; overflow: visible; }
+  .list { overflow-y: visible; }
+}
