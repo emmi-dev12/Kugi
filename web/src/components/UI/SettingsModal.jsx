@@ -65,6 +65,8 @@ function SettingsModalContent({
   const [telegramOffset, setTelegramOffset] = useState('15');
   const [reminderOffsets, setReminderOffsets] = useState(null); // null = use server value
   const [webhookUrlInput, setWebhookUrlInput] = useState('');
+  const [tgWebhookStatus, setTgWebhookStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
+  const [tgWebhookMsg, setTgWebhookMsg] = useState('');
   const [sendblueInput, setSendblueInput] = useState({ apiKey: '', apiSecret: '', recipient: '' });
   const [sendblueReminderOffsets, setSendblueReminderOffsets] = useState(null); // null = use server value
   const [tab, setTab] = useState('general');
@@ -526,6 +528,47 @@ function SettingsModalContent({
                               }}
                             />
                           </div>
+                        </div>
+                        {/* Interactive buttons — register Telegram bot webhook */}
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                            Interactive buttons <span style={{ opacity: 0.6 }}>— mark done, snooze, or move directly from Telegram</span>
+                          </span>
+                          <button
+                            className={styles.saveBtn}
+                            style={{ fontSize: 12, padding: '6px 14px' }}
+                            disabled={tgWebhookStatus === 'loading'}
+                            onClick={async () => {
+                              setTgWebhookStatus('loading');
+                              setTgWebhookMsg('');
+                              try {
+                                const convexUrl = localStorage.getItem('kugiConvexUrl') || '';
+                                const siteUrl = convexUrl.replace('.convex.cloud', '.convex.site');
+                                const res = await fetch(`${siteUrl}/telegram/register-webhook`, {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${apiKey}` },
+                                });
+                                const data = await res.json();
+                                if (data.ok) {
+                                  setTgWebhookStatus('ok');
+                                  setTgWebhookMsg('Webhook registered — buttons will appear on reminders');
+                                } else {
+                                  setTgWebhookStatus('error');
+                                  setTgWebhookMsg(data.error || 'Registration failed');
+                                }
+                              } catch (e) {
+                                setTgWebhookStatus('error');
+                                setTgWebhookMsg('Network error — check your connection');
+                              }
+                            }}
+                          >
+                            {tgWebhookStatus === 'loading' ? 'Registering…' : '⚡ Enable interactive buttons'}
+                          </button>
+                          {tgWebhookMsg && (
+                            <span style={{ fontSize: 11, marginLeft: 8, color: tgWebhookStatus === 'ok' ? '#10b981' : '#ef4444' }}>
+                              {tgWebhookMsg}
+                            </span>
+                          )}
                         </div>
                       </>
                     ) : (
