@@ -1,17 +1,19 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from 'react-i18next';
 import { parseQuickAdd } from '../../utils/parseQuickAdd';
+import { getLocale } from '../../utils/language';
 import styles from './QuickAdd.module.css';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatPreviewDate(dateStr) {
+function formatPreviewDate(dateStr, locale) {
   const [year, month, day] = dateStr.split('-').map(Number);
   const d = new Date(year, month - 1, day);
-  return `${DAYS[d.getDay()]} ${day} ${MONTHS[month - 1]}`;
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d);
+  const monthShort = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d);
+  return `${weekday} ${day} ${monthShort}`;
 }
 
 const QuickAdd = forwardRef(function QuickAdd({ onAdd, defaultDate }, ref) {
+  const { t } = useTranslation();
   const [value, setValue] = useState('');
   const inputRef = useRef(null);
 
@@ -25,7 +27,7 @@ const QuickAdd = forwardRef(function QuickAdd({ onAdd, defaultDate }, ref) {
 
   function getPreview() {
     if (!parsed) return null;
-    let label = formatPreviewDate(parsed.date);
+    let label = formatPreviewDate(parsed.date, getLocale());
     if (parsed.start_time) {
       label += ` · ${parsed.start_time}`;
       if (parsed.end_time) label += `–${parsed.end_time}`;
@@ -61,20 +63,20 @@ const QuickAdd = forwardRef(function QuickAdd({ onAdd, defaultDate }, ref) {
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Add a block… (e.g. 'Deep work 9–11am tomorrow')"
+          placeholder={t('quickAdd.placeholder')}
         />
         <button
           className={styles.addBtn}
           onClick={submit}
           disabled={!parsed?.title}
-          title="Add block"
+          title={t('quickAdd.addBlock')}
         >
           +
         </button>
       </div>
       {value.trim() && (
         <div className={styles.preview}>
-          → {preview || 'Today'}
+          → {preview || t('quickAdd.today')}
           {parsed?.title && parsed.title !== value.trim() && (
             <span className={styles.previewTitle}> · "{parsed.title}"</span>
           )}

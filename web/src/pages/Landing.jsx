@@ -1,82 +1,87 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import KugiMark from '../components/UI/KugiMark';
+import { getLocale } from '../utils/language';
 import styles from './Landing.module.css';
 
 /* ─── constants ─── */
 
-const AI_PROMPT = `Fetch my kugi API docs first: GET https://[deployment].convex.site/api/docs
-Use my Bearer token from Settings → Developer.
-Then: organize today's blocks, set up Telegram reminders,
-sync Google Calendar, and help me plan the week.
-Always call /api/docs at the start of every session.`;
+function getWeekBlocks(t) {
+  return [
+    { id: 1, day: 0, title: t('landing.demo.deepWork'),   time: '09–11', color: '#5d8a6a', emoji: '💻', notes: t('landing.demo.deepWorkNotes') },
+    { id: 2, day: 0, title: t('landing.demo.standup'),     time: '11–12', color: '#7a8a5d', emoji: '🗣️', notes: t('landing.demo.standupNotes') },
+    { id: 3, day: 0, title: t('landing.demo.lunch'),       time: '12–13', color: '#6b8a7a', emoji: '🥗', notes: null },
+    { id: 4, day: 1, title: t('landing.demo.planning'),    time: '10–11', color: '#7a8a5d', emoji: '🗂️', notes: t('landing.demo.planningNotes') },
+    { id: 5, day: 1, title: t('landing.demo.clientCall'),  time: '14–15', color: '#a05a5a', emoji: '📞', notes: t('landing.demo.clientCallNotes') },
+    { id: 6, day: 2, title: t('landing.demo.research'),    time: '09–12', color: '#5d7a8a', emoji: '🔬', notes: t('landing.demo.researchNotes') },
+    { id: 7, day: 2, title: t('landing.demo.codeReview'),  time: '14–15', color: '#5d8a6a', emoji: '👁️', notes: t('landing.demo.codeReviewNotes') },
+    { id: 8, day: 3, title: t('landing.demo.writing'),     time: '10–12', color: '#a08a5d', emoji: '✍️', notes: t('landing.demo.writingNotes') },
+    { id: 9, day: 3, title: t('landing.demo.walk'),        time: '17–18', color: '#6b8a7a', emoji: '🚶', notes: null },
+    { id: 10, day: 4, title: t('landing.demo.review'),     time: '11–12', color: '#7a6a8a', emoji: '👁️', notes: t('landing.demo.reviewNotes') },
+    { id: 11, day: 4, title: t('landing.demo.deploy'),     time: '15–16', color: '#5d8a6a', emoji: '🚀', notes: t('landing.demo.deployNotes') },
+  ];
+}
 
-const WEEK_BLOCKS = [
-  { id: 1, day: 0, title: 'Deep Work',   time: '09–11', color: '#5d8a6a', emoji: '💻', notes: 'Focus session — auth module refactor.' },
-  { id: 2, day: 0, title: 'Standup',     time: '11–12', color: '#7a8a5d', emoji: '🗣️', notes: 'Daily sync. Keep it short.' },
-  { id: 3, day: 0, title: 'Lunch',       time: '12–13', color: '#6b8a7a', emoji: '🥗', notes: null },
-  { id: 4, day: 1, title: 'Planning',    time: '10–11', color: '#7a8a5d', emoji: '🗂️', notes: 'Sprint planning session.' },
-  { id: 5, day: 1, title: 'Client Call', time: '14–15', color: '#a05a5a', emoji: '📞', notes: 'Prepare the live demo beforehand.' },
-  { id: 6, day: 2, title: 'Research',    time: '09–12', color: '#5d7a8a', emoji: '🔬', notes: 'New rendering approach investigation.' },
-  { id: 7, day: 2, title: 'Code Review', time: '14–15', color: '#5d8a6a', emoji: '👁️', notes: 'Review open PRs from the team.' },
-  { id: 8, day: 3, title: 'Writing',     time: '10–12', color: '#a08a5d', emoji: '✍️', notes: 'Draft the technical spec doc.' },
-  { id: 9, day: 3, title: 'Walk',        time: '17–18', color: '#6b8a7a', emoji: '🚶', notes: null },
-  { id: 10, day: 4, title: 'Review',     time: '11–12', color: '#7a6a8a', emoji: '👁️', notes: 'Weekly retro and review.' },
-  { id: 11, day: 4, title: 'Deploy',     time: '15–16', color: '#5d8a6a', emoji: '🚀', notes: 'Ship the v1.2 release.' },
-];
-
-const DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+// Jan 1 2024 was a Monday — used as a stable reference for locale weekday abbreviations.
+function getDays(locale) {
+  return Array.from({ length: 5 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, 1 + i))
+  );
+}
 const DATES = ['5', '6', '7', '8', '9'];
 
-const API_GROUPS = [
-  {
-    label: 'Tasks',
-    icon: '📋',
-    endpoints: [
-      { method: 'GET',    path: '/api/tasks',              desc: 'List blocks. Filter by ?date=, ?from=&to=, ?search=, ?completed=' },
-      { method: 'POST',   path: '/api/tasks',              desc: 'Create a block. Supports notify_message field.' },
-      { method: 'GET',    path: '/api/tasks/:id',          desc: 'Get a single block by ID.' },
-      { method: 'PATCH',  path: '/api/tasks/:id',          desc: 'Update any fields on a block.' },
-      { method: 'DELETE', path: '/api/tasks/:id',          desc: 'Delete. ?mode=this|future|all for recurring blocks.' },
-      { method: 'POST',   path: '/api/tasks/:id/complete', desc: 'Toggle the completed status of a block.' },
-    ],
-  },
-  {
-    label: 'Bulk',
-    icon: '⚡',
-    endpoints: [
-      { method: 'POST', path: '/api/tasks/bulk',          desc: 'Bulk create multiple blocks in one call.' },
-      { method: 'POST', path: '/api/tasks/bulk-complete', desc: 'Bulk complete. Accepts ids array or search string.' },
-      { method: 'POST', path: '/api/tasks/bulk-delete',   desc: 'Bulk delete. Accepts ids array or search string.' },
-      { method: 'POST', path: '/api/tasks/bulk-update',   desc: 'Bulk update fields: category, emoji, completed.' },
-    ],
-  },
-  {
-    label: 'Categories',
-    icon: '🏷️',
-    endpoints: [
-      { method: 'GET',    path: '/api/categories',       desc: 'List all custom categories.' },
-      { method: 'POST',   path: '/api/categories',       desc: 'Create a new custom category.' },
-      { method: 'DELETE', path: '/api/categories/:name', desc: 'Delete a category by name.' },
-    ],
-  },
-  {
-    label: 'Settings',
-    icon: '⚙️',
-    endpoints: [
-      { method: 'GET',   path: '/api/settings', desc: 'Read all settings — Telegram, push reminders, GCal.' },
-      { method: 'PATCH', path: '/api/settings', desc: 'Update any subset of settings in one call.' },
-    ],
-  },
-  {
-    label: 'Meta',
-    icon: '📖',
-    endpoints: [
-      { method: 'GET', path: '/api/docs',  desc: 'Full interactive API reference. No auth required.' },
-      { method: 'GET', path: '/api/stats', desc: 'Deployment usage statistics.' },
-    ],
-  },
-];
+function getApiGroups(t) {
+  return [
+    {
+      label: t('landing.api.groups.tasks'),
+      icon: '📋',
+      endpoints: [
+        { method: 'GET',    path: '/api/tasks',              desc: t('landing.api.endpoints.listTasks') },
+        { method: 'POST',   path: '/api/tasks',              desc: t('landing.api.endpoints.createTask') },
+        { method: 'GET',    path: '/api/tasks/:id',          desc: t('landing.api.endpoints.getTask') },
+        { method: 'PATCH',  path: '/api/tasks/:id',          desc: t('landing.api.endpoints.updateTask') },
+        { method: 'DELETE', path: '/api/tasks/:id',          desc: t('landing.api.endpoints.deleteTask') },
+        { method: 'POST',   path: '/api/tasks/:id/complete', desc: t('landing.api.endpoints.toggleComplete') },
+      ],
+    },
+    {
+      label: t('landing.api.groups.bulk'),
+      icon: '⚡',
+      endpoints: [
+        { method: 'POST', path: '/api/tasks/bulk',          desc: t('landing.api.endpoints.bulkCreate') },
+        { method: 'POST', path: '/api/tasks/bulk-complete', desc: t('landing.api.endpoints.bulkComplete') },
+        { method: 'POST', path: '/api/tasks/bulk-delete',   desc: t('landing.api.endpoints.bulkDelete') },
+        { method: 'POST', path: '/api/tasks/bulk-update',   desc: t('landing.api.endpoints.bulkUpdate') },
+      ],
+    },
+    {
+      label: t('landing.api.groups.categories'),
+      icon: '🏷️',
+      endpoints: [
+        { method: 'GET',    path: '/api/categories',       desc: t('landing.api.endpoints.listCategories') },
+        { method: 'POST',   path: '/api/categories',       desc: t('landing.api.endpoints.createCategory') },
+        { method: 'DELETE', path: '/api/categories/:name', desc: t('landing.api.endpoints.deleteCategory') },
+      ],
+    },
+    {
+      label: t('landing.api.groups.settings'),
+      icon: '⚙️',
+      endpoints: [
+        { method: 'GET',   path: '/api/settings', desc: t('landing.api.endpoints.readSettings') },
+        { method: 'PATCH', path: '/api/settings', desc: t('landing.api.endpoints.updateSettings') },
+      ],
+    },
+    {
+      label: t('landing.api.groups.meta'),
+      icon: '📖',
+      endpoints: [
+        { method: 'GET', path: '/api/docs',  desc: t('landing.api.endpoints.docs') },
+        { method: 'GET', path: '/api/stats', desc: t('landing.api.endpoints.stats') },
+      ],
+    },
+  ];
+}
 
 /* ─── utilities ─── */
 
@@ -108,7 +113,12 @@ function useInView(threshold = 0.1) {
 /* ─── main component ─── */
 
 export default function Landing({ onGetStarted }) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const WEEK_BLOCKS = getWeekBlocks(t);
+  const DAYS = getDays(getLocale(i18n.language));
+  const API_GROUPS = getApiGroups(t);
+  const AI_PROMPT = t('landing.aiPrompt');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
@@ -168,13 +178,13 @@ export default function Landing({ onGetStarted }) {
             <KugiMark size="sm" />
           </div>
           <div className={styles.navLinks}>
-            <a href="#features" className={styles.navLink}>Features</a>
-            <a href="#api" className={styles.navLink}>API</a>
-            <a href="#developer" className={styles.navLink}>Developer</a>
-            <a href="#install" className={styles.navLink}>Install</a>
+            <a href="#features" className={styles.navLink}>{t('landing.nav.features')}</a>
+            <a href="#api" className={styles.navLink}>{t('landing.nav.api')}</a>
+            <a href="#developer" className={styles.navLink}>{t('landing.nav.developer')}</a>
+            <a href="#install" className={styles.navLink}>{t('landing.nav.install')}</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
           </div>
-          <button className={styles.navCta} onClick={handleOpen}>Open App</button>
+          <button className={styles.navCta} onClick={handleOpen}>{t('landing.nav.openApp')}</button>
         </div>
       </nav>
 
@@ -187,39 +197,39 @@ export default function Landing({ onGetStarted }) {
         <div className={styles.heroLeft}>
           <div className={styles.heroPill}>
             <span className={styles.heroPillDot} />
-            Free forever · Open source · BYOC
+            {t('landing.hero.pill')}
           </div>
 
           <h1 className={styles.heroH1}>
-            Clarity<br />
-            <em>is the</em><br />
-            feature.
+            {t('landing.hero.h1Line1')}<br />
+            <em>{t('landing.hero.h1Line2')}</em><br />
+            {t('landing.hero.h1Line3')}
           </h1>
 
           <p className={styles.heroSub}>
-            A bento calendar for developers.<br />
-            Your data. Your server. Your week.
+            {t('landing.hero.subLine1')}<br />
+            {t('landing.hero.subLine2')}
           </p>
 
           <div className={styles.heroCta}>
             <button className={styles.btnPrimary} onClick={handleOpen}>
-              Start for free
+              {t('landing.hero.startFree')}
             </button>
             {installed ? (
-              <span className={styles.installedChip}><CheckIcon /> Installed</span>
+              <span className={styles.installedChip}><CheckIcon /> {t('landing.installed')}</span>
             ) : canPrompt ? (
               <button className={styles.btnGhost} onClick={triggerInstall}>
-                <DownloadIcon /> Install app
+                <DownloadIcon /> {t('landing.hero.installApp')}
               </button>
             ) : null}
           </div>
 
           <div className={styles.heroStats}>
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>∞</span> Free plan</div>
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>∞</span> {t('landing.hero.statFreePlan')}</div>
             <div className={styles.heroStatDiv} />
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>3 min</span> Setup</div>
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>3 min</span> {t('landing.hero.statSetup')}</div>
             <div className={styles.heroStatDiv} />
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>REST</span> AI API</div>
+            <div className={styles.heroStat}><span className={styles.heroStatNum}>REST</span> {t('landing.hero.statAiApi')}</div>
           </div>
         </div>
 
@@ -233,24 +243,24 @@ export default function Landing({ onGetStarted }) {
                 <span className={styles.dot} style={{ background: '#ff5f57' }} />
                 <span className={styles.dot} style={{ background: '#febc2e' }} />
                 <span className={styles.dot} style={{ background: '#28c840' }} />
-                <span className={styles.previewLabel}>kugi — week of may 5</span>
+                <span className={styles.previewLabel}>{t('landing.preview.label')}</span>
                 <div className={styles.previewToggle}>
                   <button
                     className={`${styles.previewToggleBtn} ${previewMode === 'desktop' ? styles.previewToggleActive : ''}`}
                     onClick={() => { setPreviewMode('desktop'); setSelectedBlock(null); }}
-                    title="Desktop view"
+                    title={t('landing.preview.desktopView')}
                   >
                     <DesktopIcon />
                   </button>
                   <button
                     className={`${styles.previewToggleBtn} ${previewMode === 'mobile' ? styles.previewToggleActive : ''}`}
                     onClick={() => { setPreviewMode('mobile'); setSelectedBlock(null); }}
-                    title="Mobile view"
+                    title={t('landing.preview.mobileView')}
                   >
                     <MobileIcon />
                   </button>
                 </div>
-                <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />live</div>
+                <div className={styles.previewBadge}><span className={styles.previewBadgeDot} />{t('landing.preview.live')}</div>
               </div>
 
               {previewMode === 'desktop' ? (
@@ -304,7 +314,7 @@ export default function Landing({ onGetStarted }) {
                   </div>
                   <div className={styles.previewMobileCol}>
                     {WEEK_BLOCKS.filter(b => b.day === previewDay).length === 0 ? (
-                      <div className={styles.previewEmpty}>No blocks today</div>
+                      <div className={styles.previewEmpty}>{t('landing.preview.noBlocksToday')}</div>
                     ) : (
                       WEEK_BLOCKS.filter(b => b.day === previewDay).map((b) => (
                         <button
@@ -355,24 +365,21 @@ export default function Landing({ onGetStarted }) {
       >
         <div className={styles.sectionInner}>
           <div className={styles.sectionHead}>
-            <div className={styles.eyebrow}>Built different</div>
-            <h2 className={styles.sectionH2}>Every block. Yours.</h2>
+            <div className={styles.eyebrow}>{t('landing.bento.eyebrow')}</div>
+            <h2 className={styles.sectionH2}>{t('landing.bento.h2')}</h2>
           </div>
 
           <div className={styles.bento}>
 
             <div className={`${styles.bentoCard} ${styles.bentoAi}`}>
-              <div className={styles.bentoEyebrow}>AI-Native</div>
-              <div className={styles.bentoTitle}>Your agents already<br />speak its language.</div>
-              <p className={styles.bentoDesc}>
-                One Bearer token. Full REST API. Any LLM can read, write,
-                and reorganize your schedule — no plugin required.
-              </p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.ai.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.ai.titleLine1')}<br />{t('landing.bento.ai.titleLine2')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.ai.desc')}</p>
               <div className={styles.aiPromptCard}>
                 <div className={styles.aiPromptHeader}>
-                  <span className={styles.aiPromptLabel}>starter prompt</span>
+                  <span className={styles.aiPromptLabel}>{t('landing.bento.ai.starterPrompt')}</span>
                   <button className={`${styles.copyBtn} ${copied ? styles.copyDone : ''}`} onClick={copyPrompt}>
-                    {copied ? <><CheckIcon size={11} /> copied</> : <><CopyIcon /> copy</>}
+                    {copied ? <><CheckIcon size={11} /> {t('landing.bento.ai.copied')}</> : <><CopyIcon /> {t('landing.bento.ai.copy')}</>}
                   </button>
                 </div>
                 <pre className={styles.aiPromptPre}>{AI_PROMPT}</pre>
@@ -380,9 +387,9 @@ export default function Landing({ onGetStarted }) {
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoPwa}`}>
-              <div className={styles.bentoEyebrow}>Universal</div>
-              <div className={styles.bentoTitle}>Installs<br />everywhere.</div>
-              <p className={styles.bentoDesc}>Mac, iOS, Android, Windows. No App Store. No waiting.</p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.pwa.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.pwa.titleLine1')}<br />{t('landing.bento.pwa.titleLine2')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.pwa.desc')}</p>
               <div className={styles.osChips}>
                 {['🍎 Mac', '📱 iOS', '🤖 Android', '🪟 Windows'].map(l => (
                   <span key={l} className={styles.osChip}>{l}</span>
@@ -390,19 +397,19 @@ export default function Landing({ onGetStarted }) {
               </div>
               {canPrompt ? (
                 <button className={styles.btnPrimary} style={{ marginTop: 'auto', width: '100%' }} onClick={triggerInstall}>
-                  <DownloadIcon /> Install now
+                  <DownloadIcon /> {t('landing.bento.pwa.installNow')}
                 </button>
               ) : (
                 <button className={styles.btnOutline} style={{ marginTop: 'auto', width: '100%' }} onClick={handleOpen}>
-                  Open App →
+                  {t('landing.bento.pwa.openApp')}
                 </button>
               )}
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoSync}`}>
-              <div className={styles.bentoEyebrow}>Infrastructure</div>
-              <div className={styles.bentoTitle}>Real-time,<br />always.</div>
-              <p className={styles.bentoDesc}>Convex keeps every device in sync. No polling. No stale state.</p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.sync.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.sync.titleLine1')}<br />{t('landing.bento.sync.titleLine2')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.sync.desc')}</p>
               <div className={styles.syncDots}>
                 {[...Array(3)].map((_, i) => (
                   <span key={i} className={styles.syncDot} style={{ animationDelay: `${i * 0.3}s` }} />
@@ -411,39 +418,33 @@ export default function Landing({ onGetStarted }) {
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoReminders}`}>
-              <div className={styles.bentoEyebrow}>Notifications</div>
-              <div className={styles.bentoTitle}>Remind me the way I want to be reminded.</div>
-              <p className={styles.bentoDesc}>
-                Per-block custom messages. Push notifications. Telegram.
-                Write exactly what gets sent, for every event.
-              </p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.reminders.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.reminders.title')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.reminders.desc')}</p>
               <div className={styles.reminderPreview}>
                 <div className={styles.reminderMsg}>
                   <span className={styles.reminderIcon}>🔔</span>
                   <div>
-                    <div className={styles.reminderTitle}>Deploy to prod in 15 min</div>
-                    <div className={styles.reminderSub}>Custom message · Push + Telegram</div>
+                    <div className={styles.reminderTitle}>{t('landing.bento.reminders.exampleTitle')}</div>
+                    <div className={styles.reminderSub}>{t('landing.bento.reminders.exampleSub')}</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoData}`}>
-              <div className={styles.bentoEyebrow}>Ownership</div>
-              <div className={styles.bentoTitle}>Zero central servers. Ever.</div>
-              <p className={styles.bentoDesc}>
-                Bring your own Convex deployment. Your data lives where you put it.
-                We never touch it.
-              </p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.data.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.data.title')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.data.desc')}</p>
               <div className={styles.dataTag}>
                 <LockIcon />
-                <span>Your Convex · Your rules</span>
+                <span>{t('landing.bento.data.tag')}</span>
               </div>
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoApi}`}>
-              <div className={styles.bentoEyebrow}>Developer</div>
-              <div className={styles.bentoTitle}>A REST API<br />worth using.</div>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.apiCard.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.apiCard.titleLine1')}<br />{t('landing.bento.apiCard.titleLine2')}</div>
               <div className={styles.apiSnippet}>
                 {[
                   { m: 'GET',    p: '/api/tasks?date=today' },
@@ -460,18 +461,15 @@ export default function Landing({ onGetStarted }) {
             </div>
 
             <div className={`${styles.bentoCard} ${styles.bentoFlow}`}>
-              <div className={styles.bentoEyebrow}>Built for flow</div>
-              <div className={styles.bentoTitle}>Plan it. Drag it. Done.</div>
-              <p className={styles.bentoDesc}>
-                The small interactions the big calendars never bothered with —
-                so shaping your day feels good, not like data entry.
-              </p>
+              <div className={styles.bentoEyebrow}>{t('landing.bento.flow.eyebrow')}</div>
+              <div className={styles.bentoTitle}>{t('landing.bento.flow.title')}</div>
+              <p className={styles.bentoDesc}>{t('landing.bento.flow.desc')}</p>
               <div className={styles.flowGrid}>
                 {[
-                  { icon: '🗓️', name: 'Drag to reschedule', sub: 'Grab a block, drop it on a new time. Snaps to 15 min.' },
-                  { icon: '🌅', name: 'Plan my day',        sub: 'See the day’s load and carry over yesterday in a tap.' },
-                  { icon: '⌘',  name: 'Command palette',    sub: 'Search blocks or run anything, all from the keyboard.' },
-                  { icon: '✨', name: 'Quiet wins',         sub: 'A calm celebration when you finish a day.' },
+                  { icon: '🗓️', name: t('landing.bento.flow.dragName'), sub: t('landing.bento.flow.dragSub') },
+                  { icon: '🌅', name: t('landing.bento.flow.planName'), sub: t('landing.bento.flow.planSub') },
+                  { icon: '⌘',  name: t('landing.bento.flow.paletteName'), sub: t('landing.bento.flow.paletteSub') },
+                  { icon: '✨', name: t('landing.bento.flow.winsName'), sub: t('landing.bento.flow.winsSub') },
                 ].map(f => (
                   <div key={f.name} className={styles.flowItem}>
                     <span className={styles.flowIcon}>{f.icon}</span>
@@ -496,26 +494,26 @@ export default function Landing({ onGetStarted }) {
       >
         <div className={styles.sectionInner}>
           <div className={styles.sectionHead}>
-            <div className={styles.eyebrow}>REST API</div>
-            <h2 className={styles.sectionH2}>Every endpoint, documented.</h2>
+            <div className={styles.eyebrow}>{t('landing.api.eyebrow')}</div>
+            <h2 className={styles.sectionH2}>{t('landing.api.h2')}</h2>
             <p className={styles.sectionSub}>
-              Bearer-authenticated. Base URL is your Convex deployment at{' '}
+              {t('landing.api.subPrefix')}{' '}
               <code className={styles.inlineCode}>.convex.site</code>.
-              Full interactive docs at <code className={styles.inlineCode}>/api/docs</code> — no auth needed.
+              {' '}{t('landing.api.subMiddle')} <code className={styles.inlineCode}>/api/docs</code> {t('landing.api.subSuffix')}
             </p>
           </div>
 
           <div className={styles.apiAuthBar}>
             <div className={styles.apiAuthLeft}>
-              <span className={styles.apiAuthLabel}>Base URL</span>
+              <span className={styles.apiAuthLabel}>{t('landing.api.baseUrl')}</span>
               <code className={styles.apiAuthCode}>https://[deployment].convex.site</code>
             </div>
             <div className={styles.apiAuthDivider} />
             <div className={styles.apiAuthLeft}>
-              <span className={styles.apiAuthLabel}>Auth</span>
+              <span className={styles.apiAuthLabel}>{t('landing.api.auth')}</span>
               <code className={styles.apiAuthCode}>Authorization: Bearer &lt;your-api-key&gt;</code>
             </div>
-            <a href="#developer" className={styles.apiAuthLink}>How to get your key →</a>
+            <a href="#developer" className={styles.apiAuthLink}>{t('landing.api.getKey')}</a>
           </div>
 
           <div className={styles.apiGroups}>
@@ -542,11 +540,11 @@ export default function Landing({ onGetStarted }) {
           <div className={styles.apiFootnote}>
             <InfoIcon />
             <span>
-              All endpoints accept and return JSON. Timestamps are ISO 8601.
-              Dates are <code className={styles.inlineCode}>YYYY-MM-DD</code>, times are{' '}
+              {t('landing.api.footnotePrefix')}
+              {' '}<code className={styles.inlineCode}>YYYY-MM-DD</code>{t('landing.api.footnoteTimes')}{' '}
               <code className={styles.inlineCode}>HH:MM</code>.
-              The <code className={styles.inlineCode}>DELETE /api/tasks/:id</code> endpoint supports{' '}
-              <code className={styles.inlineCode}>?mode=this|future|all</code> for recurring blocks.
+              {' '}{t('landing.api.footnoteMiddle')} <code className={styles.inlineCode}>DELETE /api/tasks/:id</code> {t('landing.api.footnoteSupports')}{' '}
+              <code className={styles.inlineCode}>?mode=this|future|all</code> {t('landing.api.footnoteRecurring')}
             </span>
           </div>
         </div>
@@ -560,29 +558,29 @@ export default function Landing({ onGetStarted }) {
       >
         <div className={styles.sectionInner}>
           <div className={styles.sectionHead}>
-            <div className={styles.eyebrow}>For developers</div>
-            <h2 className={styles.sectionH2}>Up in 3 minutes.</h2>
-            <p className={styles.sectionSub}>Deploy a backend, paste a URL, start blocking time.</p>
+            <div className={styles.eyebrow}>{t('landing.dev.eyebrow')}</div>
+            <h2 className={styles.sectionH2}>{t('landing.dev.h2')}</h2>
+            <p className={styles.sectionSub}>{t('landing.dev.sub')}</p>
           </div>
 
           <div className={styles.steps}>
             {[
               {
                 n: '01',
-                title: 'Deploy Convex',
-                desc: 'Run one command. Free tier covers everything — no credit card.',
+                title: t('landing.dev.step1Title'),
+                desc: t('landing.dev.step1Desc'),
                 code: 'npx convex dev',
               },
               {
                 n: '02',
-                title: 'Connect kugi',
-                desc: 'Paste your deployment URL at /setup. Your calendar is ready instantly.',
+                title: t('landing.dev.step2Title'),
+                desc: t('landing.dev.step2Desc'),
                 code: 'https://[name].convex.cloud',
               },
               {
                 n: '03',
-                title: 'Plug in your agent',
-                desc: 'Copy your Bearer token from Settings → Developer. Point your LLM at the API.',
+                title: t('landing.dev.step3Title'),
+                desc: t('landing.dev.step3Desc'),
                 code: 'GET /api/docs',
               },
             ].map((s, i) => (
@@ -603,14 +601,14 @@ export default function Landing({ onGetStarted }) {
       <section id="install" className={`${styles.installSection} ${devInView ? styles.inView : ''}`}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHead}>
-            <div className={styles.eyebrow}>Install</div>
-            <h2 className={styles.sectionH2}>Any device. Any platform.</h2>
+            <div className={styles.eyebrow}>{t('landing.install.eyebrow')}</div>
+            <h2 className={styles.sectionH2}>{t('landing.install.h2')}</h2>
           </div>
           <div className={styles.osGrid}>
-            <OSCard os="mac"     icon="🍎" label="Mac"          current={os === 'mac'}     steps={['Open in Chrome or Edge', 'Click Install in address bar', 'kugi runs as a native window']} installAction={canPrompt ? () => triggerInstall() : null} installed={installed} />
-            <OSCard os="ios"     icon="📱" label="iPhone / iPad" current={os === 'ios'}     steps={['Open in Safari', 'Tap Share → Add to Home Screen', 'kugi appears on your home screen']} iosHint={showIOSHint} onIosHint={() => setShowIOSHint(true)} installed={installed && os === 'ios'} />
-            <OSCard os="android" icon="🤖" label="Android"      current={os === 'android'} steps={['Open in Chrome', 'Tap Install in the address bar', 'kugi lands on your home screen']} installAction={canPrompt && os === 'android' ? () => triggerInstall() : null} installed={installed && os === 'android'} />
-            <OSCard os="win"     icon="🪟" label="Windows"      current={os === 'windows'} steps={['Open in Chrome or Edge', 'Click Install in address bar', 'kugi opens as a standalone window']} installAction={canPrompt && os === 'windows' ? () => triggerInstall() : null} installed={installed && os === 'windows'} />
+            <OSCard t={t} os="mac"     icon="🍎" label="Mac"          current={os === 'mac'}     steps={[t('landing.install.macStep1'), t('landing.install.macStep2'), t('landing.install.macStep3')]} installAction={canPrompt ? () => triggerInstall() : null} installed={installed} />
+            <OSCard t={t} os="ios"     icon="📱" label={t('landing.install.iosLabel')} current={os === 'ios'}     steps={[t('landing.install.iosStep1'), t('landing.install.iosStep2'), t('landing.install.iosStep3')]} iosHint={showIOSHint} onIosHint={() => setShowIOSHint(true)} installed={installed && os === 'ios'} />
+            <OSCard t={t} os="android" icon="🤖" label="Android"      current={os === 'android'} steps={[t('landing.install.androidStep1'), t('landing.install.androidStep2'), t('landing.install.androidStep3')]} installAction={canPrompt && os === 'android' ? () => triggerInstall() : null} installed={installed && os === 'android'} />
+            <OSCard t={t} os="win"     icon="🪟" label="Windows"      current={os === 'windows'} steps={[t('landing.install.winStep1'), t('landing.install.winStep2'), t('landing.install.winStep3')]} installAction={canPrompt && os === 'windows' ? () => triggerInstall() : null} installed={installed && os === 'windows'} />
           </div>
         </div>
       </section>
@@ -621,11 +619,11 @@ export default function Landing({ onGetStarted }) {
         ref={ctaRef}
       >
         <div className={styles.ctaInner}>
-          <div className={styles.ctaEyebrow}>Ready?</div>
-          <h2 className={styles.ctaH2}>Start building your week.</h2>
-          <p className={styles.ctaSub}>Free forever. No account. Deploy your own backend in minutes.</p>
+          <div className={styles.ctaEyebrow}>{t('landing.cta.eyebrow')}</div>
+          <h2 className={styles.ctaH2}>{t('landing.cta.h2')}</h2>
+          <p className={styles.ctaSub}>{t('landing.cta.sub')}</p>
           <button className={styles.btnPrimary} onClick={handleOpen} style={{ fontSize: 15, padding: '10px 28px', height: 42 }}>
-            Get started →
+            {t('landing.cta.button')}
           </button>
         </div>
       </section>
@@ -638,10 +636,10 @@ export default function Landing({ onGetStarted }) {
           </div>
           <div className={styles.footerLinks}>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>GitHub</a>
-            <a href="https://github.com/emmi-dev12/Kugi/releases" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Releases</a>
+            <a href="https://github.com/emmi-dev12/Kugi/releases" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>{t('landing.footer.releases')}</a>
             <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>Convex</a>
           </div>
-          <span className={styles.footerMeta}>MIT · Made in Switzerland</span>
+          <span className={styles.footerMeta}>{t('landing.footer.meta')}</span>
         </div>
       </footer>
 
@@ -651,14 +649,14 @@ export default function Landing({ onGetStarted }) {
 
 /* ─── sub-components ─── */
 
-function OSCard({ icon, label, current, installed, steps, installAction, iosHint, onIosHint }) {
+function OSCard({ t, icon, label, current, installed, steps, installAction, iosHint, onIosHint }) {
   return (
     <div className={`${styles.osCard} ${current ? styles.osCardCurrent : ''} ${installed ? styles.osCardDone : ''}`}>
       <div className={styles.osCardTop}>
         <span className={styles.osIcon}>{icon}</span>
         <div>
           <div className={styles.osLabel}>{label}</div>
-          {current && <div className={styles.osCurrentTag}>Your device</div>}
+          {current && <div className={styles.osCurrentTag}>{t('landing.install.yourDevice')}</div>}
         </div>
       </div>
       <ol className={styles.osSteps}>
@@ -666,22 +664,22 @@ function OSCard({ icon, label, current, installed, steps, installAction, iosHint
       </ol>
       <div className={styles.osAction}>
         {installed ? (
-          <span className={styles.installedChip}><CheckIcon /> Installed</span>
+          <span className={styles.installedChip}><CheckIcon /> {t('landing.installed')}</span>
         ) : installAction ? (
           <button className={styles.btnOutline} style={{ width: '100%' }} onClick={installAction}>
-            <DownloadIcon /> Install
+            <DownloadIcon /> {t('landing.install.install')}
           </button>
         ) : onIosHint ? (
           iosHint ? (
             <div className={styles.iosHintBox}>
-              <div className={styles.iosHintStep}><span>1</span> Open in <strong>Safari</strong></div>
-              <div className={styles.iosHintStep}><span>2</span> Tap <strong>Share</strong> → Add to Home Screen</div>
+              <div className={styles.iosHintStep}><span>1</span> {t('landing.install.iosHint1Prefix')} <strong>Safari</strong></div>
+              <div className={styles.iosHintStep}><span>2</span> {t('landing.install.iosHint2Prefix')} <strong>{t('landing.install.share')}</strong> {t('landing.install.iosHint2Suffix')}</div>
             </div>
           ) : (
-            <button className={styles.btnOutline} style={{ width: '100%' }} onClick={onIosHint}>How to install</button>
+            <button className={styles.btnOutline} style={{ width: '100%' }} onClick={onIosHint}>{t('landing.install.howToInstall')}</button>
           )
         ) : (
-          <span className={styles.osHint}>Open in Chrome to install</span>
+          <span className={styles.osHint}>{t('landing.install.openInChrome')}</span>
         )}
       </div>
     </div>

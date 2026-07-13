@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useIntegrations, useTelegram, usePushEnabled, useSendblue, useTelegramChannelEnabled } from '../../hooks/useDB';
 import { allTimezones } from '../../utils/timezone';
+import { SUPPORTED_LANGUAGES } from '../../utils/language';
 import styles from './SettingsModal.module.css';
+
+const REMINDER_OFFSETS = [5, 10, 15, 20, 30, 45, 60, 120, 180, 360, 720, 1440, 2880, 4320];
+const SHORT_OFFSETS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180];
 
 export default function SettingsModal({ open, ...props }) {
   if (!open) return null;
@@ -22,6 +27,9 @@ function SettingsModalContent({
   // Timezone
   timezone,
   onTimezoneChange,
+  // Language
+  language,
+  onLanguageChange,
   // API key
   apiKey,
   apiKeyVisible,
@@ -37,6 +45,7 @@ function SettingsModalContent({
   onRemoveCategory,
   onEditCategory,
 }) {
+  const { t } = useTranslation();
   const {
     composioKey,
     setComposioApiKey,
@@ -72,29 +81,29 @@ function SettingsModalContent({
   const [tab, setTab] = useState('general');
 
   const TABS = [
-    { id: 'general', label: 'General' },
-    { id: 'notifications', label: 'Notifications' },
-    { id: 'categories', label: 'Categories' },
-    { id: 'integrations', label: 'Integrations' },
-    { id: 'developer', label: 'Developer' },
+    { id: 'general', label: t('settings.tabs.general') },
+    { id: 'notifications', label: t('settings.tabs.notifications') },
+    { id: 'categories', label: t('settings.tabs.categories') },
+    { id: 'integrations', label: t('settings.tabs.integrations') },
+    { id: 'developer', label: t('settings.tabs.developer') },
   ];
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.panel} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
-          <span className={styles.title}>Settings</span>
+          <span className={styles.title}>{t('settings.title')}</span>
           <button className={styles.close} onClick={onClose}>✕</button>
         </div>
 
         <div className={styles.tabs}>
-          {TABS.map(t => (
+          {TABS.map(tabItem => (
             <button
-              key={t.id}
-              className={`${styles.tab} ${tab === t.id ? styles.tabActive : ''}`}
-              onClick={() => setTab(t.id)}
+              key={tabItem.id}
+              className={`${styles.tab} ${tab === tabItem.id ? styles.tabActive : ''}`}
+              onClick={() => setTab(tabItem.id)}
             >
-              {t.label}
+              {tabItem.label}
             </button>
           ))}
         </div>
@@ -106,8 +115,8 @@ function SettingsModalContent({
             <div className={styles.section}>
               <div className={styles.row}>
                 <div className={styles.rowLabel}>
-                  <span className={styles.rowTitle}>Timezone</span>
-                  <span className={styles.rowHint}>Used for reminders and display</span>
+                  <span className={styles.rowTitle}>{t('settings.general.timezoneTitle')}</span>
+                  <span className={styles.rowHint}>{t('settings.general.timezoneHint')}</span>
                 </div>
                 <select
                   className={styles.select}
@@ -119,6 +128,22 @@ function SettingsModalContent({
                   ))}
                 </select>
               </div>
+              <div className={styles.row}>
+                <div className={styles.rowLabel}>
+                  <span className={styles.rowTitle}>{t('settings.general.languageTitle')}</span>
+                  <span className={styles.rowHint}>{t('settings.general.languageHint')}</span>
+                </div>
+                <select
+                  className={styles.select}
+                  value={language ?? 'auto'}
+                  onChange={e => onLanguageChange(e.target.value === 'auto' ? null : e.target.value)}
+                >
+                  <option value="auto">{t('settings.general.languageAuto')}</option>
+                  {SUPPORTED_LANGUAGES.map(lang => (
+                    <option key={lang} value={lang}>{t(`settings.general.language${lang === 'en' ? 'En' : 'De'}`)}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 
@@ -127,13 +152,13 @@ function SettingsModalContent({
             <div className={styles.section}>
               <div className={styles.row}>
                 <div className={styles.rowLabel}>
-                  <span className={styles.rowTitle}>Push notifications</span>
-                  <span className={styles.rowHint}>Enable or disable all push notifications</span>
+                  <span className={styles.rowTitle}>{t('settings.notifications.pushTitle')}</span>
+                  <span className={styles.rowHint}>{t('settings.notifications.pushHint')}</span>
                 </div>
                 <button
                   className={`${styles.toggle} ${pushEnabled ? styles.toggleOn : ''}`}
                   onClick={() => setPushEnabled({ enabled: !pushEnabled })}
-                  title={pushEnabled ? 'Disable push notifications' : 'Enable push notifications'}
+                  title={pushEnabled ? t('settings.notifications.pushDisableTitle') : t('settings.notifications.pushEnableTitle')}
                 >
                   <span className={styles.toggleThumb} />
                 </button>
@@ -141,26 +166,26 @@ function SettingsModalContent({
 
               {pushEnabled && <>
               {permission === 'unsupported' && (
-                <p className={styles.hint}>Push notifications aren't supported in this browser.</p>
+                <p className={styles.hint}>{t('settings.notifications.unsupported')}</p>
               )}
               {permission === 'denied' && (
-                <p className={styles.hint}>Notifications are blocked — enable them in your browser settings, then reload.</p>
+                <p className={styles.hint}>{t('settings.notifications.blocked')}</p>
               )}
               {permission !== 'unsupported' && permission !== 'denied' && permission !== 'granted' && (
                 <button className={styles.enableBtn} onClick={onRequestPermission}>
-                  Enable push notifications
+                  {t('settings.notifications.enableBtn')}
                 </button>
               )}
               {permission === 'granted' && (
                 <>
                   <div className={pushActive ? styles.pushOn : styles.pushOff}>
                     <span>{pushActive ? '🔔' : '🔕'}</span>
-                    <span>{pushActive ? 'Push server active' : 'Push server inactive'}</span>
+                    <span>{pushActive ? t('settings.notifications.serverActive') : t('settings.notifications.serverInactive')}</span>
                     {!pushActive && (
-                      <button className={styles.textBtn} onClick={onRequestPermission}>re-enable</button>
+                      <button className={styles.textBtn} onClick={onRequestPermission}>{t('settings.notifications.reEnable')}</button>
                     )}
                     {pushActive && (
-                      <button className={styles.pushDisable} onClick={onDisablePush} title="Disable push">✕</button>
+                      <button className={styles.pushDisable} onClick={onDisablePush} title={t('settings.notifications.disablePushTitle')}>✕</button>
                     )}
                   </div>
 
@@ -175,21 +200,15 @@ function SettingsModalContent({
                               value={r.offsetMinutes}
                               onChange={e => onUpdateReminder(r.id, { offsetMinutes: Number(e.target.value) })}
                             >
-                              {[
-                                [5, '5 min before'], [10, '10 min before'], [15, '15 min before'],
-                                [20, '20 min before'], [30, '30 min before'], [45, '45 min before'],
-                                [60, '1 hour before'], [120, '2 hours before'], [180, '3 hours before'],
-                                [360, '6 hours before'], [720, '12 hours before'],
-                                [1440, '1 day before'], [2880, '2 days before'], [4320, '3 days before'],
-                              ].map(([v, label]) => (
-                                <option key={v} value={v}>{label}</option>
+                              {REMINDER_OFFSETS.map(v => (
+                                <option key={v} value={v}>{t(`settings.offsetLabels.${v}`)}</option>
                               ))}
                             </select>
                             <button className={styles.reminderDelete} onClick={() => onRemoveReminder(r.id)}>✕</button>
                           </div>
                           {isDayScale && (
                             <div className={styles.reminderRow}>
-                              <span className={styles.atLabel}>at</span>
+                              <span className={styles.atLabel}>{t('settings.notifications.at')}</span>
                               <input
                                 type="time"
                                 className={styles.timeInput}
@@ -200,7 +219,7 @@ function SettingsModalContent({
                           )}
                           <input
                             className={styles.msgInput}
-                            placeholder="Custom message (optional)"
+                            placeholder={t('settings.notifications.messagePlaceholder')}
                             value={r.message || ''}
                             onChange={e => onUpdateReminder(r.id, { message: e.target.value })}
                           />
@@ -208,7 +227,7 @@ function SettingsModalContent({
                       );
                     })}
                     {reminders.length < 3 && (
-                      <button className={styles.addBtn} onClick={onAddReminder}>+ Add reminder</button>
+                      <button className={styles.addBtn} onClick={onAddReminder}>{t('settings.notifications.addReminder')}</button>
                     )}
                   </div>
                 </>
@@ -237,24 +256,24 @@ function SettingsModalContent({
               {/* Composio API key — shared for all integrations */}
               <div className={styles.composioSection}>
                 <div className={styles.rowLabel} style={{ marginBottom: 8 }}>
-                  <span className={styles.rowTitle}>Composio</span>
+                  <span className={styles.rowTitle}>{t('settings.integrations.composio.title')}</span>
                   <span className={styles.rowHint}>
-                    Powered by{' '}
+                    {t('settings.integrations.composio.hintPrefix')}{' '}
                     <a href="https://composio.dev" target="_blank" rel="noreferrer" className={styles.link}>
                       Composio
                     </a>
-                    . Create a free account, then paste your API key to enable integrations.
+                    . {t('settings.integrations.composio.hintSuffix')}
                   </span>
                 </div>
                 {composioKey ? (
                   <div className={styles.connectedRow}>
                     <span className={styles.connectedDot} />
-                    <span className={styles.connectedLabel}>Connected to Composio</span>
+                    <span className={styles.connectedLabel}>{t('settings.integrations.composio.connected')}</span>
                     <button
                       className={styles.disconnectBtn}
-                      onClick={() => { if (confirm('Disconnect Composio? This will disable all integrations.')) setComposioApiKey({ value: '' }); }}
+                      onClick={() => { if (confirm(t('settings.integrations.composio.disconnectConfirm'))) setComposioApiKey({ value: '' }); }}
                     >
-                      Disconnect
+                      {t('common.disconnect')}
                     </button>
                   </div>
                 ) : (
@@ -265,19 +284,19 @@ function SettingsModalContent({
                       if (!composioInput.trim()) return;
                       setComposioSaving(true);
                       try { await setComposioApiKey({ value: composioInput.trim() }); setComposioInput(''); }
-                      catch (err) { alert('Failed to save: ' + err.message); }
+                      catch (err) { alert(t('settings.integrations.composio.saveFailed', { error: err.message })); }
                       setComposioSaving(false);
                     }}
                   >
                     <input
                       className={styles.keyInput}
                       type="password"
-                      placeholder="Paste your Composio API key…"
+                      placeholder={t('settings.integrations.composio.keyPlaceholder')}
                       value={composioInput}
                       onChange={e => setComposioInput(e.target.value)}
                     />
                     <button type="submit" className={styles.saveBtn} disabled={composioSaving}>
-                      {composioSaving ? 'Saving…' : 'Connect'}
+                      {composioSaving ? t('common.saving') : t('common.connect')}
                     </button>
                   </form>
                 )}
@@ -291,13 +310,13 @@ function SettingsModalContent({
                   <div className={styles.integrationCard}>
                     <div className={styles.integrationCardHeader}>
                       <div className={styles.rowLabel}>
-                        <span className={styles.rowTitle}>Google Calendar</span>
-                        <span className={styles.rowHint}>Sync blocks with your Google Calendar.</span>
+                        <span className={styles.rowTitle}>{t('settings.integrations.gcal.title')}</span>
+                        <span className={styles.rowHint}>{t('settings.integrations.gcal.hint')}</span>
                       </div>
                       <button
                         className={`${styles.toggle} ${gcalEnabled ? styles.toggleOn : ''}`}
                         onClick={() => setGcalEnabled(!gcalEnabled)}
-                        title={gcalEnabled ? 'Disable' : 'Enable'}
+                        title={gcalEnabled ? t('settings.integrations.gcal.disable') : t('settings.integrations.gcal.enable')}
                       >
                         <span className={styles.toggleThumb} />
                       </button>
@@ -319,11 +338,11 @@ function SettingsModalContent({
                               } else {
                                 await fetchFromGoogle();
                               }
-                            } catch (e) { alert('Fetch failed: ' + e.message); }
+                            } catch (e) { alert(t('settings.integrations.gcal.fetchFailed', { error: e.message })); }
                             setFetching(false);
                           }}
                         >
-                          {fetching ? 'Checking…' : '↓ Fetch'}
+                          {fetching ? t('settings.integrations.gcal.checking') : t('settings.integrations.gcal.fetch')}
                         </button>
                         <button
                           className={styles.syncBtn}
@@ -340,11 +359,11 @@ function SettingsModalContent({
                               } else {
                                 await pushToGoogle();
                               }
-                            } catch (e) { alert('Push failed: ' + e.message); }
+                            } catch (e) { alert(t('settings.integrations.gcal.pushFailed', { error: e.message })); }
                             setPushing(false);
                           }}
                         >
-                          {pushing ? 'Checking…' : '↑ Push'}
+                          {pushing ? t('settings.integrations.gcal.checking') : t('settings.integrations.gcal.push')}
                         </button>
                       </div>
                     )}
@@ -352,12 +371,12 @@ function SettingsModalContent({
                     {/* Sync diff confirmation dialog */}
                     {syncDiff && (
                       <div className={styles.syncDiffBox}>
-                        <div className={styles.syncDiffTitle}>Review before syncing</div>
+                        <div className={styles.syncDiffTitle}>{t('settings.integrations.gcal.reviewTitle')}</div>
 
                         {syncDiff.orphanedOnKugi.length > 0 && (
                           <div className={styles.syncDiffSection}>
                             <div className={styles.syncDiffSectionHeader}>
-                              <span>These blocks exist in Kugi but their Google Calendar event was deleted. Remove from Kugi?</span>
+                              <span>{t('settings.integrations.gcal.orphanedKugiPrompt')}</span>
                             </div>
                             {syncDiff.orphanedOnKugi.map(b => (
                               <label key={b.kugiId} className={styles.syncDiffRow}>
@@ -382,7 +401,7 @@ function SettingsModalContent({
                         {syncDiff.orphanedOnGcal.length > 0 && (
                           <div className={styles.syncDiffSection}>
                             <div className={styles.syncDiffSectionHeader}>
-                              <span>These Google Calendar events have no matching block in Kugi. Remove from Google Calendar?</span>
+                              <span>{t('settings.integrations.gcal.orphanedGcalPrompt')}</span>
                             </div>
                             {syncDiff.orphanedOnGcal.map(e => (
                               <label key={e.gcalId} className={styles.syncDiffRow}>
@@ -405,7 +424,7 @@ function SettingsModalContent({
                         )}
 
                         <div className={styles.syncDiffActions}>
-                          <button className={styles.syncDiffCancel} onClick={() => setSyncDiff(null)}>Cancel</button>
+                          <button className={styles.syncDiffCancel} onClick={() => setSyncDiff(null)}>{t('common.cancel')}</button>
                           <button
                             className={styles.syncDiffConfirm}
                             onClick={async () => {
@@ -421,11 +440,11 @@ function SettingsModalContent({
                                 }
                                 // If this was a Push, also push new Kugi blocks to GCal
                                 if (mode === 'push') await pushToGoogle();
-                              } catch (e) { alert('Sync failed: ' + e.message); }
+                              } catch (e) { alert(t('settings.integrations.gcal.syncFailed', { error: e.message })); }
                               if (mode === 'fetch') setFetching(false); else setPushing(false);
                             }}
                           >
-                            Confirm &amp; Sync
+                            {t('settings.integrations.gcal.confirmSync')}
                           </button>
                         </div>
                       </div>
@@ -436,14 +455,14 @@ function SettingsModalContent({
                   <div className={styles.integrationCard}>
                     <div className={styles.integrationCardHeader}>
                       <div className={styles.rowLabel}>
-                        <span className={styles.rowTitle}>Telegram</span>
-                        <span className={styles.rowHint}>Send block reminders via Telegram bot before start time.</span>
+                        <span className={styles.rowTitle}>{t('settings.integrations.telegram.title')}</span>
+                        <span className={styles.rowHint}>{t('settings.integrations.telegram.hint')}</span>
                       </div>
                       {telegramConfig?.botToken && telegramConfig?.chatId && (
                         <button
                           className={`${styles.toggle} ${telegramChannelEnabled ? styles.toggleOn : ''}`}
                           onClick={() => setTelegramChannelEnabled(!telegramChannelEnabled)}
-                          title={telegramChannelEnabled ? 'Disable Telegram reminders' : 'Enable Telegram reminders'}
+                          title={telegramChannelEnabled ? t('settings.integrations.telegram.disableTitle') : t('settings.integrations.telegram.enableTitle')}
                         >
                           <span className={styles.toggleThumb} />
                         </button>
@@ -453,25 +472,24 @@ function SettingsModalContent({
                       <>
                         <div className={styles.connectedRow}>
                           <span className={styles.connectedDot} />
-                          <span className={styles.connectedLabel}>Connected</span>
+                          <span className={styles.connectedLabel}>{t('settings.integrations.telegram.connected')}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
                             {telegramConfig.botToken.slice(0, 8)}…
                           </span>
                           <button
                             className={styles.disconnectBtn}
-                            onClick={() => { if (confirm('Disconnect Telegram?')) setTelegramConfig({ botToken: '', chatId: '', offsetMinutes: 15, reminderOffsets: [], webhookUrl: '' }); }}
+                            onClick={() => { if (confirm(t('settings.integrations.telegram.disconnectConfirm'))) setTelegramConfig({ botToken: '', chatId: '', offsetMinutes: 15, reminderOffsets: [], webhookUrl: '' }); }}
                           >
-                            Disconnect
+                            {t('common.disconnect')}
                           </button>
                         </div>
                         {/* Multi-reminder offsets */}
                         <div style={{ marginTop: 10 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                            Remind me (up to 4 times per event)
+                            {t('settings.integrations.telegram.remindMe')}
                           </span>
                           {(() => {
                             const active = reminderOffsets ?? telegramConfig.reminderOffsets ?? [telegramConfig.offsetMinutes ?? 15];
-                            const OPTS = [[5,'5 min'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hr'],[90,'1.5 hr'],[120,'2 hr'],[180,'3 hr']];
                             const save = (next) => {
                               setReminderOffsets(next);
                               setTelegramConfig({ botToken: telegramConfig.botToken, chatId: telegramConfig.chatId, offsetMinutes: next[0] ?? 15, reminderOffsets: next, webhookUrl: telegramConfig.webhookUrl ?? '' });
@@ -490,7 +508,7 @@ function SettingsModalContent({
                                         save(next);
                                       }}
                                     >
-                                      {OPTS.map(([v, label]) => <option key={v} value={v}>{label} before</option>)}
+                                      {SHORT_OFFSETS.map(v => <option key={v} value={v}>{t('settings.before', { label: t(`settings.offsetShort.${v}`) })}</option>)}
                                     </select>
                                     <button
                                       style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
@@ -503,7 +521,7 @@ function SettingsModalContent({
                                     className={styles.disconnectBtn}
                                     style={{ alignSelf: 'flex-start', marginTop: 2 }}
                                     onClick={() => save([...active, 15])}
-                                  >+ Add reminder</button>
+                                  >{t('settings.integrations.telegram.addReminder')}</button>
                                 )}
                               </div>
                             );
@@ -512,14 +530,14 @@ function SettingsModalContent({
                         {/* Webhook URL */}
                         <div style={{ marginTop: 10 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                            Webhook URL <span style={{ opacity: 0.6 }}>(optional — POSTed when reminder fires)</span>
+                            {t('settings.integrations.telegram.webhookUrlLabel')} <span style={{ opacity: 0.6 }}>{t('settings.integrations.telegram.webhookUrlHint')}</span>
                           </span>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <input
                               className={styles.keyInput}
                               style={{ flex: 1 }}
                               type="url"
-                              placeholder="https://your-agent.example.com/webhook"
+                              placeholder={t('settings.integrations.telegram.webhookUrlPlaceholder')}
                               value={webhookUrlInput || telegramConfig.webhookUrl || ''}
                               onChange={e => setWebhookUrlInput(e.target.value)}
                               onBlur={e => {
@@ -532,7 +550,7 @@ function SettingsModalContent({
                         {/* Interactive buttons — register Telegram bot webhook */}
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                            Interactive buttons <span style={{ opacity: 0.6 }}>— mark done, snooze, or move directly from Telegram</span>
+                            {t('settings.integrations.telegram.interactiveButtonsLabel')} <span style={{ opacity: 0.6 }}>{t('settings.integrations.telegram.interactiveButtonsHint')}</span>
                           </span>
                           <button
                             className={styles.saveBtn}
@@ -551,18 +569,18 @@ function SettingsModalContent({
                                 const data = await res.json();
                                 if (data.ok) {
                                   setTgWebhookStatus('ok');
-                                  setTgWebhookMsg('Webhook registered — buttons will appear on reminders');
+                                  setTgWebhookMsg(t('settings.integrations.telegram.webhookRegistered'));
                                 } else {
                                   setTgWebhookStatus('error');
-                                  setTgWebhookMsg(data.error || 'Registration failed');
+                                  setTgWebhookMsg(data.error || t('settings.integrations.telegram.registrationFailed'));
                                 }
                               } catch (e) {
                                 setTgWebhookStatus('error');
-                                setTgWebhookMsg('Network error — check your connection');
+                                setTgWebhookMsg(t('settings.integrations.telegram.networkError'));
                               }
                             }}
                           >
-                            {tgWebhookStatus === 'loading' ? 'Registering…' : '⚡ Enable interactive buttons'}
+                            {tgWebhookStatus === 'loading' ? t('settings.integrations.telegram.registering') : t('settings.integrations.telegram.enableButtons')}
                           </button>
                           {tgWebhookMsg && (
                             <span style={{ fontSize: 11, marginLeft: 8, color: tgWebhookStatus === 'ok' ? '#10b981' : '#ef4444' }}>
@@ -580,38 +598,38 @@ function SettingsModalContent({
                           try {
                             await setTelegramConfig({ botToken: telegramInput.botToken.trim(), chatId: telegramInput.chatId.trim(), offsetMinutes: Number(telegramOffset) });
                             setTelegramInput({ botToken: '', chatId: '' });
-                          } catch (err) { alert('Failed to save: ' + err.message); }
+                          } catch (err) { alert(t('settings.integrations.telegram.saveFailed', { error: err.message })); }
                         }}
                       >
                         <div className={styles.telegramInputGroup}>
                           <input
                             className={styles.keyInput}
                             type="password"
-                            placeholder="Bot token from @BotFather"
+                            placeholder={t('settings.integrations.telegram.botTokenPlaceholder')}
                             value={telegramInput.botToken}
                             onChange={e => setTelegramInput(p => ({ ...p, botToken: e.target.value }))}
                           />
                           <input
                             className={styles.keyInput}
                             type="text"
-                            placeholder="Chat ID from @userinfobot"
+                            placeholder={t('settings.integrations.telegram.chatIdPlaceholder')}
                             value={telegramInput.chatId}
                             onChange={e => setTelegramInput(p => ({ ...p, chatId: e.target.value }))}
                           />
                         </div>
                         <div className={styles.row} style={{ marginBottom: 8 }}>
-                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>First reminder</span>
+                          <span className={styles.rowLabel} style={{ fontSize: 12 }}>{t('settings.integrations.telegram.firstReminder')}</span>
                           <select
                             className={styles.select}
                             value={telegramOffset}
                             onChange={e => setTelegramOffset(e.target.value)}
                           >
-                            {[[5,'5 min before'],[10,'10 min before'],[15,'15 min before'],[20,'20 min before'],[30,'30 min before'],[45,'45 min before'],[60,'1 hour before'],[120,'2 hours before']].map(([v, label]) => (
-                              <option key={v} value={v}>{label}</option>
+                            {[5, 10, 15, 20, 30, 45, 60, 120].map(v => (
+                              <option key={v} value={v}>{t(`settings.offsetLabels.${v}`)}</option>
                             ))}
                           </select>
                         </div>
-                        <button type="submit" className={styles.saveBtn}>Connect</button>
+                        <button type="submit" className={styles.saveBtn}>{t('common.connect')}</button>
                       </form>
                     )}
                   </div>
@@ -620,11 +638,11 @@ function SettingsModalContent({
                   <div className={styles.integrationCard}>
                     <div className={styles.integrationCardHeader}>
                       <div className={styles.rowLabel}>
-                        <span className={styles.rowTitle}>iMessage</span>
+                        <span className={styles.rowTitle}>{t('settings.integrations.imessage.title')}</span>
                         <span className={styles.rowHint}>
-                          Send reminders via iMessage using{' '}
+                          {t('settings.integrations.imessage.hintPrefix')}{' '}
                           <a href="https://sendblue.co" target="_blank" rel="noreferrer" className={styles.link}>SendBlue</a>.
-                          Sign up for a SendBlue account to get your API credentials.
+                          {' '}{t('settings.integrations.imessage.hintSuffix')}
                         </span>
                       </div>
                       {sendblueConfig?.apiKey && sendblueConfig?.recipient && (
@@ -636,7 +654,7 @@ function SettingsModalContent({
                             recipient: sendblueConfig.recipient,
                             channelEnabled: !sendblueConfig.channelEnabled,
                           })}
-                          title={sendblueConfig.channelEnabled ? 'Disable iMessage reminders' : 'Enable iMessage reminders'}
+                          title={sendblueConfig.channelEnabled ? t('settings.integrations.imessage.disableTitle') : t('settings.integrations.imessage.enableTitle')}
                         >
                           <span className={styles.toggleThumb} />
                         </button>
@@ -646,25 +664,24 @@ function SettingsModalContent({
                       <>
                         <div className={styles.connectedRow}>
                           <span className={styles.connectedDot} />
-                          <span className={styles.connectedLabel}>Connected</span>
+                          <span className={styles.connectedLabel}>{t('settings.integrations.imessage.connected')}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
                             {sendblueConfig.recipient}
                           </span>
                           <button
                             className={styles.disconnectBtn}
-                            onClick={() => { if (confirm('Disconnect iMessage (SendBlue)?')) setSendblueConfig({ apiKey: '', apiSecret: '', recipient: '' }); }}
+                            onClick={() => { if (confirm(t('settings.integrations.imessage.disconnectConfirm'))) setSendblueConfig({ apiKey: '', apiSecret: '', recipient: '' }); }}
                           >
-                            Disconnect
+                            {t('common.disconnect')}
                           </button>
                         </div>
                         {/* Multi-reminder offsets */}
                         <div style={{ marginTop: 10 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                            Remind me (up to 4 times per event)
+                            {t('settings.integrations.imessage.remindMe')}
                           </span>
                           {(() => {
                             const active = sendblueReminderOffsets ?? sendblueConfig.reminderOffsets ?? [15];
-                            const OPTS = [[5,'5 min'],[10,'10 min'],[15,'15 min'],[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'1 hr'],[90,'1.5 hr'],[120,'2 hr'],[180,'3 hr']];
                             const save = (next) => {
                               setSendblueReminderOffsets(next);
                               setSendblueConfig({
@@ -688,7 +705,7 @@ function SettingsModalContent({
                                         save(next);
                                       }}
                                     >
-                                      {OPTS.map(([v, label]) => <option key={v} value={v}>{label} before</option>)}
+                                      {SHORT_OFFSETS.map(v => <option key={v} value={v}>{t('settings.before', { label: t(`settings.offsetShort.${v}`) })}</option>)}
                                     </select>
                                     <button
                                       style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
@@ -701,7 +718,7 @@ function SettingsModalContent({
                                     className={styles.disconnectBtn}
                                     style={{ alignSelf: 'flex-start', marginTop: 2 }}
                                     onClick={() => save([...active, 15])}
-                                  >+ Add reminder</button>
+                                  >{t('settings.integrations.imessage.addReminder')}</button>
                                 )}
                               </div>
                             );
@@ -718,33 +735,33 @@ function SettingsModalContent({
                           try {
                             await setSendblueConfig({ apiKey: apiKey.trim(), apiSecret: apiSecret.trim(), recipient: recipient.trim(), channelEnabled: true });
                             setSendblueInput({ apiKey: '', apiSecret: '', recipient: '' });
-                          } catch (err) { alert('Failed to save: ' + err.message); }
+                          } catch (err) { alert(t('settings.integrations.imessage.saveFailed', { error: err.message })); }
                         }}
                       >
                         <div className={styles.telegramInputGroup}>
                           <input
                             className={styles.keyInput}
                             type="password"
-                            placeholder="SendBlue API key (sb-api-key-id)"
+                            placeholder={t('settings.integrations.imessage.apiKeyPlaceholder')}
                             value={sendblueInput.apiKey}
                             onChange={e => setSendblueInput(p => ({ ...p, apiKey: e.target.value }))}
                           />
                           <input
                             className={styles.keyInput}
                             type="password"
-                            placeholder="SendBlue API secret (sb-api-secret-key)"
+                            placeholder={t('settings.integrations.imessage.apiSecretPlaceholder')}
                             value={sendblueInput.apiSecret}
                             onChange={e => setSendblueInput(p => ({ ...p, apiSecret: e.target.value }))}
                           />
                           <input
                             className={styles.keyInput}
                             type="tel"
-                            placeholder="Your phone number (+12345678900)"
+                            placeholder={t('settings.integrations.imessage.recipientPlaceholder')}
                             value={sendblueInput.recipient}
                             onChange={e => setSendblueInput(p => ({ ...p, recipient: e.target.value }))}
                           />
                         </div>
-                        <button type="submit" className={styles.saveBtn}>Connect</button>
+                        <button type="submit" className={styles.saveBtn}>{t('common.connect')}</button>
                       </form>
                     )}
                   </div>
@@ -759,22 +776,22 @@ function SettingsModalContent({
           {tab === 'developer' && (
             <div className={styles.section}>
               <div className={styles.rowLabel} style={{ marginBottom: 10 }}>
-                <span className={styles.rowTitle}>API Key</span>
-                <span className={styles.rowHint}>Use with <code>Authorization: Bearer &lt;key&gt;</code></span>
+                <span className={styles.rowTitle}>{t('settings.developer.apiKeyTitle')}</span>
+                <span className={styles.rowHint}>{t('settings.developer.apiKeyHint')} <code>Authorization: Bearer &lt;key&gt;</code></span>
               </div>
               <div className={styles.apiBox}>
                 <code className={styles.apiKey}>
-                  {apiKey === undefined ? 'loading…'
-                    : apiKey === null ? 'generating…'
+                  {apiKey === undefined ? t('common.loading')
+                    : apiKey === null ? t('settings.developer.generating')
                     : apiKeyVisible ? apiKey : '••••••••••••••••'}
                 </code>
                 {apiKey && (
                   <>
-                    <button className={styles.iconBtn} title={apiKeyVisible ? 'Hide' : 'Show'} onClick={onToggleApiKeyVisible}>
+                    <button className={styles.iconBtn} title={apiKeyVisible ? t('settings.developer.hideKey') : t('settings.developer.showKey')} onClick={onToggleApiKeyVisible}>
                       {apiKeyVisible ? '🙈' : '👁'}
                     </button>
-                    <button className={styles.iconBtn} title="Copy" onClick={onCopyApiKey}>⎘</button>
-                    <button className={styles.iconBtn} title="Rotate" onClick={onRotateApiKey}>↺</button>
+                    <button className={styles.iconBtn} title={t('settings.developer.copyKey')} onClick={onCopyApiKey}>⎘</button>
+                    <button className={styles.iconBtn} title={t('settings.developer.rotateKey')} onClick={onRotateApiKey}>↺</button>
                   </>
                 )}
               </div>
@@ -783,7 +800,7 @@ function SettingsModalContent({
                   <path d="M1 6a5 5 0 0 1 9.5-2M11 6a5 5 0 0 1-9.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                   <path d="M9 1.5l1.5 2.5-2.5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Change Convex URL
+                {t('settings.developer.changeUrl')}
               </button>
             </div>
           )}

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toDateStr, isToday } from '../../utils/dates';
+import { getLocale } from '../../utils/language';
 import BlockCard from './BlockCard';
 import styles from './WeekView.module.css';
 
@@ -8,11 +10,19 @@ function blockCoversDate(b, dateStr) {
   return b.date <= dateStr && dateStr <= b.end_date;
 }
 
+// Jan 7 2024 was a Sunday — used as a stable reference so index matches Date#getDay().
+function getDayNames(locale) {
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, 7 + i))
+  );
+}
+
 export default function WeekView({ days, blocks, activeCategory, onEditBlock, onDeleteBlock, onToggleBlock, onUpdateBlock, onAddBlock, onDayClick }) {
+  const { i18n } = useTranslation();
   const [dragId, setDragId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayNames = getDayNames(getLocale(i18n.language));
 
   return (
     <div className={styles.wrap}>

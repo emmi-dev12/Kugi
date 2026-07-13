@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toDateStr, isToday, formatFull, minsToPx, timeToMins, minsToTime } from '../../utils/dates';
 import { getTZ } from '../../utils/timezone';
+import { getLocale } from '../../utils/language';
 import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
 import BlockCard from './BlockCard';
 import styles from './DayView.module.css';
@@ -14,6 +16,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_MIN = 64 / 60;
 
 export default function DayView({ day, blocks, activeCategory, layout, onSetLayout, onEditBlock, onDeleteBlock, onToggleBlock, onAddBlock, onUpdateBlock }) {
+  const { t } = useTranslation();
   const dateStr = toDateStr(day);
   const dayBlocks = blocks
     .filter(b => blockCoversDate(b, dateStr) && (!activeCategory || b.category === activeCategory))
@@ -29,22 +32,22 @@ export default function DayView({ day, blocks, activeCategory, layout, onSetLayo
       <div className={styles.header}>
         <div>
           <div className={styles.date}>
-            {day.toLocaleDateString('en-US', { weekday: 'long', timeZone: getTZ() })}
-            {isToday(day) && <span className={styles.todayTag}> — Today</span>}
+            {day.toLocaleDateString(getLocale(), { weekday: 'long', timeZone: getTZ() })}
+            {isToday(day) && <span className={styles.todayTag}> — {t('calendar.today')}</span>}
             <br />
             <span className={styles.dateSub}>
-              {day.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: getTZ() })}
+              {day.toLocaleDateString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: getTZ() })}
             </span>
           </div>
           <div className={styles.subtitle}>
-            {dayBlocks.length} block{dayBlocks.length !== 1 ? 's' : ''} · {dayBlocks.filter(b => b.completed).length} done
+            {t('calendar.blocksCount', { count: dayBlocks.length })} · {t('calendar.doneCount', { count: dayBlocks.filter(b => b.completed).length })}
           </div>
         </div>
         <div className={styles.layoutToggle}>
           <button className={`${styles.layoutBtn} ${layout === 'timeline' ? styles.active : ''}`}
-            onClick={() => onSetLayout('timeline')}>⏱ Timeline</button>
+            onClick={() => onSetLayout('timeline')}>⏱ {t('calendar.timelineView')}</button>
           <button className={`${styles.layoutBtn} ${layout === 'bento' ? styles.active : ''}`}
-            onClick={() => onSetLayout('bento')}>⊞ Bento</button>
+            onClick={() => onSetLayout('bento')}>⊞ {t('calendar.bentoView')}</button>
         </div>
       </div>
 
@@ -63,6 +66,7 @@ export default function DayView({ day, blocks, activeCategory, layout, onSetLayo
 }
 
 function TimelineBody({ timed, untimed, dateStr, nowMins, onEditBlock, onDeleteBlock, onToggleBlock, onAddBlock, onUpdateBlock }) {
+  const { t } = useTranslation();
   // Live drag state: { id, mode: 'move'|'resize', startMins, endMins }
   const [drag, setDrag] = useState(null);
   const suppressClickRef = useRef(false);
@@ -148,7 +152,7 @@ function TimelineBody({ timed, untimed, dateStr, nowMins, onEditBlock, onDeleteB
                 }}
                 onPointerDown={e => beginDrag(e, block, 'move')}
                 onClick={() => { if (!suppressClickRef.current) onEditBlock(block); }}
-                title="Drag to reschedule · drag bottom edge to resize"
+                title={t('calendar.dragHint')}
               >
                 {isDragging && (
                   <div className={styles.dragTime}>{minsToTime(startM)} – {minsToTime(endM)}</div>
@@ -180,7 +184,7 @@ function TimelineBody({ timed, untimed, dateStr, nowMins, onEditBlock, onDeleteB
 
       {untimed.length > 0 && (
         <div className={styles.unscheduled}>
-          <div className={styles.unscheduledTitle}>📌 Unscheduled ({untimed.length})</div>
+          <div className={styles.unscheduledTitle}>📌 {t('calendar.unscheduled', { count: untimed.length })}</div>
           <div className={styles.unscheduledGrid}>
             {untimed.map(block => {
               const color = getColor(block.category);
@@ -205,6 +209,7 @@ function TimelineBody({ timed, untimed, dateStr, nowMins, onEditBlock, onDeleteB
 }
 
 function BentoBody({ dayBlocks, dateStr, onEditBlock, onDeleteBlock, onToggleBlock, onAddBlock, onUpdateBlock }) {
+  const { t } = useTranslation();
   if (dayBlocks.length === 0) {
     return (
       <div className={styles.empty}>
@@ -214,7 +219,7 @@ function BentoBody({ dayBlocks, dateStr, onEditBlock, onDeleteBlock, onToggleBlo
           <rect x="3" y="26" width="19" height="19" rx="5" fill="rgba(74,110,86,0.26)"/>
           <rect x="26" y="26" width="19" height="19" rx="5" fill="rgba(61,92,71,0.20)"/>
         </svg>
-        <span>No blocks today. Tap + to add one.</span>
+        <span>{t('calendar.noBlocksToday')}</span>
       </div>
     );
   }

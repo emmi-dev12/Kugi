@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { makeFunctionReference } from 'convex/server';
+import i18n from '../i18n';
 
 function friendlyError(e) {
   const msg = e?.message ?? '';
   // Short messages without stack traces are safe to show (validation errors from Convex).
   if (msg.length > 0 && msg.length < 200 && !msg.includes('\n') && !msg.includes('at ')) return msg;
-  return 'An unexpected error occurred. Please try again.';
+  return i18n.t('useDB.unexpectedError');
 }
 
 // Remove empty strings (optional string fields must be absent, not "")
@@ -75,7 +76,7 @@ export function useBlocks() {
     try {
       return await createMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      alert('Could not create block: ' + friendlyError(e));
+      alert(i18n.t('useDB.couldNotCreateBlock', { error: friendlyError(e) }));
       throw e;
     }
   };
@@ -89,7 +90,7 @@ export function useBlocks() {
     try {
       return await createRecurringMutation({ completed: false, ...stripEmpty(data) });
     } catch (e) {
-      alert('Could not create recurring block: ' + friendlyError(e));
+      alert(i18n.t('useDB.couldNotCreateRecurring', { error: friendlyError(e) }));
       throw e;
     }
   };

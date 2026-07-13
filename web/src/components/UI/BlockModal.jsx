@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CATEGORIES } from '../../utils/categories';
 import { toDateStr } from '../../utils/dates';
 import styles from './BlockModal.module.css';
@@ -6,6 +7,7 @@ import styles from './BlockModal.module.css';
 const MAX_REMINDERS = 6;
 
 export default function BlockModal({ open, block, defaultDate, onSave, onClose, categories }) {
+  const { t } = useTranslation();
   const cats = categories || CATEGORIES;
   const titleRef = useRef(null);
   const emojiInputRef = useRef(null);
@@ -108,26 +110,26 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
   return (
     <div className={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={styles.modal}>
-        <div className={styles.title}>{block ? 'Edit Block' : 'New Block'}</div>
+        <div className={styles.title}>{block ? t('blockModal.editTitle') : t('blockModal.newTitle')}</div>
 
         <div className={styles.group}>
-          <label className="form-label">Title</label>
-          <input ref={titleRef} className="form-input" placeholder="What are you doing?"
+          <label className="form-label">{t('blockModal.titleLabel')}</label>
+          <input ref={titleRef} className="form-input" placeholder={t('blockModal.titlePlaceholder')}
             value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}
             onKeyDown={e => e.key === 'Enter' && handleSave()} />
         </div>
 
         <div className={styles.row}>
           <div className={styles.group}>
-            <label className="form-label">Emoji</label>
+            <label className="form-label">{t('blockModal.emoji')}</label>
             <div className={styles.emojiWrap}>
               <button className={styles.emojiBtn} onClick={() => setEmojiOpen(v => !v)}>
                 <span className={styles.emojiBtnIcon}>{form.emoji}</span>
-                <span className={styles.emojiBtnLabel}>Change</span>
+                <span className={styles.emojiBtnLabel}>{t('blockModal.change')}</span>
               </button>
               {emojiOpen && (
                 <div className={styles.emojiPopover}>
-                  <div className={styles.emojiPopoverTitle}>Type or paste any emoji</div>
+                  <div className={styles.emojiPopoverTitle}>{t('blockModal.emojiTypeOrPaste')}</div>
                   <input
                     ref={emojiInputRef}
                     className={styles.emojiInput}
@@ -137,7 +139,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
                     maxLength={8}
                   />
                   <div className={styles.emojiHint}>
-                    Mac: <kbd>⌃⌘Space</kbd> · Win: <kbd>Win+.</kbd>
+                    {t('blockModal.emojiHintMac')} <kbd>⌃⌘Space</kbd> · {t('blockModal.emojiHintWin')} <kbd>Win+.</kbd>
                   </div>
                 </div>
               )}
@@ -145,7 +147,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
           </div>
 
           <div className={styles.group}>
-            <label className="form-label">Category</label>
+            <label className="form-label">{t('blockModal.category')}</label>
             <select className="form-select" value={form.category}
               onChange={e => setForm(f => ({...f, category: e.target.value}))}>
               {Object.entries(cats).map(([cat, info]) => (
@@ -157,12 +159,12 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
         <div className={styles.row}>
           <div className={styles.group}>
-            <label className="form-label">Start date</label>
+            <label className="form-label">{t('blockModal.startDate')}</label>
             <input className="form-input" type="date" value={form.date}
               onChange={e => setForm(f => ({...f, date: e.target.value}))} />
           </div>
           <div className={styles.group}>
-            <label className="form-label">End date</label>
+            <label className="form-label">{t('blockModal.endDate')}</label>
             <input className="form-input" type="date" value={form.end_date}
               min={form.date}
               onChange={e => setForm(f => ({...f, end_date: e.target.value}))} />
@@ -171,45 +173,45 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
         <div className={styles.row}>
           <div className={styles.group}>
-            <label className="form-label">Start</label>
+            <label className="form-label">{t('blockModal.start')}</label>
             <input className="form-input" type="time" value={form.start_time}
               onChange={e => setForm(f => ({...f, start_time: e.target.value}))} />
           </div>
           <div className={styles.group}>
-            <label className="form-label">End</label>
+            <label className="form-label">{t('blockModal.end')}</label>
             <input className="form-input" type="time" value={form.end_time}
               onChange={e => setForm(f => ({...f, end_time: e.target.value}))} />
           </div>
         </div>
 
         <div className={styles.group}>
-          <label className="form-label">Notes</label>
-          <textarea className="form-textarea" placeholder="Any extra context…"
+          <label className="form-label">{t('blockModal.notes')}</label>
+          <textarea className="form-textarea" placeholder={t('blockModal.notesPlaceholder')}
             value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} />
         </div>
 
         <div className={styles.row}>
           <div className={styles.group}>
-            <label className="form-label">Repeat</label>
+            <label className="form-label">{t('blockModal.repeat')}</label>
             <select className="form-select" value={recurrence} onChange={e => setRecurrence(e.target.value)}>
-              <option value=''>None</option>
-              <option value='hourly'>Hourly</option>
-              <option value='daily'>Daily</option>
-              <option value='monthly'>Monthly</option>
-              <option value='yearly'>Yearly</option>
+              <option value=''>{t('blockModal.repeatNone')}</option>
+              <option value='hourly'>{t('blockModal.repeatHourly')}</option>
+              <option value='daily'>{t('blockModal.repeatDaily')}</option>
+              <option value='monthly'>{t('blockModal.repeatMonthly')}</option>
+              <option value='yearly'>{t('blockModal.repeatYearly')}</option>
             </select>
           </div>
           <div className={styles.group}>
-            <label className="form-label">Remind me</label>
+            <label className="form-label">{t('blockModal.remindMe')}</label>
             <select className={styles.notifySelect} value={notifyMode}
               onChange={e => {
                 const v = e.target.value;
                 setNotifyMode(v);
                 if (v === 'custom' && blockReminders.length === 0) setBlockReminders([{ atTime: '08:00', message: '' }]);
               }}>
-              <option value='global'>Default (global setting)</option>
-              <option value='custom'>Custom</option>
-              <option value='off'>Off</option>
+              <option value='global'>{t('blockModal.remindDefault')}</option>
+              <option value='custom'>{t('blockModal.remindCustom')}</option>
+              <option value='off'>{t('blockModal.remindOff')}</option>
             </select>
           </div>
         </div>
@@ -217,7 +219,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         {notifyMode === 'custom' && (
           <div className={styles.group}>
             <label className="form-label">
-              Reminder times <span style={{fontWeight:400,opacity:.55}}>(up to {MAX_REMINDERS})</span>
+              {t('blockModal.reminderTimes')} <span style={{fontWeight:400,opacity:.55}}>{t('blockModal.reminderTimesMax', { count: MAX_REMINDERS })}</span>
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {blockReminders.map((r, i) => (
@@ -238,7 +240,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
                   <input
                     className="form-input"
                     style={{ fontSize: 12 }}
-                    placeholder={`Message ${i + 1} (optional — leave blank to use default)`}
+                    placeholder={t('blockModal.reminderMessagePlaceholder', { index: i + 1 })}
                     value={r.message ?? ''}
                     onChange={e => {
                       const next = [...blockReminders];
@@ -252,7 +254,7 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
                 <button type="button" className="btn-secondary"
                   style={{ alignSelf: 'flex-start', fontSize: 12, padding: '4px 10px' }}
                   onClick={() => setBlockReminders([...blockReminders, { atTime: '08:00', message: '' }])}>
-                  + Add reminder
+                  {t('blockModal.addReminder')}
                 </button>
               )}
             </div>
@@ -261,10 +263,10 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
 
         {notifyMode !== 'off' && (
           <div className={styles.group}>
-            <label className="form-label">Notification message <span style={{fontWeight:400,opacity:.55}}>(optional)</span></label>
+            <label className="form-label">{t('blockModal.notifyMessageLabel')} <span style={{fontWeight:400,opacity:.55}}>{t('blockModal.optional')}</span></label>
             <input
               className="form-input"
-              placeholder="e.g. Hope it's delicious! 🍜"
+              placeholder={t('blockModal.notifyMessagePlaceholder')}
               value={form.notify_message}
               onChange={e => setForm(f => ({ ...f, notify_message: e.target.value }))}
             />
@@ -272,9 +274,9 @@ export default function BlockModal({ open, block, defaultDate, onSave, onClose, 
         )}
 
         <div className={styles.footer}>
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button className="btn-primary" onClick={handleSave}>
-            {block ? 'Save Changes' : 'Create Block'}
+            {block ? t('blockModal.saveChanges') : t('blockModal.createBlock')}
           </button>
         </div>
       </div>
