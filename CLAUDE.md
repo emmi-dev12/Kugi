@@ -136,7 +136,7 @@ components/UI/
   QuickAdd.jsx                — NLP quick-add bar (chrono-node), 'q' shortcut
   PlanMyDay.jsx               — "Plan my day" focus overlay ('p' / desktop header button / mobile header sunrise button): day load, unscheduled list, carry-over from yesterday
   Celebration.jsx            — confetti + handwritten "all done", fired when the last open block of a day completes (reduced-motion aware)
-  WelcomeCard.jsx            — always-visible quick-action panel (Quick add / New block / Command palette); shown at the top of the day view on all screens, not just empty state
+  WelcomeCard.jsx            — quick-action panel (Quick add / New block / Command palette); shown at the top of the day view, mobile only
   DeleteRecurringModal.jsx    — 3-mode delete for recurring series
   SettingsModal.jsx           — tabs: General, Notifications, Categories, Integrations, Developer
                                 Integrations tab: GCal sync with orphan confirmation dialog
@@ -182,7 +182,7 @@ components/UI/
 | Inline title edit | `BlockCard.jsx` `onUpdate` prop; double-click (desktop) / long-press (mobile) → commits `{ title }` through `handleUpdate` |
 | Plan my day | `PlanMyDay.jsx`; opened by `'p'`, the desktop header Plan button (`.planBtn` in `headerRight`), or the mobile header sunrise button (`.mobilePlanBtn`). Note: `headerRight` is `display:none` on mobile, so any new header action needs a separate mobile entry point. Carry-over moves yesterday's unfinished by updating `date` |
 | Completion celebration | `Celebration.jsx`; triggered in `AppPage.handleToggle` when a day's last open block completes; `triggerCelebration()` falls back to a toast under `prefers-reduced-motion` |
-| First-run welcome / quick-actions | `WelcomeCard.jsx`; always rendered at the top of AppPage main (above the day view); not conditional on block count |
+| First-run welcome / quick-actions | `WelcomeCard.jsx`; rendered at the top of `AppPage.jsx`'s main only when `view === 'day' && isMobile` — day view, mobile only, not conditional on block count |
 | AI agent API | `http.ts` — all endpoints; agent should always `GET /api/docs` first |
 | NLP quick-add | `QuickAdd.jsx` + `parseQuickAdd.js` (chrono-node); keyboard shortcut `q` |
 | Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search; empty-query starter panel + fuzzy title match |
