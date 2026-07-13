@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import KugiMark from '../components/UI/KugiMark';
-import { getLocale } from '../utils/language';
+import { getLocale, SUPPORTED_LANGUAGES } from '../utils/language';
+import { useLanguage } from '../hooks/useLanguage';
 import styles from './Landing.module.css';
 
 /* ─── constants ─── */
@@ -114,6 +115,7 @@ function useInView(threshold = 0.1) {
 
 export default function Landing({ onGetStarted }) {
   const { t, i18n } = useTranslation();
+  const { effectiveLanguage, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const WEEK_BLOCKS = getWeekBlocks(t);
   const DAYS = getDays(getLocale(i18n.language));
@@ -183,6 +185,17 @@ export default function Landing({ onGetStarted }) {
             <a href="#developer" className={styles.navLink}>{t('landing.nav.developer')}</a>
             <a href="#install" className={styles.navLink}>{t('landing.nav.install')}</a>
             <a href="https://github.com/emmi-dev12/Kugi" target="_blank" rel="noopener noreferrer" className={styles.navLink}>GitHub</a>
+          </div>
+          <div className={styles.langSwitch} role="group" aria-label={t('settings.general.languageTitle')}>
+            {SUPPORTED_LANGUAGES.map(lang => (
+              <button
+                key={lang}
+                className={`${styles.langBtn} ${effectiveLanguage === lang ? styles.langBtnActive : ''}`}
+                onClick={() => setLanguage(lang)}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
           </div>
           <button className={styles.navCta} onClick={handleOpen}>{t('landing.nav.openApp')}</button>
         </div>

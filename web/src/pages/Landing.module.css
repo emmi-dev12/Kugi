@@ -104,6 +104,20 @@
 }
 .navCta:hover { background: #c8d8cc; }
 
+.langSwitch {
+  display: flex; align-items: center; gap: 2px;
+  background: #171c19; border: 1px solid #26332c; border-radius: 8px;
+  padding: 2px; flex-shrink: 0;
+}
+.langBtn {
+  font-size: 11px; font-weight: 600; color: #7a9485;
+  background: none; border: none; border-radius: 6px;
+  padding: 5px 9px; cursor: pointer; letter-spacing: 0.3px;
+  font-family: inherit; transition: background 0.12s, color 0.12s;
+}
+.langBtn:hover { color: #dde8e0; }
+.langBtnActive, .langBtnActive:hover { background: #dde8e0; color: #0c0f0d; }
+
 /* ── hero ── */
 .hero {
   min-height: calc(100dvh - 56px);
