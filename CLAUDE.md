@@ -23,7 +23,10 @@ npx convex dev --once   # deploy functions to the DEV deployment (artful-gnat-48
 
 **Never use `npx convex deploy`** — that targets the prod deployment (`elated-frog-591`) and the live app does not connect to it. Always use `npx convex dev --once` to push backend changes.
 
-The `.env.local` required for Convex deployment is at `.claude/worktrees/stupefied-curran-04bc85/app/.env.local` — copy it to `app/.env.local` before running any Convex CLI commands.
+The `.env.local` required for Convex deployment must contain `CONVEX_DEPLOY_KEY`. Get the key from **[dashboard.convex.dev](https://dashboard.convex.dev)** → deployment `artful-gnat-488` → Settings → Deploy Keys, then create `app/.env.local`:
+```
+CONVEX_DEPLOY_KEY=your-deploy-key-here
+```
 
 ### After deploying JS changes
 Bump `CACHE_NAME` in `web/public/sw.js` (e.g. `v3` → `v4`) whenever frontend JS changes ship. PWA installs serve stale files until the service worker cache is invalidated.
@@ -88,6 +91,7 @@ Indexes: `by_date`, `by_recurrence_group` (on `recurrenceGroupId`)
 | `pushEnabled` | `"true"` / `"false"` |
 | `vapidPublicKey` / `vapidPrivateKey` | VAPID keys for web push |
 | `firedPushKeys` | JSON — dedup log for fired push notifications |
+| `telegramWebhookSecret` | Random hex string — verified in `X-Telegram-Bot-Api-Secret-Token` header on incoming callback queries |
 
 ### HTTP API endpoints (all at `.convex.site`, Bearer auth)
 ```
@@ -111,6 +115,12 @@ PATCH  /api/settings                 — update any subset of settings
 GET    /api/info                     — deprecated, use /api/docs
 ```
 
+### Telegram webhook endpoints (no Bearer auth — verified by secret header)
+```
+POST   /telegram/webhook             — receives Telegram callback_query events (button taps)
+POST   /telegram/register-webhook    — requires Bearer auth; calls Telegram setWebhook + stores secret
+```
+
 ### Web frontend (`web/src/`)
 
 ```
@@ -126,7 +136,7 @@ components/UI/
   QuickAdd.jsx                — NLP quick-add bar (chrono-node), 'q' shortcut
   PlanMyDay.jsx               — "Plan my day" focus overlay ('p' / desktop header button / mobile header sunrise button): day load, unscheduled list, carry-over from yesterday
   Celebration.jsx            — confetti + handwritten "all done", fired when the last open block of a day completes (reduced-motion aware)
-  WelcomeCard.jsx            — first-run empty state (no blocks); dismissal in localStorage 'kugiWelcomeDismissed'
+  WelcomeCard.jsx            — always-visible quick-action panel (Quick add / New block / Command palette); shown at the top of the day view on all screens, not just empty state
   DeleteRecurringModal.jsx    — 3-mode delete for recurring series
   SettingsModal.jsx           — tabs: General, Notifications, Categories, Integrations, Developer
                                 Integrations tab: GCal sync with orphan confirmation dialog
@@ -164,7 +174,7 @@ components/UI/
 |---------|-------|
 | Recurring blocks | `blocks.ts:createRecurring`, `deleteRecurring`; `BlockModal` Repeat dropdown; `DeleteRecurringModal` |
 | Per-block custom notification message | `notify_message` field in schema + BlockModal; used in `telegram.ts` + `pushActions.ts` |
-| Telegram reminders | `telegram.ts:sendReminder` (internalAction); scheduled via `ctx.scheduler.runAt` in `blocks.ts`; up to 4 jobs per block stored in `telegramJobIds`; timezone-correct using `localToUTC` in `blocks.ts`; template in `telegramTemplate` setting; fires `webhookUrl` POST on each reminder |
+| Telegram reminders | `telegram.ts:sendReminder` (internalAction); scheduled via `ctx.scheduler.runAt` in `blocks.ts`; up to 4 jobs per block stored in `telegramJobIds`; timezone-correct using `localToUTC` in `blocks.ts`; template in `telegramTemplate` setting; fires `webhookUrl` POST on each reminder. Messages include inline keyboard buttons (✅ Done, ⏰ +30m, ⏰ +1h, 📅 Tomorrow); callback_data format is `{action}:{blockId}` where action ∈ `d`, `s30`, `s60`, `tom`. Handled by `POST /telegram/webhook` in `http.ts`. Register via Settings → Integrations → Telegram → "Enable interactive buttons" |
 | Push notifications | `pushActions.ts:checkAndNotify` (cron every 1 min); rules in `reminders` setting |
 | GCal sync with orphan confirmation | `calendarSyncActions.ts`: `getSyncDiff`, `fetchFromGoogle({deleteKugiIds})`, `pushToGoogle`, `deleteGcalEvents`; UI in `SettingsModal` |
 | Multi-select bulk delete in search | `CommandPalette.jsx` — checkboxes + Select All + bulk toolbar |
@@ -172,7 +182,7 @@ components/UI/
 | Inline title edit | `BlockCard.jsx` `onUpdate` prop; double-click (desktop) / long-press (mobile) → commits `{ title }` through `handleUpdate` |
 | Plan my day | `PlanMyDay.jsx`; opened by `'p'`, the desktop header Plan button (`.planBtn` in `headerRight`), or the mobile header sunrise button (`.mobilePlanBtn`). Note: `headerRight` is `display:none` on mobile, so any new header action needs a separate mobile entry point. Carry-over moves yesterday's unfinished by updating `date` |
 | Completion celebration | `Celebration.jsx`; triggered in `AppPage.handleToggle` when a day's last open block completes; `triggerCelebration()` falls back to a toast under `prefers-reduced-motion` |
-| First-run welcome | `WelcomeCard.jsx`; rendered in AppPage main when `blocks.length === 0 && !welcomeDismissed` |
+| First-run welcome / quick-actions | `WelcomeCard.jsx`; always rendered at the top of AppPage main (above the day view); not conditional on block count |
 | AI agent API | `http.ts` — all endpoints; agent should always `GET /api/docs` first |
 | NLP quick-add | `QuickAdd.jsx` + `parseQuickAdd.js` (chrono-node); keyboard shortcut `q` |
 | Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search; empty-query starter panel + fuzzy title match |
@@ -187,7 +197,6 @@ components/UI/
 - **Controlled emoji input bug** — don't set `value={emoji}` on an emoji input. Use a separate `draft` state for the input and the current emoji only as `placeholder`; otherwise typing appends and `Intl.Segmenter` picks the old emoji.
 - **GitHub web merge editor** — can silently drop CSS property values (e.g. `grid-template-columns`) when resolving conflicts. Verify CSS-heavy files after any web-UI merge.
 - **Convex HTTP endpoint** — always `.convex.site`, never `.convex.cloud`.
-- **Worktree deployment** — changes made in `.claude/worktrees/<name>` must be committed and merged to `main` before they appear in the Render deployment.
 - **PRs are squash-merged** — the repo squashes each PR into one new commit on `main` (new hash). After your PR merges, do NOT keep committing on the same branch and open another PR from it: git sees the branch's original commits and main's squash as divergent histories touching the same lines → phantom conflicts. Instead start fresh from `main`, or drop the already-merged commits with `git rebase --onto origin/main <last-merged-commit> <branch>` before pushing the next change.
 - **No CI / Render auto-deploy** — there are no GitHub Actions or required checks on this repo; merging to `main` is the gate, and Render auto-deploys `main`. Verify changes locally (`npm run build`, `npm run lint`, and headless-Chromium screenshots for visual work) — nothing runs them for you.
 - **Lint has a pre-existing baseline** — `npm run lint` (in `web/`) reports ~30 errors on a clean checkout (unused imports, `set-state-in-effect`, etc.). Don't try to clear them all; just make sure your change doesn't add new ones. `npm run build` must stay green.
@@ -202,7 +211,7 @@ components/UI/
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
-- **sw.js cache name** — currently `kugi-v17`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **sw.js cache name** — currently `kugi-v22`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
 - **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + `.mobilePlanBtn` + `.mobileSettingsBtn`, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The desktop `headerRight` cluster (view toggle, Plan, Search, New Block, gear) is `display:none` on mobile — its actions live in the bottom nav or dedicated `.mobile*` buttons instead. The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
 - **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
 - **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.
