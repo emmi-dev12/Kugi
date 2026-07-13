@@ -416,11 +416,13 @@ export default function AppPage() {
             onAdd={handleQuickAdd}
             defaultDate={view === 'day' ? currentDay : todayZurich()}
           />
-          <WelcomeCard
-            onNewBlock={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}
-            onQuickAdd={() => quickAddRef.current?.focus()}
-            onSearch={() => setSearchOpen(true)}
-          />
+          {view === 'day' && isMobile && (
+            <WelcomeCard
+              onNewBlock={() => openModal(null, toDateStr(currentDay))}
+              onQuickAdd={() => quickAddRef.current?.focus()}
+              onSearch={() => setSearchOpen(true)}
+            />
+          )}
           {view === 'week' && (
             <WeekView
               days={weekDays}
