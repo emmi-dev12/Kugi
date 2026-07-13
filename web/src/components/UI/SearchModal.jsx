@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import styles from './SearchModal.module.css';
 
 export default function SearchModal({ blocks, onClose, onGoToBlock }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const inputRef = useRef(null);
@@ -40,7 +42,7 @@ export default function SearchModal({ blocks, onClose, onGoToBlock }) {
             className={styles.input}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search blocks…"
+            placeholder={t('commandPalette.searchBlocks')}
           />
           <kbd className={styles.esc}>esc</kbd>
         </div>
@@ -71,12 +73,12 @@ export default function SearchModal({ blocks, onClose, onGoToBlock }) {
           </div>
         )}
         {query.trim().length > 0 && results.length === 0 && (
-          <div className={styles.empty}>No blocks found</div>
+          <div className={styles.empty}>{t('commandPalette.noBlocksFound')}</div>
         )}
         <div className={styles.footer}>
-          <span>↑↓ navigate</span>
-          <span>↵ open</span>
-          <span>esc close</span>
+          <span>{t('commandPalette.footer.navigate')}</span>
+          <span>{t('commandPalette.footer.open')}</span>
+          <span>{t('commandPalette.footer.close')}</span>
         </div>
       </div>
     </div>,

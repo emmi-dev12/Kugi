@@ -1,7 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { getColor, getCatEmoji, hexRgb } from '../../utils/categories';
+import { getLocale } from '../../utils/language';
 import styles from './CompletedView.module.css';
 
 export default function CompletedView({ blocks, onToggle, onEdit }) {
+  const { t } = useTranslation();
   const completed = [...blocks.filter(b => b.completed)]
     .sort((a, b) => b.date.localeCompare(a.date) || (b.start_time || '').localeCompare(a.start_time || ''));
 
@@ -9,8 +12,8 @@ export default function CompletedView({ blocks, onToggle, onEdit }) {
     return (
       <div className={styles.empty}>
         <div className={styles.emptyIcon}>✓</div>
-        <div className={styles.emptyText}>Nothing completed yet.</div>
-        <div className={styles.emptyHint}>Mark blocks done and they'll appear here.</div>
+        <div className={styles.emptyText}>{t('calendar.completedEmptyText')}</div>
+        <div className={styles.emptyHint}>{t('calendar.completedEmptyHint')}</div>
       </div>
     );
   }
@@ -25,7 +28,7 @@ export default function CompletedView({ blocks, onToggle, onEdit }) {
     <div className={styles.wrap}>
       <div className={styles.header}>
         <span className={styles.count}>{completed.length}</span>
-        <span className={styles.countLabel}>blocks completed</span>
+        <span className={styles.countLabel}>{t('calendar.blocksCompleted')}</span>
       </div>
       <div className={styles.list}>
         {dates.map(date => (
@@ -50,7 +53,7 @@ export default function CompletedView({ blocks, onToggle, onEdit }) {
                   <span className={styles.badge}>{block.category}</span>
                   <button className={styles.undoBtn}
                     onClick={e => { e.stopPropagation(); onToggle(block.id); }}
-                    title="Mark incomplete">↩</button>
+                    title={t('blockCard.markIncomplete')}>↩</button>
                 </div>
               );
             })}
@@ -63,7 +66,7 @@ export default function CompletedView({ blocks, onToggle, onEdit }) {
 
 function formatDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+  return new Date(y, m - 1, d).toLocaleDateString(getLocale(), {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 }

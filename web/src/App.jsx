@@ -1,6 +1,24 @@
 import { useState, useMemo, Component } from 'react';
 import { HashRouter, BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { I18nextProvider, useTranslation } from 'react-i18next';
+import i18n from './i18n';
+
+function ErrorFallback({ error, onReset }) {
+  const { t } = useTranslation();
+  return (
+    <div style={{ padding: 40, color: '#fff', fontFamily: 'system-ui', background: '#080808', minHeight: '100dvh' }}>
+      <h2 style={{ color: '#f43f5e', marginBottom: 12 }}>{t('errorBoundary.title')}</h2>
+      <pre style={{ fontSize: 12, color: '#888', whiteSpace: 'pre-wrap', marginBottom: 24 }}>
+        {error?.message}
+      </pre>
+      <button onClick={onReset}
+        style={{ padding: '10px 20px', background: '#4f7cff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
+        {t('errorBoundary.reset')}
+      </button>
+    </div>
+  );
+}
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -8,16 +26,10 @@ class ErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div style={{ padding: 40, color: '#fff', fontFamily: 'system-ui', background: '#080808', minHeight: '100dvh' }}>
-        <h2 style={{ color: '#f43f5e', marginBottom: 12 }}>Something went wrong</h2>
-        <pre style={{ fontSize: 12, color: '#888', whiteSpace: 'pre-wrap', marginBottom: 24 }}>
-          {this.state.error?.message}
-        </pre>
-        <button onClick={() => { localStorage.removeItem('kugiConvexUrl'); window.location.href = '/setup'; }}
-          style={{ padding: '10px 20px', background: '#4f7cff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
-          Reset & go to setup
-        </button>
-      </div>
+      <ErrorFallback
+        error={this.state.error}
+        onReset={() => { localStorage.removeItem('kugiConvexUrl'); window.location.href = '/setup'; }}
+      />
     );
   }
 }
@@ -75,19 +87,23 @@ export default function App() {
 
   if (!convexClient) {
     return (
-      <Router>
-        <PreSetupApp />
-      </Router>
+      <I18nextProvider i18n={i18n}>
+        <Router>
+          <PreSetupApp />
+        </Router>
+      </I18nextProvider>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <ConvexProvider client={convexClient}>
-        <Router>
-          <MainApp />
-        </Router>
-      </ConvexProvider>
-    </ErrorBoundary>
+    <I18nextProvider i18n={i18n}>
+      <ErrorBoundary>
+        <ConvexProvider client={convexClient}>
+          <Router>
+            <MainApp />
+          </Router>
+        </ConvexProvider>
+      </ErrorBoundary>
+    </I18nextProvider>
   );
 }

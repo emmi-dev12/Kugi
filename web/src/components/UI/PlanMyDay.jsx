@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { toDateStr, addDays, timeToMins, isToday } from '../../utils/dates';
 import { getTZ } from '../../utils/timezone';
+import { getLocale } from '../../utils/language';
 import { getColor, getCatEmoji } from '../../utils/categories';
 import styles from './PlanMyDay.module.css';
 
@@ -13,6 +15,7 @@ function coversDate(b, dateStr) {
 }
 
 export default function PlanMyDay({ day, blocks, onClose, onEditBlock, onUpdateBlock }) {
+  const { t } = useTranslation();
   const todayStr = toDateStr(day);
   const yesterdayStr = toDateStr(addDays(day, -1));
 
@@ -35,26 +38,26 @@ export default function PlanMyDay({ day, blocks, onClose, onEditBlock, onUpdateB
     carryOver.forEach(b => onUpdateBlock(b.id, { date: todayStr }));
   }
 
-  const dateLabel = day.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', timeZone: getTZ() });
+  const dateLabel = day.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long', timeZone: getTZ() });
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.panel} onClick={e => e.stopPropagation()}>
         <div className={styles.head}>
           <div>
-            <div className={styles.kicker}>plan your day</div>
-            <div className={styles.date}>{dateLabel}{isToday(day) ? ' · today' : ''}</div>
+            <div className={styles.kicker}>{t('planMyDay.kicker')}</div>
+            <div className={styles.date}>{dateLabel}{isToday(day) ? ` · ${t('planMyDay.todaySuffix')}` : ''}</div>
           </div>
-          <button className={styles.close} onClick={onClose} aria-label="Close">✕</button>
+          <button className={styles.close} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
 
         {/* Load */}
         <div className={styles.load}>
           <div className={styles.loadRow}>
             <span className={styles.loadLabel}>
-              {hrs > 0 ? `${hrs}h ` : ''}{mins > 0 ? `${mins}m` : (hrs === 0 ? '0m' : '')} scheduled
+              {t('planMyDay.scheduledFor', { time: `${hrs > 0 ? `${hrs}h ` : ''}${mins > 0 ? `${mins}m` : (hrs === 0 ? '0m' : '')}` })}
             </span>
-            <span className={styles.loadMeta}>{dayBlocks.length} block{dayBlocks.length !== 1 ? 's' : ''} · {doneCount} done</span>
+            <span className={styles.loadMeta}>{t('calendar.blocksCount', { count: dayBlocks.length })} · {t('calendar.doneCount', { count: doneCount })}</span>
           </div>
           <div className={styles.loadTrack}>
             <div className={styles.loadFill} style={{ width: `${loadPct}%` }} />
@@ -65,24 +68,24 @@ export default function PlanMyDay({ day, blocks, onClose, onEditBlock, onUpdateB
         {carryOver.length > 0 && (
           <div className={styles.carry}>
             <div className={styles.carryText}>
-              <strong>{carryOver.length}</strong> unfinished from yesterday
+              <strong>{carryOver.length}</strong> {t('planMyDay.unfinishedFromYesterday')}
             </div>
-            <button className={styles.carryBtn} onClick={bringCarryOver}>Bring to today</button>
+            <button className={styles.carryBtn} onClick={bringCarryOver}>{t('planMyDay.bringToToday')}</button>
           </div>
         )}
 
         {/* Unscheduled */}
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Unscheduled · {unscheduled.length}</div>
+          <div className={styles.sectionTitle}>{t('planMyDay.unscheduled')} · {unscheduled.length}</div>
           {unscheduled.length === 0 ? (
-            <div className={styles.emptyRow}>Everything has a time. Nice.</div>
+            <div className={styles.emptyRow}>{t('planMyDay.everythingHasTime')}</div>
           ) : (
             unscheduled.map(b => (
               <button key={b.id} className={styles.item} onClick={() => { onEditBlock(b); onClose(); }}>
                 <span className={styles.itemDot} style={{ background: getColor(b.category) }} />
                 <span className={styles.itemEmoji}>{b.emoji || getCatEmoji(b.category)}</span>
                 <span className={styles.itemTitle}>{b.title}</span>
-                <span className={styles.itemAction}>Set time →</span>
+                <span className={styles.itemAction}>{t('planMyDay.setTime')}</span>
               </button>
             ))
           )}
@@ -90,9 +93,9 @@ export default function PlanMyDay({ day, blocks, onClose, onEditBlock, onUpdateB
 
         {/* Agenda preview */}
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Timeline · {timed.length}</div>
+          <div className={styles.sectionTitle}>{t('planMyDay.timeline')} · {timed.length}</div>
           {timed.length === 0 ? (
-            <div className={styles.emptyRow}>No timed blocks yet.</div>
+            <div className={styles.emptyRow}>{t('planMyDay.noTimedBlocks')}</div>
           ) : (
             timed.map(b => (
               <button key={b.id} className={`${styles.item} ${b.completed ? styles.itemDone : ''}`} onClick={() => { onEditBlock(b); onClose(); }}>

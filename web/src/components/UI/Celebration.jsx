@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import styles from './Celebration.module.css';
 
 const COLORS = ['#5d8a6a', '#8fc49f', '#78ae8a', '#3d5c47', '#dde8e0'];
@@ -12,6 +13,7 @@ const PIECES = Array.from({ length: 18 }, (_, i) => ({
 }));
 
 export default function Celebration() {
+  const { t } = useTranslation();
   return createPortal(
     <div className={styles.wrap} aria-hidden="true">
       <div className={styles.confetti}>
@@ -29,7 +31,7 @@ export default function Celebration() {
           />
         ))}
       </div>
-      <div className={styles.message}>all done</div>
+      <div className={styles.message}>{t('celebration.allDone')}</div>
     </div>,
     document.body
   );

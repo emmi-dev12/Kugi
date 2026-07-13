@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import KugiMark from '../components/UI/KugiMark';
 import styles from './Setup.module.css';
 
 export default function Setup({ onComplete }) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,9 +12,9 @@ export default function Setup({ onComplete }) {
   async function handleSubmit(e) {
     e.preventDefault();
     const trimmed = url.trim();
-    if (!trimmed) { setError('Please enter your Convex URL.'); return; }
+    if (!trimmed) { setError(t('setup.errorEmpty')); return; }
     if (!trimmed.startsWith('https://') || !trimmed.includes('.convex.cloud')) {
-      setError('URL must be a valid Convex deployment URL (e.g. https://xxx.convex.cloud)');
+      setError(t('setup.errorInvalid'));
       return;
     }
     setLoading(true);
@@ -27,13 +29,13 @@ export default function Setup({ onComplete }) {
         <div className={styles.logoRow}>
           <KugiMark size="lg" />
         </div>
-        <h1 className={styles.title}>Connect your workspace</h1>
+        <h1 className={styles.title}>{t('setup.title')}</h1>
         <p className={styles.sub}>
-          Kugi uses your own Convex backend — your data stays yours, forever free.
-          Deploy one at <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.link}>convex.dev</a> and paste the URL below.
+          {t('setup.subPrefix')}
+          {' '}{t('setup.subSuffix')} <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className={styles.link}>convex.dev</a> {t('setup.subSuffix2')}
         </p>
         <form onSubmit={handleSubmit} className={styles.form}>
-          <label className={styles.label}>Convex Deployment URL</label>
+          <label className={styles.label}>{t('setup.label')}</label>
           <input
             className={styles.input}
             placeholder="https://your-project.convex.cloud"
@@ -44,14 +46,14 @@ export default function Setup({ onComplete }) {
           />
           {error && <div className={styles.error}>{error}</div>}
           <button className={`btn-primary ${styles.btn}`} type="submit" disabled={loading}>
-            Connect workspace →
+            {t('setup.connectButton')}
           </button>
         </form>
         <div className={styles.hint}>
-          <strong>How to get your URL:</strong><br />
+          <strong>{t('setup.howToGetUrl')}</strong><br />
           1. <code>npm install convex</code><br />
-          2. <code>npx convex dev</code> (follow prompts to create a project)<br />
-          3. Copy the deployment URL from the dashboard or terminal output
+          2. <code>npx convex dev</code> {t('setup.followPrompts')}<br />
+          3. {t('setup.copyUrl')}
         </div>
       </div>
     </div>

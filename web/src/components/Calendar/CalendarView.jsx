@@ -1,8 +1,19 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toDateStr, isToday } from '../../utils/dates';
+import { getLocale } from '../../utils/language';
 import styles from './CalendarView.module.css';
 
+// Jan 1 2024 was a Monday — used as a stable reference for locale weekday abbreviations.
+function getWeekdayLabels(locale) {
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, 1 + i))
+  );
+}
+
 export default function CalendarView({ blocks, onDaySelect }) {
+  const { t, i18n } = useTranslation();
+  const weekdayLabels = getWeekdayLabels(getLocale(i18n.language));
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -33,7 +44,7 @@ export default function CalendarView({ blocks, onDaySelect }) {
     cells.push({ date: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1), outside: true });
   }
 
-  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = viewMonth.toLocaleDateString(getLocale(i18n.language), { month: 'long', year: 'numeric' });
 
   function goToday() {
     const d = new Date();
@@ -51,10 +62,10 @@ export default function CalendarView({ blocks, onDaySelect }) {
           onClick={() => setViewMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}>›</button>
       </div>
 
-      <button className={styles.todayBtn} onClick={goToday}>Go to today</button>
+      <button className={styles.todayBtn} onClick={goToday}>{t('calendar.goToToday')}</button>
 
       <div className={styles.weekLabels}>
-        {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(l => (
+        {weekdayLabels.map(l => (
           <div key={l} className={styles.weekLabel}>{l}</div>
         ))}
       </div>

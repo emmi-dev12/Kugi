@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBlocks, useApiKey } from '../hooks/useDB';
 import DeleteRecurringModal from '../components/UI/DeleteRecurringModal';
 import SettingsModal from '../components/UI/SettingsModal';
 import { useNotifications } from '../hooks/useNotifications';
 import { useCategories } from '../hooks/useCategories';
+import { useLanguage } from '../hooks/useLanguage';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
 import CompletedView from '../components/Calendar/CompletedView';
@@ -22,20 +24,16 @@ import {
   formatMonthYear, isToday, todayZurich
 } from '../utils/dates';
 import { getTZ, setTZ, allTimezones } from '../utils/timezone';
+import { getLocale } from '../utils/language';
 import styles from './AppPage.module.css';
 
-function changeConvexUrl() {
-  if (confirm('Change your Convex URL? You will be taken to the setup screen.')) {
-    localStorage.removeItem('kugiConvexUrl');
-    window.location.href = '/setup';
-  }
-}
-
 export default function AppPage() {
+  const { t, i18n } = useTranslation();
   const { blocks, createBlock, updateBlock, deleteBlock, toggleComplete, bulkDelete, bulkComplete, createRecurring, deleteRecurring } = useBlocks();
   const { categories, customCategories, addCategory, removeCategory, editCategory } = useCategories();
   const { apiKey, rotateApiKey } = useApiKey();
   const [timezone, setTimezone] = useState(() => getTZ());
+  const { preference: languagePreference, setLanguage } = useLanguage();
   const { permission, pushActive, reminders, addReminder, updateReminder, removeReminder, requestPermission, disablePush } = useNotifications(blocks, timezone);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
@@ -58,6 +56,13 @@ export default function AppPage() {
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState(null);
   const historyRef = useRef([]);
   const futureRef = useRef([]);
+
+  function changeConvexUrl() {
+    if (confirm(t('appPage.changeConvexUrlConfirm'))) {
+      localStorage.removeItem('kugiConvexUrl');
+      window.location.href = '/setup';
+    }
+  }
 
   function toggleSidebar() {
     const next = !sidebarCollapsed;
@@ -156,7 +161,7 @@ export default function AppPage() {
 
   function triggerCelebration() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) { showToast('All done for the day ✓'); return; }
+    if (reduce) { showToast(t('appPage.allDoneToast')); return; }
     setCelebrate(true);
     setTimeout(() => setCelebrate(false), 2400);
   }
@@ -166,7 +171,7 @@ export default function AppPage() {
     if (!action) return;
     action.undo();
     futureRef.current.push(action);
-    showToast('Undone');
+    showToast(t('appPage.undone'));
   }
 
   function redo() {
@@ -174,7 +179,7 @@ export default function AppPage() {
     if (!action) return;
     action.redo();
     historyRef.current.push(action);
-    showToast('Redone');
+    showToast(t('appPage.redone'));
   }
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -182,12 +187,12 @@ export default function AppPage() {
   const navLabel = view === 'week'
     ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])} ${weekDays[0].getFullYear()}`
     : view === 'day' ? formatFull(currentDay)
-    : view === 'completed' ? 'Completed'
-    : 'Calendar';
+    : view === 'completed' ? t('appPage.completed')
+    : t('appPage.calendar');
 
   // Compact label for the mobile header (the full date wraps on a phone).
   const navLabelShort = view === 'day'
-    ? currentDay.toLocaleDateString('en-US', { timeZone: getTZ(), weekday: 'short', day: 'numeric', month: 'short' })
+    ? currentDay.toLocaleDateString(getLocale(i18n.language), { timeZone: getTZ(), weekday: 'short', day: 'numeric', month: 'short' })
     : view === 'week'
     ? `${formatShort(weekDays[0])} – ${formatShort(weekDays[6])}`
     : navLabel;
@@ -234,7 +239,7 @@ export default function AppPage() {
 
   function handleQuickAdd(blockData) {
     handleCreate(blockData);
-    showToast('Block added');
+    showToast(t('appPage.blockAdded'));
   }
 
   function handleSave(form) {
@@ -272,13 +277,18 @@ export default function AppPage() {
   }
   const weekDateStrs = weekDays.map(toDateStr);
 
+  // Jan 1 2024 was a Monday — single-letter weekday initials for the mini calendar header.
+  const miniCalWeekdayInitials = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(getLocale(i18n.language), { weekday: 'narrow' }).format(new Date(2024, 0, 1 + i))
+  );
+
   const SidebarContent = ({ showMiniCal = true }) => (
     <>
       {/* Mini calendar — desktop sidebar only */}
       {showMiniCal && <div>
         <div className={styles.miniCalHeader}>{formatMonthYear(calRef)}</div>
         <div className={styles.miniCalGrid}>
-          {['M','T','W','T','F','S','S'].map((l, i) => (
+          {miniCalWeekdayInitials.map((l, i) => (
             <div key={i} className={styles.miniCalLabel}>{l}</div>
           ))}
           {miniDays.map(({ date, other }, i) => {
@@ -299,12 +309,12 @@ export default function AppPage() {
 
       {/* Categories */}
       <div>
-        <div className={styles.sectionTitle}>Categories</div>
+        <div className={styles.sectionTitle}>{t('appPage.categories')}</div>
         <div className={styles.catList}>
           <div className={`${styles.catItem} ${!activeCategory ? styles.catActive : ''}`}
             onClick={() => { setActiveCategory(null); setSettingsOpen(false); }}>
             <span className={styles.catDot} style={{ background: '#555' }} />
-            All
+            {t('appPage.all')}
             <span className={styles.catCount}>{blocks.length}</span>
           </div>
           {Object.entries(categories).map(([cat, info]) => {
@@ -330,40 +340,40 @@ export default function AppPage() {
       <header className={styles.header}>
         <KugiMark size="md" className={styles.logo} />
         <div className={styles.headerCenter}>
-          <button className="btn-icon" onClick={() => nav(-1)} aria-label="Previous">‹</button>
+          <button className="btn-icon" onClick={() => nav(-1)} aria-label={t('appPage.previous')}>‹</button>
           <span className={styles.navLabel}>
             <span className={styles.navLabelFull}>{navLabel}</span>
             <span className={styles.navLabelShort}>{navLabelShort}</span>
           </span>
-          <button className="btn-icon" onClick={() => nav(1)} aria-label="Next">›</button>
-          <button className="btn-secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={goToday}>Today</button>
+          <button className="btn-icon" onClick={() => nav(1)} aria-label={t('appPage.next')}>›</button>
+          <button className="btn-secondary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={goToday}>{t('calendar.today')}</button>
         </div>
         <div className={styles.headerRight}>
           <div className={styles.viewToggle}>
-            <button className={`${styles.viewBtn} ${view === 'week' ? styles.active : ''}`} onClick={() => setView('week')}>Week</button>
-            <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>Day</button>
-            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>Finished</button>
+            <button className={`${styles.viewBtn} ${view === 'week' ? styles.active : ''}`} onClick={() => setView('week')}>{t('appPage.week')}</button>
+            <button className={`${styles.viewBtn} ${view === 'day' ? styles.active : ''}`} onClick={() => setView('day')}>{t('appPage.day')}</button>
+            <button className={`${styles.viewBtn} ${view === 'completed' ? styles.active : ''}`} onClick={() => setView('completed')}>{t('appPage.finished')}</button>
           </div>
-          <button className={styles.planBtn} onClick={() => setPlanOpen(true)} title="Plan my day (p)">
+          <button className={styles.planBtn} onClick={() => setPlanOpen(true)} title={t('appPage.planMyDayTitle')}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M13 3l-1.1 1.1M4.1 11.9L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
             </svg>
-            <span className={styles.planBtnText}>Plan</span>
+            <span className={styles.planBtnText}>{t('appPage.plan')}</span>
           </button>
-          <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title="Search blocks (/)">
+          <button className={styles.searchBtn} onClick={() => setSearchOpen(true)} title={t('appPage.searchBlocksTitle')}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10.5 10.5l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            <span className={styles.searchBtnText}>Search</span>
+            <span className={styles.searchBtnText}>{t('appPage.search')}</span>
             <kbd className={styles.searchKbd}>⌘K</kbd>
           </button>
           <button className="btn-primary" onClick={() => openModal(null, view === 'day' ? toDateStr(currentDay) : toDateStr(todayZurich()))}>
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-            New Block
+            {t('appPage.newBlock')}
           </button>
-          <button className={styles.settingsBtn} onClick={() => setSettingsOpen(v => !v)} title="Settings">
+          <button className={styles.settingsBtn} onClick={() => setSettingsOpen(v => !v)} title={t('settings.title')}>
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -371,14 +381,14 @@ export default function AppPage() {
           </button>
         </div>
         {/* Plan my day — mobile only */}
-        <button className={styles.mobilePlanBtn} onClick={() => setPlanOpen(true)} aria-label="Plan my day">
+        <button className={styles.mobilePlanBtn} onClick={() => setPlanOpen(true)} aria-label={t('appPage.planMyDayTitle')}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
             <path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
             <path d="M12 3.5v2.5M4 9l1.7 1.7M20 9l-1.7 1.7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
           </svg>
         </button>
         {/* Settings gear — mobile only */}
-        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)} aria-label="Settings">
+        <button className={styles.mobileSettingsBtn} onClick={() => setSettingsOpen(v => !v)} aria-label={t('settings.title')}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.41 1.41M13.37 13.37l1.41 1.41M3.22 14.78l1.41-1.41M13.37 4.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -392,7 +402,7 @@ export default function AppPage() {
           className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''}`}
           style={sidebarCollapsed ? {} : { width: sidebarWidth }}
         >
-          <button className={styles.collapseBtn} onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          <button className={styles.collapseBtn} onClick={toggleSidebar} title={sidebarCollapsed ? t('appPage.expandSidebar') : t('appPage.collapseSidebar')}>
             {sidebarCollapsed ? '›' : '‹'}
           </button>
           {!sidebarCollapsed && <SidebarContent />}
@@ -456,9 +466,9 @@ export default function AppPage() {
 
       {/* STATS */}
       <div className={styles.statsBar}>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#10b981' }} />{done} done</div>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#4f7cff' }} />{total - done} left</div>
-        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#8b5cf6' }} />{total} total</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#10b981' }} />{t('appPage.statsDone', { count: done })}</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#4f7cff' }} />{t('appPage.statsLeft', { count: total - done })}</div>
+        <div className={styles.statItem}><span className={styles.statDot} style={{ background: '#8b5cf6' }} />{t('appPage.statsTotal', { count: total })}</div>
         {total > 0 && (
           <div className={styles.statItem} style={{ marginLeft: 'auto', gap: 8 }}>
             <div className={styles.progressTrack}>
@@ -529,11 +539,13 @@ export default function AppPage() {
         onRemoveReminder={removeReminder}
         timezone={timezone}
         onTimezoneChange={tz => { setTimezone(tz); setTZ(tz); }}
+        language={languagePreference}
+        onLanguageChange={setLanguage}
         apiKey={apiKey}
         apiKeyVisible={apiKeyVisible}
         onToggleApiKeyVisible={() => setApiKeyVisible(v => !v)}
         onCopyApiKey={() => { navigator.clipboard.writeText(apiKey); }}
-        onRotateApiKey={() => { if (confirm('Rotate API key? Your AI agent will need the new key.')) rotateApiKey(); }}
+        onRotateApiKey={() => { if (confirm(t('appPage.rotateApiKeyConfirm'))) rotateApiKey(); }}
         onChangeConvexUrl={changeConvexUrl}
         categories={categories}
         customCategories={customCategories}
@@ -554,7 +566,7 @@ export default function AppPage() {
               <rect x="18.5" y="5" width="1.5" height="12" rx="0.75" fill="currentColor" opacity="0.2"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Week</span>
+          <span className={styles.bottomNavLabel}>{t('appPage.week')}</span>
         </button>
 
         <button className={`${styles.bottomNavItem} ${view === 'day' && !settingsOpen ? styles.navActive : ''}`} onClick={() => { setView('day'); setSettingsOpen(false); }}>
@@ -565,7 +577,7 @@ export default function AppPage() {
               <rect x="3" y="16.5" width="10" height="2.5" rx="1.25" fill="currentColor" opacity="0.3"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Day</span>
+          <span className={styles.bottomNavLabel}>{t('appPage.day')}</span>
         </button>
 
         <button className={styles.bottomNavAdd}
@@ -585,7 +597,7 @@ export default function AppPage() {
               <path d="M7 11l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Finished</span>
+          <span className={styles.bottomNavLabel}>{t('appPage.finished')}</span>
         </button>
 
         <button className={`${styles.bottomNavItem} ${view === 'calendar' && !settingsOpen ? styles.navActive : ''}`}
@@ -596,7 +608,7 @@ export default function AppPage() {
               <path d="M7 3v4M15 3v4M3 10h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
             </svg>
           </span>
-          <span className={styles.bottomNavLabel}>Cal</span>
+          <span className={styles.bottomNavLabel}>{t('appPage.cal')}</span>
         </button>
       </nav>
     </div>

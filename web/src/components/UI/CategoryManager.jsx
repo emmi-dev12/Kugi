@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CATEGORIES } from '../../utils/categories';
 import styles from './CategoryManager.module.css';
 
@@ -22,6 +23,7 @@ function EmojiInput({ emoji, onEmoji }) {
 }
 
 export default function CategoryManager({ categories, customCategories, onAdd, onRemove, onEdit }) {
+  const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
   const [addName, setAddName] = useState('');
   const [addColor, setAddColor] = useState(DEFAULT_COLORS[0]);
@@ -78,8 +80,8 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
                 ))}
               </div>
               <div className={styles.formBtns}>
-                <button className={styles.cancelBtn} onClick={() => setEditingCat(null)}>Cancel</button>
-                <button className={styles.addConfirmBtn} onClick={handleEditSave}>Save</button>
+                <button className={styles.cancelBtn} onClick={() => setEditingCat(null)}>{t('common.cancel')}</button>
+                <button className={styles.addConfirmBtn} onClick={handleEditSave}>{t('common.save')}</button>
               </div>
             </div>
           );
@@ -91,8 +93,8 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
               <span className={styles.itemName}>{cat}</span>
               {!isDefault && (
                 <>
-                  <button className={styles.editBtn} onClick={() => startEdit(cat, info)} title="Edit">✎</button>
-                  <button className={styles.removeBtn} onClick={() => onRemove(cat)} title="Remove">✕</button>
+                  <button className={styles.editBtn} onClick={() => startEdit(cat, info)} title={t('blockCard.edit')}>✎</button>
+                  <button className={styles.removeBtn} onClick={() => onRemove(cat)} title={t('categoryManager.remove')}>✕</button>
                 </>
               )}
             </div>
@@ -106,7 +108,7 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
             <EmojiInput emoji={addEmoji} onEmoji={setAddEmoji} />
             <input
               className={styles.nameInput}
-              placeholder="Category name"
+              placeholder={t('categoryManager.namePlaceholder')}
               value={addName}
               onChange={e => setAddName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
@@ -120,12 +122,12 @@ export default function CategoryManager({ categories, customCategories, onAdd, o
             ))}
           </div>
           <div className={styles.formBtns}>
-            <button className={styles.cancelBtn} onClick={() => setAdding(false)}>Cancel</button>
-            <button className={styles.addConfirmBtn} onClick={handleAdd}>Add</button>
+            <button className={styles.cancelBtn} onClick={() => setAdding(false)}>{t('common.cancel')}</button>
+            <button className={styles.addConfirmBtn} onClick={handleAdd}>{t('categoryManager.add')}</button>
           </div>
         </div>
       ) : (
-        <button className={styles.addBtn} onClick={() => { setAdding(true); setEditingCat(null); }}>+ Add category</button>
+        <button className={styles.addBtn} onClick={() => { setAdding(true); setEditingCat(null); }}>+ {t('categoryManager.addCategory')}</button>
       )}
     </div>
   );

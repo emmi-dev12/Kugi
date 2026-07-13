@@ -1,26 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import styles from './CommandPalette.module.css';
 
-const COMMANDS = [
-  { id: 'today',    label: 'Go to Today',        hint: 't',   desc: 'Navigate to today in current view' },
-  { id: 'week',     label: 'Switch to Week view', hint: 'w',   desc: 'Show week view' },
-  { id: 'day',      label: 'Switch to Day view',  hint: 'd',   desc: 'Show day view' },
-  { id: 'new',      label: 'New Block',           hint: 'n',   desc: 'Open new block modal (> new [title])' },
-  { id: 'complete', label: 'Complete blocks…',    hint: null,  desc: 'Mark matching blocks complete (> complete [search])' },
-  { id: 'delete',   label: 'Delete blocks…',      hint: null,  desc: 'Delete matching blocks (> delete [search])' },
-  { id: 'category', label: 'Filter by category…', hint: null,  desc: 'Filter view to category (> category [name])' },
-];
+function getCommands(t) {
+  return [
+    { id: 'today',    label: t('commandPalette.commands.today.label'),    hint: 't',  desc: t('commandPalette.commands.today.desc') },
+    { id: 'week',     label: t('commandPalette.commands.week.label'),     hint: 'w',  desc: t('commandPalette.commands.week.desc') },
+    { id: 'day',      label: t('commandPalette.commands.day.label'),      hint: 'd',  desc: t('commandPalette.commands.day.desc') },
+    { id: 'new',      label: t('commandPalette.commands.new.label'),      hint: 'n',  desc: t('commandPalette.commands.new.desc') },
+    { id: 'complete', label: t('commandPalette.commands.complete.label'), hint: null, desc: t('commandPalette.commands.complete.desc') },
+    { id: 'delete',   label: t('commandPalette.commands.delete.label'),   hint: null, desc: t('commandPalette.commands.delete.desc') },
+    { id: 'category', label: t('commandPalette.commands.category.label'), hint: null, desc: t('commandPalette.commands.category.desc') },
+  ];
+}
 
 // Keyboard cheatsheet surfaced in the empty-state starter panel.
-const SHORTCUTS = [
-  { keys: 'N', label: 'New block' },
-  { keys: 'Q', label: 'Quick add' },
-  { keys: 'P', label: 'Plan my day' },
-  { keys: 'W / D / F', label: 'Week / Day / Finished' },
-  { keys: 'T', label: 'Today' },
-  { keys: '⌘Z', label: 'Undo' },
-];
+function getShortcuts(t) {
+  return [
+    { keys: 'N', label: t('commandPalette.shortcuts.newBlock') },
+    { keys: 'Q', label: t('commandPalette.shortcuts.quickAdd') },
+    { keys: 'P', label: t('commandPalette.shortcuts.planMyDay') },
+    { keys: 'W / D / F', label: t('commandPalette.shortcuts.weekDayFinished') },
+    { keys: 'T', label: t('commandPalette.shortcuts.today') },
+    { keys: '⌘Z', label: t('commandPalette.shortcuts.undo') },
+  ];
+}
 
 // Lightweight fuzzy: every char of the query appears in order in the text.
 function subseq(text, q) {
@@ -46,6 +51,9 @@ export default function CommandPalette({
   onBulkComplete,
   onFilterCategory,
 }) {
+  const { t } = useTranslation();
+  const COMMANDS = getCommands(t);
+  const SHORTCUTS = getShortcuts(t);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const [confirm, setConfirm] = useState(null);
@@ -197,7 +205,7 @@ export default function CommandPalette({
             className={styles.input}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder={isCmd ? 'Type a command…' : 'Search blocks…'}
+            placeholder={isCmd ? t('commandPalette.typeCommand') : t('commandPalette.searchBlocks')}
           />
           <kbd className={styles.esc}>esc</kbd>
         </div>
@@ -212,22 +220,22 @@ export default function CommandPalette({
                 onChange={toggleAll}
                 className={styles.checkbox}
               />
-              {allChecked ? 'Deselect all' : `Select all ${searchResults.length}`}
+              {allChecked ? t('commandPalette.deselectAll') : t('commandPalette.selectAll', { count: searchResults.length })}
             </label>
             {someChecked && (
               <div className={styles.bulkActions}>
-                <span className={styles.checkedCount}>{checkedCount} selected</span>
+                <span className={styles.checkedCount}>{t('commandPalette.selectedCount', { count: checkedCount })}</span>
                 <button
                   className={styles.bulkBtn}
                   onClick={() => setBulkConfirm('complete')}
                 >
-                  Complete
+                  {t('commandPalette.complete')}
                 </button>
                 <button
                   className={`${styles.bulkBtn} ${styles.bulkBtnDelete}`}
                   onClick={() => setBulkConfirm('delete')}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             )}
@@ -239,16 +247,16 @@ export default function CommandPalette({
           <div className={styles.confirmBox}>
             <div className={styles.confirmMsg}>
               {bulkConfirm === 'delete'
-                ? `Delete ${checkedCount} block(s)? This cannot be undone.`
-                : `Mark ${checkedCount} block(s) as complete?`}
+                ? t('commandPalette.confirmDeleteBulk', { count: checkedCount })
+                : t('commandPalette.confirmCompleteBulk', { count: checkedCount })}
             </div>
             <div className={styles.confirmActions}>
-              <button className={styles.confirmCancel} onClick={() => setBulkConfirm(null)}>Cancel</button>
+              <button className={styles.confirmCancel} onClick={() => setBulkConfirm(null)}>{t('common.cancel')}</button>
               <button
                 className={bulkConfirm === 'delete' ? styles.confirmOk : styles.confirmComplete}
                 onClick={() => doBulkAction(bulkConfirm)}
               >
-                {bulkConfirm === 'delete' ? 'Delete' : 'Complete'}
+                {bulkConfirm === 'delete' ? t('common.delete') : t('commandPalette.complete')}
               </button>
             </div>
           </div>
@@ -259,19 +267,19 @@ export default function CommandPalette({
           <div className={styles.confirmBox}>
             <div className={styles.confirmMsg}>
               {confirm.type === 'complete'
-                ? `Mark ${confirm.matches.length} block(s) as complete?`
-                : `Delete ${confirm.matches.length} block(s)?`}
+                ? t('commandPalette.confirmCompleteMatches', { count: confirm.matches.length })
+                : t('commandPalette.confirmDeleteMatches', { count: confirm.matches.length })}
               {confirm.matches.length > 0 && (
                 <ul className={styles.confirmList}>
                   {confirm.matches.slice(0, 5).map(b => <li key={b._id || b.id}>{b.emoji} {b.title}</li>)}
-                  {confirm.matches.length > 5 && <li>…and {confirm.matches.length - 5} more</li>}
+                  {confirm.matches.length > 5 && <li>{t('commandPalette.andMore', { count: confirm.matches.length - 5 })}</li>}
                 </ul>
               )}
             </div>
             <div className={styles.confirmActions}>
-              <button className={styles.confirmCancel} onClick={() => setConfirm(null)}>Cancel</button>
+              <button className={styles.confirmCancel} onClick={() => setConfirm(null)}>{t('common.cancel')}</button>
               <button className={styles.confirmOk} onClick={confirmAction}>
-                {confirm.type === 'complete' ? 'Complete' : 'Delete'}
+                {confirm.type === 'complete' ? t('commandPalette.complete') : t('common.delete')}
               </button>
             </div>
           </div>
@@ -281,7 +289,7 @@ export default function CommandPalette({
         {!confirm && !bulkConfirm && showStarter && (
           <div className={styles.starter}>
             <div className={styles.starterSection}>
-              <div className={styles.starterLabel}>Quick commands</div>
+              <div className={styles.starterLabel}>{t('commandPalette.quickCommands')}</div>
               {COMMANDS.map(cmd => (
                 <div key={cmd.id} className={styles.starterCmd} onClick={() => starterClick(cmd)}>
                   <span className={styles.cmdLabel}>{cmd.label}</span>
@@ -290,7 +298,7 @@ export default function CommandPalette({
               ))}
             </div>
             <div className={styles.starterSection}>
-              <div className={styles.starterLabel}>Keyboard shortcuts</div>
+              <div className={styles.starterLabel}>{t('commandPalette.keyboardShortcuts')}</div>
               <div className={styles.shortcutGrid}>
                 {SHORTCUTS.map(s => (
                   <div key={s.keys} className={styles.shortcutRow}>
@@ -368,33 +376,33 @@ export default function CommandPalette({
         )}
 
         {!confirm && !bulkConfirm && query.trim().length > 0 && !isCmd && searchResults.length === 0 && (
-          <div className={styles.empty}>No blocks found</div>
+          <div className={styles.empty}>{t('commandPalette.noBlocksFound')}</div>
         )}
         {!confirm && !bulkConfirm && isCmd && cmdResults.length === 0 && (
-          <div className={styles.empty}>No matching command</div>
+          <div className={styles.empty}>{t('commandPalette.noMatchingCommand')}</div>
         )}
 
         <div className={styles.footer}>
           {isCmd ? (
             <>
-              <span>↑↓ navigate</span>
-              <span>↵ run</span>
-              <span>esc close</span>
+              <span>{t('commandPalette.footer.navigate')}</span>
+              <span>{t('commandPalette.footer.run')}</span>
+              <span>{t('commandPalette.footer.close')}</span>
             </>
           ) : someChecked ? (
             <>
-              <span>esc deselect</span>
-              <span>⌘A select all</span>
+              <span>{t('commandPalette.footer.deselect')}</span>
+              <span>{t('commandPalette.footer.selectAll')}</span>
             </>
           ) : (
             <>
-              <span>↑↓ navigate</span>
-              <span>↵ open</span>
-              <span>⌘A select all</span>
-              <span>esc close</span>
+              <span>{t('commandPalette.footer.navigate')}</span>
+              <span>{t('commandPalette.footer.open')}</span>
+              <span>{t('commandPalette.footer.selectAll')}</span>
+              <span>{t('commandPalette.footer.close')}</span>
             </>
           )}
-          <span className={styles.footerHint}>Type to search · {'>'} for commands</span>
+          <span className={styles.footerHint}>{t('commandPalette.footer.hint')}</span>
         </div>
       </div>
     </div>,

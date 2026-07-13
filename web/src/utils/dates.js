@@ -1,4 +1,5 @@
 import { getTZ } from './timezone';
+import { getLocale } from './language';
 
 export function now() {
   return new Date();
@@ -38,11 +39,11 @@ export function formatShort(date) {
 }
 
 export function formatFull(date) {
-  return date.toLocaleDateString('en-US', { timeZone: getTZ(), weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(getLocale(), { timeZone: getTZ(), weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function formatMonthYear(date) {
-  return date.toLocaleDateString('en-US', { timeZone: getTZ(), month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(getLocale(), { timeZone: getTZ(), month: 'long', year: 'numeric' });
 }
 
 export function isToday(date) {

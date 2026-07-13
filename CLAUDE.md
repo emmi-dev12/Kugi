@@ -187,6 +187,7 @@ components/UI/
 | NLP quick-add | `QuickAdd.jsx` + `parseQuickAdd.js` (chrono-node); keyboard shortcut `q` |
 | Command palette | `CommandPalette.jsx`; `>` prefix for commands, plain text for search; empty-query starter panel + fuzzy title match |
 | Landing page | `Landing.jsx` — Linear-style dark design, interactive week/day preview, AI Agent section with copyable prompt, and a "Built for flow" bento card (`.bentoFlow`, full-width row 4) showcasing the signature interactions. Brand copy is lowercase **kugi** (repo URLs keep capital `Kugi`) |
+| Language / i18n (English + German) | `i18n/index.js` (i18next + react-i18next init, mounted via `I18nextProvider` in `App.jsx` above both pre-setup and main app branches), `i18n/locales/en.json` + `de.json`, `utils/language.js` (`getEffectiveLanguage`/`getLangPreference`/`setLangPreference`/`getLocale` — mirrors `utils/timezone.js`'s localStorage pattern; no stored `kugiLanguage` key = auto-detect from `navigator.language`), `hooks/useLanguage.js`. Settings → General has the Language selector (Auto/English/Deutsch), wired through `AppPage.jsx` the same way as the Timezone selector. All user-facing strings across `web/src` use `useTranslation()`'s `t()`; native `Intl`/`toLocaleDateString` calls use `getLocale()` instead of a hardcoded `'en-US'` |
 
 ---
 
@@ -211,7 +212,7 @@ components/UI/
 - **Telegram timezone bug (fixed)** — `new Date('YYYY-MM-DDTHH:MM')` parses as UTC on the Convex server, not local time. Always use `localToUTC(date, time, tz)` (defined in `blocks.ts`) which does iterative `Intl.DateTimeFormat` correction. Never use bare `new Date(dateStr + 'T' + timeStr)` for scheduling.
 - **Multi-reminder job IDs** — blocks store `telegramJobIds: string[]` (new) alongside legacy `telegramJobId`. Always cancel both in `cancelTelegramJobs()`. Don't assume a block only has one scheduled reminder.
 - **Webhook payload** — `telegram.ts` POSTs `{ event, blockId, title, emoji, date, start_time, end_time, category, notes, notify_message, fired_at }` to `webhookUrl` on every reminder fire. The `try/catch` swallows webhook errors so a bad URL never breaks Telegram delivery.
-- **sw.js cache name** — currently `kugi-v22`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
+- **sw.js cache name** — currently `kugi-v23`. Always bump on any frontend JS/CSS change or users with the PWA installed will see stale UI.
 - **Mobile header is two rows** — on `≤768px` the `.header` wraps: row 1 = `KugiMark` + `.mobilePlanBtn` + `.mobileSettingsBtn`, row 2 = full-width date navigator (`‹ date › Today`), using `flex-wrap` + `height: auto` (not the desktop fixed height). The desktop `headerRight` cluster (view toggle, Plan, Search, New Block, gear) is `display:none` on mobile — its actions live in the bottom nav or dedicated `.mobile*` buttons instead. The nav label has `.navLabelFull` (desktop) / `.navLabelShort` (mobile compact, from `navLabelShort` in AppPage) — keep both spans when editing it.
 - **`useDB.js` friendlyError** — all `alert()` calls in `useDB.js` use `friendlyError(e)` which hides stack traces and long server messages. Don't use raw `e.message` in alerts.
 - **`useApiKey` effect** — only calls `ensureApiKey` when `apiKey === null` (query resolved, no key yet). Don't change the dep array back to `[]`.
