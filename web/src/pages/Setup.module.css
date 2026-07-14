@@ -62,15 +62,52 @@
 
 .btn { width: 100%; padding: 13px; font-size: 14px; border-radius: 12px; margin-top: 4px; }
 
-.hint {
-  font-size: 12px; color: var(--text-dim); line-height: 1.8;
+.steps {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 12px; padding: 14px 16px;
 }
-.hint code {
+
+.stepsHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.stepsTitle {
+  font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.3px;
+}
+
+.stepsTime {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 8px;
+}
+
+.stepList {
+  margin: 0; padding-left: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.stepList li {
+  font-size: 12px; color: var(--text-muted); line-height: 1.5;
+}
+
+.stepText { display: block; }
+
+.codeBlock {
+  margin-top: 6px;
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.codeBlock code {
   font-family: 'SF Mono', 'Fira Code', monospace;
-  background: var(--surface3); padding: 1px 5px; border-radius: 4px;
-  font-size: 11px; color: var(--text-muted);
+  font-size: 11px; color: var(--text-muted); line-height: 1.6;
+  word-break: break-all;
+}
+
+.stepsNote {
+  margin: 10px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.5;
 }
 
 @media (max-width: 520px) {
