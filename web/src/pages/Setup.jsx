@@ -49,11 +49,31 @@ export default function Setup({ onComplete }) {
             {t('setup.connectButton')}
           </button>
         </form>
-        <div className={styles.hint}>
-          <strong>{t('setup.howToGetUrl')}</strong><br />
-          1. <code>npm install convex</code><br />
-          2. <code>npx convex dev</code> {t('setup.followPrompts')}<br />
-          3. {t('setup.copyUrl')}
+        <div className={styles.steps}>
+          <div className={styles.stepsHeader}>
+            <span className={styles.stepsTitle}>{t('setup.howToGetUrl')}</span>
+            <span className={styles.stepsTime}>{t('setup.timeEstimate')}</span>
+          </div>
+          <ol className={styles.stepList}>
+            <li>
+              <span className={styles.stepText}>
+                {t('setup.step1')}{' '}
+                <a href="https://dashboard.convex.dev" target="_blank" rel="noopener noreferrer" className={styles.link}>dashboard.convex.dev</a>
+                {t('setup.step1b')}
+              </span>
+            </li>
+            <li>
+              <span className={styles.stepText}>{t('setup.step2')}</span>
+              <div className={styles.codeBlock}>
+                <code>git clone https://github.com/emmi-dev12/Kugi && cd Kugi/app</code><br />
+                <code>npm install && npx convex dev --once</code>
+              </div>
+            </li>
+            <li>
+              <span className={styles.stepText}>{t('setup.step3')}</span>
+            </li>
+          </ol>
+          <p className={styles.stepsNote}>{t('setup.nodeNote')}</p>
         </div>
       </div>
     </div>
