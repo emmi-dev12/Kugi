@@ -352,12 +352,12 @@
     "label": "Convex Deployment URL",
     "connectButton": "Connect workspace →",
     "howToGetUrl": "How to get your URL",
-    "timeEstimate": "~3 min · once",
+    "timeEstimate": "~5 min · once",
+    "step0": "Install Node.js (skip if you already have it):",
     "step1": "Create a free account at ",
     "step1b": " (no credit card needed).",
     "step2": "Clone the repo and deploy the backend:",
-    "step3": "After deploying, copy the URL shown in the terminal (looks like https://your-project.convex.cloud) and paste it above.",
-    "nodeNote": "Requires Node.js 18+. If you don't have it, download it from nodejs.org first."
+    "step3": "After deploying, copy the URL shown in the terminal (looks like https://your-project.convex.cloud) and paste it above."
   },
   "landing": {
     "installed": "Installed",
