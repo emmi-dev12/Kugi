@@ -56,6 +56,13 @@ export default function Setup({ onComplete }) {
           </div>
           <ol className={styles.stepList}>
             <li>
+              <span className={styles.stepText}>{t('setup.step0')}</span>
+              <div className={styles.codeBlock}>
+                <code>curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash</code><br />
+                <code>nvm install --lts</code>
+              </div>
+            </li>
+            <li>
               <span className={styles.stepText}>
                 {t('setup.step1')}{' '}
                 <a href="https://dashboard.convex.dev" target="_blank" rel="noopener noreferrer" className={styles.link}>dashboard.convex.dev</a>
@@ -73,7 +80,6 @@ export default function Setup({ onComplete }) {
               <span className={styles.stepText}>{t('setup.step3')}</span>
             </li>
           </ol>
-          <p className={styles.stepsNote}>{t('setup.nodeNote')}</p>
         </div>
       </div>
     </div>
