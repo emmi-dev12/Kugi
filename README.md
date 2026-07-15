@@ -4,7 +4,7 @@
 
 # kugi
 
-**Personal block calendar — your data, your backend, AI-ready.**
+**Your block calendar — your data, your backend, AI-ready.**
 
 [![Live](https://img.shields.io/badge/web-kugi.onrender.com-4f7cff?style=flat-square)](https://kugi.onrender.com)
 [![License](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
